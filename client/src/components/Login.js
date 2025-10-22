@@ -9,9 +9,9 @@ const Login = ({ setAuth, setUser }) => {
     password: "",
   });
 
-  // popup states
   const [popupRole, setPopupRole] = useState(null);
   const [popupInputs, setPopupInputs] = useState({ email: "", password: "" });
+  const [showModal, setShowModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -47,6 +47,8 @@ const Login = ({ setAuth, setUser }) => {
         if (parseRes.role === "admin") navigate("/admin");
         else if (parseRes.role === "housekeeper") navigate("/housekeeper");
         else navigate("/guest");
+
+        setShowModal(false);
       } else {
         alert(parseRes.message || "Login failed");
       }
@@ -58,125 +60,187 @@ const Login = ({ setAuth, setUser }) => {
   const handleCancel = () => {
     setPopupInputs({ email: "", password: "" });
     setPopupRole(null);
+    setShowModal(false);
   };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="w-1/2 relative">
-        <img
-          src="/images/rotonda-image.jpg"
-          alt="Rotonda"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute top-0 left-0 w-full h-full bg-green-900 bg-opacity-50 flex">
-          <h1 className="p-6 text-white text-4xl font-bold px-4">
-            DLSU-D <br /> Housekeeping Services
-          </h1>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      <header className="flex justify-between items-center px-8 py-4 bg-green-900 text-white">
+        <h1 className="text-2xl font-bold font-poppins">
+          DLSU-D Housekeeping Services
+        </h1>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-white text-green-900 px-4 py-2 rounded font-semibold hover:bg-gray-200 transition"
+        >
+          Login
+        </button>
+      </header>
 
-      <div className="w-1/2 flex flex-col justify-center items-center bg-gray-100">
-        <div className="w-3/4 max-w-md p-8 bg-white shadow-lg rounded-lg">
-          <h2 className="text-2xl font-bold text-green-900 mb-6 text-center">
-            Login
-          </h2>
+      <main className="flex flex-col items-center justify-center text-green-900">
+        <p className="p-6 text-3xl font-extrabold mb-6 text-center text-green-900">
+          Welcome to DLSU-D Housekeeping Services
+        </p>
+        <p className="max-w-3xl text-lg text-gray-700 text-center mb-10">
+          Experience the convenience of requesting housekeeping services right
+          from your room at
+          <span className="font-semibold"> Hotel Rafael</span> and the
+          <span className="font-semibold"> Retreat and Conference Center</span>.
+          Whether you need to schedule a cleaning or borrow essential items, our
+          services are just a click away — making your stay more comfortable and
+          worry-free.
+        </p>
 
-          <div className="flex justify-center gap-6 mb-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="role"
-                value="student"
-                checked={role === "student"}
-                onChange={(e) => setRole(e.target.value)}
-                className="accent-green-700"
-              />
-              Student
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="role"
-                value="guest"
-                checked={role === "guest"}
-                onChange={(e) => setRole(e.target.value)}
-                className="accent-green-700"
-              />
-              Guest
-            </label>
+        <div className="flex items-center gap-6 mb-12 w-full max-w-5xl">
+          <img
+            src="/images/HR_homepage.jpg"
+            alt="Hotel Rafael"
+            className="w-1/2 rounded-lg shadow-md"
+          />
+          <div className="w-1/2">
+            <h2 className="text-2xl font-bold mb-2">Hotel Rafael</h2>
+            <p className="text-gray-700">
+              Random placeholder text for Hotel Rafael. Lorem ipsum dolor sit
+              amet, consectetur adipiscing elit. Duis commodo felis vel arcu
+              egestas, sit amet feugiat lorem euismod.
+            </p>
           </div>
+        </div>
 
-          <form
-            onSubmit={(e) =>
-              handleLogin(e, role, { email, student_number, password })
-            }
-            className="flex flex-col gap-4"
-          >
-            {role === "guest" && (
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={email}
-                onChange={onChange}
-                required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-              />
-            )}
+        <div className="flex items-center gap-6 w-full max-w-5xl">
+          <div className="w-1/2 text-right">
+            <h2 className="text-2xl font-bold mb-2">
+              Retreat and Conference Center
+            </h2>
+            <p className="text-gray-700">
+              Random placeholder text for RCC. Curabitur eu felis eu lectus
+              cursus volutpat. Praesent at dui sit amet nulla faucibus suscipit.
+            </p>
+          </div>
+          <img
+            src="/images/RCC_homepage.jpg"
+            alt="Retreat and Conference Center"
+            className="mb-6 w-1/2 rounded-lg shadow-md"
+          />
+        </div>
+      </main>
 
-            {role === "student" && (
-              <input
-                type="text"
-                name="student_number"
-                placeholder="Student Number"
-                value={student_number}
-                onChange={onChange}
-                required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-              />
-            )}
-
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={password}
-              onChange={onChange}
-              required
-              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-            />
-
-            <button
-              type="submit"
-              className="bg-green-800 text-white py-2 rounded font-semibold hover:bg-green-900 transition"
-            >
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-2xl font-poppins font-bold text-green-900 mb-6 text-center">
               Login
-            </button>
-          </form>
+            </h2>
 
-          <p className="mt-4 text-center text-gray-600">
-            Don't have an account?{" "}
-            <a href="/register" className="text-green-700 font-semibold hover:underline">
-              Register here
-            </a>
-          </p>
+            <div className="flex justify-center gap-6 mb-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="role"
+                  value="student"
+                  checked={role === "student"}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="accent-green-700"
+                />
+                Student
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="role"
+                  value="guest"
+                  checked={role === "guest"}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="accent-green-700"
+                />
+                Guest
+              </label>
+            </div>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setPopupRole("admin")}
-              className="text-sm text-blue-600 hover:underline mx-2"
+            <form
+              onSubmit={(e) =>
+                handleLogin(e, role, { email, student_number, password })
+              }
+              className="flex flex-col gap-4"
             >
-              Admin Login
-            </button>
-            <button
-              onClick={() => setPopupRole("housekeeper")}
-              className="text-sm text-blue-600 hover:underline mx-2"
-            >
-              Housekeeper Login
-            </button>
+              {role === "guest" && (
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={onChange}
+                  required
+                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+                />
+              )}
+
+              {role === "student" && (
+                <input
+                  type="text"
+                  name="student_number"
+                  placeholder="Student Number"
+                  value={student_number}
+                  onChange={onChange}
+                  required
+                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+                />
+              )}
+
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={password}
+                onChange={onChange}
+                required
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
+
+              <button
+                type="submit"
+                className="bg-green-800 text-white py-2 rounded font-semibold hover:bg-green-900 transition"
+              >
+                Login
+              </button>
+            </form>
+
+            <p className="mt-4 text-center text-gray-600">
+              Don't have an account?{" "}
+              <a
+                href="/register"
+                className="text-green-700 font-poppins font-semibold hover:underline"
+              >
+                Register here
+              </a>
+            </p>
+
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => setPopupRole("admin")}
+                className="text-sm text-blue-600 hover:underline mx-2"
+              >
+                Admin Login
+              </button>
+              <button
+                onClick={() => setPopupRole("housekeeper")}
+                className="text-sm text-blue-600 hover:underline mx-2"
+              >
+                Housekeeper Login
+              </button>
+            </div>
+
+            <div className="mt-6 text-center">
+              <button
+                onClick={handleCancel}
+                className="bg-gray-400 text-white py-2 px-4 rounded hover:bg-gray-500 transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {popupRole && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">

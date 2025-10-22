@@ -6,7 +6,7 @@ router.get("/", authorization, async (req, res) => {
   try {
     // get the user with role
     const userResult = await pool.query(
-      "SELECT id, name, role FROM users WHERE id = $1",
+      "SELECT id, name, role, facility FROM users WHERE id = $1",
       [req.user.id]
     );
 
@@ -16,18 +16,11 @@ router.get("/", authorization, async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Just return welcome message depending on role
-    switch (user.role) {
-      case "student":
-      case "guest":
-        return res.json({ message: `Welcome ${user.role}`, name: user.name });
-      case "housekeeper":
-        return res.json({ message: "Welcome housekeeper", name: user.name });
-      case "admin":
-        return res.json({ message: "Welcome admin", name: user.name });
-      default:
-        return res.status(403).json("Invalid role");
-    }
+    return res.json({
+      message: `Welcome ${user.role}`,
+      name: user.name,
+      facility: user.facility,
+    });
 
   } catch (err) {
     console.error(err.message);

@@ -35,32 +35,38 @@ const Register = () => {
   };
 
   const onSubmitForm = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!validateStudent()) return;
+  if (!validateStudent()) return;
 
-    try {
-      const body = { name, email, student_number, password, role };
+  try {
+    const body = { name, email, student_number, password, role };
 
-      const response = await fetch("http://localhost:5000/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+    const response = await fetch("http://localhost:5000/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-      const parseRes = await response.json();
-      console.log(parseRes);
+    const parseRes = await response.json();
+    console.log(parseRes);
 
-      if (parseRes.token) {
-        alert("Registration successful! Please login.");
-        navigate("/login");
-      } else {
-        alert(parseRes.message || "Registration failed");
-      }
-    } catch (err) {
-      console.error(err.message);
+    if (response.status === 409) {
+      alert(parseRes.message || "User already exists.");
+      return;
     }
-  };
+
+    if (response.ok && parseRes.token) {
+      alert("Registration successful! Please login.");
+      navigate("/login");
+    } else {
+      alert(parseRes.message || "Registration failed");
+    }
+  } catch (err) {
+    console.error("Registration error:", err.message);
+    alert("Network or server error. Please try again later.");
+  }
+};
 
   return (
     <div className="flex min-h-screen">
@@ -68,7 +74,7 @@ const Register = () => {
         <img
           src="/images/rotonda-image.jpg"
           alt="Rotonda"
-          className="w-full h-full object-cover"
+          className="w-full h-screen object-cover"
         />
         <div className="absolute top-0 left-0 w-full h-full bg-green-900 bg-opacity-50 flex">
           <h1 className="text-white text-4xl font-bold p-6 px-4">

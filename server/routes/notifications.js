@@ -1,0 +1,44 @@
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+
+// Get all notifications for a user
+router.get("/:user_id", async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const notifications = await pool.query(
+      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
+      [user_id]
+    );
+    res.json(notifications.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Mark notification as read
+router.put("/:id/read", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(`UPDATE notifications SET read = TRUE WHERE id = $1`, [id]);
+    res.json({ message: "Notification marked as read" });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Delete notification
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(`DELETE FROM notifications WHERE id = $1`, [id]);
+    res.json({ message: "Notification deleted" });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+module.exports = router;

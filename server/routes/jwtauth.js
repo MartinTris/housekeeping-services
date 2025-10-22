@@ -8,12 +8,13 @@ const authorization = require("../middleware/authorization");
 //register
 router.post("/register", validInfo, async (req, res) => {
   try {
-    const { name, email, password, role, student_number } = req.body;
+    const { name, email, password, role, student_number, facility } = req.body;
 
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (user.rows.length !== 0) {
-      return res.status(401).send("User already exists");
+      return res.status(409).json({ message: "User already exists" });
     }
+
 
     if (role === "student") {
       if (!student_number) {
@@ -43,9 +44,9 @@ router.post("/register", validInfo, async (req, res) => {
 
     //new user
     const newUser = await pool.query(
-      `INSERT INTO users (name, email, student_number, password_hash, role) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [name, email, student_number || null, bcryptPassword, role]
+      `INSERT INTO users (name, email, student_number, password_hash, role, facility) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [name, email, student_number || null, bcryptPassword, role, facility || null]
     );
 
     //generate jwt token
