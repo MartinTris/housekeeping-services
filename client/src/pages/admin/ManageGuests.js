@@ -134,6 +134,8 @@ const ManageGuests = () => {
 
       setShowModal(false);
       await fetchRooms();
+      window.dispatchEvent(new Event("userFacilityUpdated"));
+      
     } catch (err) {
       console.error("Assign network error:", err);
       alert("Network error. See console.");
@@ -193,6 +195,8 @@ const ManageGuests = () => {
 
       await fetchRooms();
       alert("Guest checked out.");
+      window.dispatchEvent(new Event("userFacilityUpdated"));
+
     } catch (err) {
       console.error("Remove error:", err);
       alert("Network error. See console.");

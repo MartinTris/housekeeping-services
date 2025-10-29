@@ -7,7 +7,14 @@ router.get("/:user_id", async (req, res) => {
   try {
     const { user_id } = req.params;
     const notifications = await pool.query(
-      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
+      `
+      SELECT n.*, 
+             u.first_name || ' ' || u.last_name AS full_name
+      FROM notifications n
+      LEFT JOIN users u ON n.user_id = u.id
+      WHERE n.user_id = $1 
+      ORDER BY n.created_at DESC
+      `,
       [user_id]
     );
     res.json(notifications.rows);

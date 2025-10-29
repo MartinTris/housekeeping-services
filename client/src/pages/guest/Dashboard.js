@@ -22,7 +22,13 @@ const GuestDashboard = () => {
       });
       const data = await res.json();
       setProfile(data);
-      setName(data.name);
+
+      // Combine first_name and last_name
+      const fullName =
+        data.first_name && data.last_name
+          ? `${data.first_name} ${data.last_name}`
+          : data.name || "";
+      setName(fullName);
     } catch (err) {
       console.error("Error fetching profile:", err.message);
     }
@@ -39,14 +45,15 @@ const GuestDashboard = () => {
       profile.facility.toLowerCase().includes("rafael");
 
     const startHour = isHotelRafael ? 6 : 8;
-    const endHour = isHotelRafael ? 18 : 17;
+    const endHour = isHotelRafael ? 24 : 24;
     const intervalMinutes = serviceType === "regular" ? 30 : 60;
     const now = new Date();
 
     const selectedDate = preferredDate ? new Date(preferredDate) : null;
     const isToday =
       selectedDate &&
-      now.toISOString().split("T")[0] === selectedDate.toISOString().split("T")[0];
+      now.toISOString().split("T")[0] ===
+        selectedDate.toISOString().split("T")[0];
 
     // round to next half hour
     let currentHour = now.getHours();
@@ -61,41 +68,43 @@ const GuestDashboard = () => {
     }
 
     const slots = [];
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute of [0, 30]) {
-        const slotStart = new Date();
-        slotStart.setHours(hour, minute, 0, 0);
+    let slotDuration = intervalMinutes; // 30 or 60 mins
+    let slotStart = new Date(selectedDate || now);
+    slotStart.setHours(startHour, 0, 0, 0);
 
-        if (isToday && (hour < currentHour || (hour === currentHour && minute < currentMinute))) {
-          continue;
-        }
+    const endTime = new Date(selectedDate || now);
+    endTime.setHours(endHour, 0, 0, 0);
 
-        const endTotalMin = hour * 60 + minute + intervalMinutes;
-        const endH = Math.floor(endTotalMin / 60);
-        const endM = endTotalMin % 60;
-        if (endH > endHour || (endH === endHour && endM > 0)) continue;
+    while (slotStart < endTime) {
+      const slotEnd = new Date(slotStart.getTime() + slotDuration * 60000);
 
-        const value = `${pad(hour)}:${pad(minute)}:00`;
-
-        const startLabel = new Date(
-          slotStart.getFullYear(),
-          slotStart.getMonth(),
-          slotStart.getDate(),
-          hour,
-          minute
-        ).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
-        const endLabel = new Date(
-          slotStart.getFullYear(),
-          slotStart.getMonth(),
-          slotStart.getDate(),
-          endH,
-          endM
-        ).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
-        slots.push({ value, label: `${startLabel} - ${endLabel}` });
+      // skip past times if today
+      if (isToday && slotEnd <= now) {
+        slotStart = new Date(slotStart.getTime() + slotDuration * 60000);
+        continue;
       }
+
+      if (slotEnd > endTime) break;
+
+      const startLabel = slotStart.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      const endLabel = slotEnd.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+
+      const value = `${pad(slotStart.getHours())}:${pad(
+        slotStart.getMinutes()
+      )}:00`;
+
+      slots.push({ value, label: `${startLabel} - ${endLabel}` });
+
+      // move start forward by full duration (30 or 60 min)
+      slotStart = new Date(slotStart.getTime() + slotDuration * 60000);
     }
+
     setTimeSlots(slots);
   };
 
@@ -178,7 +187,9 @@ const GuestDashboard = () => {
   }, [showModal]);
 
   useEffect(() => {
-    fetchProfile();
+    const handler = () => fetchProfile();
+    window.addEventListener("userFacilityUpdated", handler);
+    return () => window.removeEventListener("userFacilityUpdated", handler);
   }, []);
 
   // regenerate slots & fetch availability when profile/serviceType/preferredDate changes
@@ -283,7 +294,10 @@ const GuestDashboard = () => {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded"
+                >
                   Submit
                 </button>
               </div>

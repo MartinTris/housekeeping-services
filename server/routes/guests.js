@@ -13,7 +13,8 @@ router.get("/rooms", authorization, async (req, res) => {
     const facility = user.rows[0].facility;
 
     const rooms = await pool.query(
-      `SELECT r.*, u.name AS guest_name
+      `SELECT r.*, 
+              CONCAT(u.first_name, ' ', u.last_name) AS guest_name
        FROM rooms r
        LEFT JOIN users u ON r.occupied_by = u.id
        WHERE r.facility = $1
@@ -34,10 +35,17 @@ router.get("/search", authorization, async (req, res) => {
     if (!query || query.length < 2) return res.json([]);
 
     const guests = await pool.query(
-      `SELECT id, name, email 
+      `SELECT id, 
+              CONCAT(first_name, ' ', last_name) AS name, 
+              email 
        FROM users 
        WHERE role IN ('guest', 'student')
-       AND (name ILIKE $1 OR email ILIKE $1)
+       AND (
+         first_name ILIKE $1 
+         OR last_name ILIKE $1 
+         OR CONCAT(first_name, ' ', last_name) ILIKE $1 
+         OR email ILIKE $1
+       )
        LIMIT 10;`,
       [`%${query}%`]
     );

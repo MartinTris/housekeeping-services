@@ -5,16 +5,15 @@ const jwtGenerator = require("../utils/jwtGenerator");
 const validInfo = require("../middleware/validInfo");
 const authorization = require("../middleware/authorization");
 
-//register
+// REGISTER
 router.post("/register", validInfo, async (req, res) => {
   try {
-    const { name, email, password, role, student_number, facility } = req.body;
+    const { first_name, last_name, email, password, role, student_number, facility } = req.body;
 
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (user.rows.length !== 0) {
       return res.status(409).json({ message: "User already exists" });
     }
-
 
     if (role === "student") {
       if (!student_number) {
@@ -37,19 +36,19 @@ router.post("/register", validInfo, async (req, res) => {
       }
     }
 
-    //password hash
+    // Password hash
     const saltRound = 10;
     const salt = await bcrypt.genSalt(saltRound);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
-    //new user
+    // Insert new user
     const newUser = await pool.query(
-      `INSERT INTO users (name, email, student_number, password_hash, role, facility) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [name, email, student_number || null, bcryptPassword, role, facility || null]
+      `INSERT INTO users (first_name, last_name, email, student_number, password_hash, role, facility) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [first_name, last_name, email, student_number || null, bcryptPassword, role, facility || null]
     );
 
-    //generate jwt token
+    // Generate JWT token
     const token = jwtGenerator(newUser.rows[0]);
     res.json({ token, message: "User registered successfully" });
 
@@ -59,14 +58,13 @@ router.post("/register", validInfo, async (req, res) => {
   }
 });
 
-//login
+// LOGIN
 router.post("/login", validInfo, async (req, res) => {
   try {
     const { email, student_number, password, role } = req.body;
 
     let user;
 
-    // Match login method with role
     if (role === "student") {
       if (!student_number) {
         return res.status(400).json({ message: "Student number required" });
@@ -75,46 +73,27 @@ router.post("/login", validInfo, async (req, res) => {
         "SELECT * FROM users WHERE student_number = $1 AND role = 'student'",
         [student_number]
       );
-    } else if (role === "guest") {
+    } else if (role === "guest" || role === "admin" || role === "housekeeper") {
       if (!email) {
         return res.status(400).json({ message: "Email required" });
       }
       user = await pool.query(
-        "SELECT * FROM users WHERE email = $1 AND role = 'guest'",
-        [email]
-      );
-    } else if (role === "admin") {
-      if (!email) {
-        return res.status(400).json({ message: "Email required" });
-      }
-      user = await pool.query(
-        "SELECT * FROM users WHERE email = $1 AND role = 'admin'",
-        [email]
-      );
-    } else if (role === "housekeeper") {
-      if (!email) {
-        return res.status(400).json({ message: "Email required" });
-      }
-      user = await pool.query(
-        "SELECT * FROM users WHERE email = $1 AND role = 'housekeeper'",
-        [email]
+        "SELECT * FROM users WHERE email = $1 AND role = $2",
+        [email, role]
       );
     } else {
       return res.status(400).json({ message: "Invalid role specified" });
     }
 
-    // User not found
     if (user.rows.length === 0) {
       return res.status(401).json({ message: "User not found or role mismatch" });
     }
 
-    // Verify password
     const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
     if (!validPassword) {
       return res.status(401).json({ message: "Password incorrect" });
     }
 
-    // Generate token
     const token = jwtGenerator(user.rows[0]);
     res.json({ token, role: user.rows[0].role });
   } catch (err) {
@@ -123,7 +102,7 @@ router.post("/login", validInfo, async (req, res) => {
   }
 });
 
-// Verify token
+// VERIFY TOKEN
 router.get("/is-verify", authorization, async (req, res) => {
   try {
     res.json(true);

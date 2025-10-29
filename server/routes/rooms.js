@@ -4,6 +4,7 @@ const authorization = require("../middleware/authorization");
 const { getIo } = require("../realtime");
 
 // get rooms
+// get rooms
 router.get("/", authorization, async (req, res) => {
   try {
     const adminId = req.user.id;
@@ -21,7 +22,8 @@ router.get("/", authorization, async (req, res) => {
       SELECT r.id, r.facility, r.room_number,
              b.id AS booking_id,
              b.time_in, b.time_out,
-             u.id AS guest_id, u.name AS guest_name,
+             u.id AS guest_id,
+             CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
              (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
       FROM rooms r
       LEFT JOIN LATERAL (
@@ -60,6 +62,7 @@ router.get("/", authorization, async (req, res) => {
     res.status(500).send("Server error");
   }
 });
+
 
 // assign room
 router.post("/:id/assign", authorization, async (req, res) => {

@@ -3,7 +3,12 @@ import { jwtDecode } from "jwt-decode";
 import ConfirmModal from "../../components/ConfirmModal";
 
 const AddHousekeeper = () => {
-  const [inputs, setInputs] = useState({ name: "", email: "", password: "" });
+  const [inputs, setInputs] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
+  });
   const [housekeepers, setHousekeepers] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [facility, setFacility] = useState(null);
@@ -28,7 +33,6 @@ const AddHousekeeper = () => {
       const data = await response.json();
       const hkList = Array.isArray(data) ? data : [];
 
-      // Merge housekeepers with existing schedules (for immediate editing)
       setHousekeepers(hkList);
       setSchedules((prev) => {
         const updated = [...prev];
@@ -80,7 +84,13 @@ const AddHousekeeper = () => {
       if (response.ok) {
         const newHk = await response.json();
 
-        setInputs({ name: "", email: "", password: "" });
+        setInputs({
+          first_name: "",
+          last_name: "",
+          email: "",
+          password: "",
+        });
+
         setHousekeepers((prev) => [...prev, newHk]);
 
         setSchedules((prev) => [
@@ -162,10 +172,19 @@ const AddHousekeeper = () => {
       >
         <input
           type="text"
-          name="name"
-          value={inputs.name}
+          name="first_name"
+          value={inputs.first_name}
           onChange={onChange}
-          placeholder="Name"
+          placeholder="First Name"
+          className="border rounded-lg px-3 py-2"
+          required
+        />
+        <input
+          type="text"
+          name="last_name"
+          value={inputs.last_name}
+          onChange={onChange}
+          placeholder="Last Name"
           className="border rounded-lg px-3 py-2"
           required
         />
@@ -210,7 +229,9 @@ const AddHousekeeper = () => {
         <tbody>
           {housekeepers.map((hk) => (
             <tr key={hk.id}>
-              <td className="border px-4 py-2">{hk.name}</td>
+              <td className="border px-4 py-2">
+                {hk.first_name} {hk.last_name}
+              </td>
               <td className="border px-4 py-2">{hk.email}</td>
               <td className="border px-4 py-2">
                 <button
@@ -250,7 +271,9 @@ const AddHousekeeper = () => {
               key={hk.id}
               className="border rounded-lg p-4 mb-4 bg-gray-50 shadow-sm"
             >
-              <h4 className="font-semibold mb-3">{hk.name}</h4>
+              <h4 className="font-semibold mb-3">
+                {hk.first_name} {hk.last_name}
+              </h4>
 
               <div className="flex flex-col sm:flex-row gap-2 items-center mb-3">
                 <label className="flex flex-col">
@@ -289,7 +312,8 @@ const AddHousekeeper = () => {
                   />
                 </label>
               </div>
-                    <label>Day off(s):</label>
+
+              <label>Day off(s):</label>
               <div className="flex flex-wrap gap-2 mb-3">
                 {[
                   "Monday",

@@ -8,6 +8,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// for socket.io
+const server = http.createServer(app);
+const realtime = require("./realtime");
+const io = realtime.init(server, { corsOrigin: "http://localhost:3000" });
+
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // routes
 app.use("/auth", require("./routes/jwtauth"));
 app.use("/dashboard", require("./routes/dashboard"));
@@ -17,11 +27,7 @@ app.use("/rooms", require("./routes/rooms"));
 app.use("/users", require("./routes/users"));
 app.use("/housekeeping-requests", require("./routes/housekeepingRequests"));
 app.use("/notifications", require("./routes/notifications"));
-
-// for socket.io
-const server = http.createServer(app);
-const realtime = require("./realtime");
-const io = realtime.init(server, { corsOrigin: "http://localhost:3000" });
+app.use("/items", require("./routes/items"));
 
 require("./tasks/expireBookings");
 

@@ -6,7 +6,7 @@ router.get("/", authorization, async (req, res) => {
   try {
     // get the user with role
     const userResult = await pool.query(
-      "SELECT id, name, role, facility FROM users WHERE id = $1",
+      "SELECT id, first_name, last_name, role, facility FROM users WHERE id = $1",
       [req.user.id]
     );
 
@@ -15,10 +15,11 @@ router.get("/", authorization, async (req, res) => {
     }
 
     const user = userResult.rows[0];
+    const fullName = `${user.first_name} ${user.last_name}`;
 
     return res.json({
       message: `Welcome ${user.role}`,
-      name: user.name,
+      name: fullName,
       facility: user.facility,
     });
 

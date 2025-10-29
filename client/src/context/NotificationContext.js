@@ -82,7 +82,7 @@ export const NotificationProvider = ({ children }) => {
       socket.off("connect", handleConnect);
     };
   }, [user]);
-  
+
   // ⚡ Socket lifecycle
   useEffect(() => {
     if (!user) {
@@ -114,9 +114,12 @@ export const NotificationProvider = ({ children }) => {
 
       setNotifications((prev) => {
         // Check if notification already exists
-        const exists = prev.some((n) => 
-          n.message === data.message && 
-          Math.abs(new Date(n.created_at) - new Date(newNotification.created_at)) < 2000
+        const exists = prev.some(
+          (n) =>
+            n.message === data.message &&
+            Math.abs(
+              new Date(n.created_at) - new Date(newNotification.created_at)
+            ) < 2000
         );
         if (exists) return prev;
         return [newNotification, ...prev];
@@ -142,9 +145,12 @@ export const NotificationProvider = ({ children }) => {
 
       setNotifications((prev) => {
         // Check if notification already exists
-        const exists = prev.some((n) => 
-          n.message === data.message && 
-          Math.abs(new Date(n.created_at) - new Date(newNotification.created_at)) < 2000
+        const exists = prev.some(
+          (n) =>
+            n.message === data.message &&
+            Math.abs(
+              new Date(n.created_at) - new Date(newNotification.created_at)
+            ) < 2000
         );
         if (exists) return prev;
         return [newNotification, ...prev];
@@ -172,7 +178,9 @@ export const NotificationProvider = ({ children }) => {
         const exists = prev.some(
           (n) =>
             n.message === data.message &&
-            Math.abs(new Date(n.created_at) - new Date(newNotification.created_at)) < 2000
+            Math.abs(
+              new Date(n.created_at) - new Date(newNotification.created_at)
+            ) < 2000
         );
         if (exists) return prev;
         return [newNotification, ...prev];
@@ -184,10 +192,25 @@ export const NotificationProvider = ({ children }) => {
       });
     };
 
-    // ✅ Bind event listeners
     socket.off("newRequest").on("newRequest", handleNewRequest);
-    socket.off("housekeeperAssigned").on("housekeeperAssigned", handleHousekeeperAssigned);
+    socket
+      .off("housekeeperAssigned")
+      .on("housekeeperAssigned", handleHousekeeperAssigned);
     socket.off("newAssignment").on("newAssignment", handleNewAssignment);
+
+    socket.off("newNotification").on("newNotification", (data) => {
+      console.log("📥 newNotification event:", data);
+
+      const newNotif = {
+        id: Date.now(),
+        message: data.message,
+        created_at: new Date().toISOString(),
+        read: false,
+      };
+
+      setNotifications((prev) => [newNotif, ...prev]);
+      toast.success(data.message, { duration: 4000, position: "top-right" });
+    });
 
     // 🧹 Cleanup
     return () => {
@@ -205,7 +228,7 @@ export const NotificationProvider = ({ children }) => {
       fetchNotifications();
     }
   }, [user?.id, fetchNotifications]);
-  
+
   return (
     <NotificationContext.Provider
       value={{

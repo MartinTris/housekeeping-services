@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 const Register = () => {
   const [role, setRole] = useState("student");
   const [inputs, setInputs] = useState({
-    name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     student_number: "",
     password: "",
   });
 
-  const { name, email, student_number, password } = inputs;
+  const { first_name, last_name, email, student_number, password } = inputs;
   const navigate = useNavigate();
 
   const onChange = (e) => {
@@ -35,41 +36,42 @@ const Register = () => {
   };
 
   const onSubmitForm = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!validateStudent()) return;
+    if (!validateStudent()) return;
 
-  try {
-    const body = { name, email, student_number, password, role };
+    try {
+      const body = { first_name, last_name, email, student_number, password, role };
 
-    const response = await fetch("http://localhost:5000/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      const response = await fetch("http://localhost:5000/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    const parseRes = await response.json();
-    console.log(parseRes);
+      const parseRes = await response.json();
+      console.log(parseRes);
 
-    if (response.status === 409) {
-      alert(parseRes.message || "User already exists.");
-      return;
+      if (response.status === 409) {
+        alert(parseRes.message || "User already exists.");
+        return;
+      }
+
+      if (response.ok && parseRes.token) {
+        alert("Registration successful! Please login.");
+        navigate("/login");
+      } else {
+        alert(parseRes.message || "Registration failed");
+      }
+    } catch (err) {
+      console.error("Registration error:", err.message);
+      alert("Network or server error. Please try again later.");
     }
-
-    if (response.ok && parseRes.token) {
-      alert("Registration successful! Please login.");
-      navigate("/login");
-    } else {
-      alert(parseRes.message || "Registration failed");
-    }
-  } catch (err) {
-    console.error("Registration error:", err.message);
-    alert("Network or server error. Please try again later.");
-  }
-};
+  };
 
   return (
     <div className="flex min-h-screen">
+      {/* Left Section (Image) */}
       <div className="w-1/2 relative">
         <img
           src="/images/rotonda-image.jpg"
@@ -84,6 +86,7 @@ const Register = () => {
         </div>
       </div>
 
+      {/* Right Section (Form) */}
       <div className="w-1/2 flex flex-col justify-center items-center bg-gray-100">
         <div className="w-3/4 max-w-md p-8 bg-white shadow-lg rounded-lg">
           <h2 className="text-2xl font-bold text-green-900 mb-6 text-center">
@@ -116,15 +119,26 @@ const Register = () => {
           </div>
 
           <form onSubmit={onSubmitForm} className="flex flex-col gap-4">
-            <input
-              type="text"
-              name="name"
-              placeholder="Full Name"
-              value={name}
-              onChange={onChange}
-              required
-              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                name="first_name"
+                placeholder="First Name"
+                value={first_name}
+                onChange={onChange}
+                required
+                className="w-1/2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
+              <input
+                type="text"
+                name="last_name"
+                placeholder="Last Name"
+                value={last_name}
+                onChange={onChange}
+                required
+                className="w-1/2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
+            </div>
 
             {role === "guest" && (
               <input

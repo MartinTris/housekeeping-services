@@ -9,7 +9,7 @@ const Menu = ({ setAuth, role }) => {
     { name: "Add/Remove Guest", path: "/admin/guests" },
     { name: "Add/Remove Housekeeper", path: "/admin/housekeepers" },
     { name: "Service Requests", path: "/admin/requests" },
-    { name: "Pending Payments", path: "/admin/payments" },
+    { name: "Item List", path: "/admin/item-list" },
     { name: "Feedback", path: "/admin/feedback" },
     { name: "Reports", path: "/admin/reports" },
   ];
@@ -17,7 +17,7 @@ const Menu = ({ setAuth, role }) => {
   const guestItems = [
     { name: "Dashboard", path: "/guest" },
     { name: "My Profile", path: "/guest/profile" },
-    { name: "Request an Item", path: "/guest/item-request" },
+    { name: "Borrow Items", path: "/guest/borrow-items" },
   ];
 
   const housekeeperItems = [

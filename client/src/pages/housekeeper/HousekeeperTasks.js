@@ -83,6 +83,19 @@ const HousekeeperTasks = () => {
 
   if (loading) return <p className="p-4">Loading tasks...</p>;
 
+  // helper function to parse “04:00 PM” correctly into a Date
+  const parsePreferredTime = (dateStr, timeStr) => {
+    const [time, modifier] = timeStr.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+
+    const date = new Date(dateStr);
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  };
+
   return (
     <div className="p-6">
       <h2 className="text-green-900 text-2xl font-poppins font-bold mb-4">
@@ -105,37 +118,53 @@ const HousekeeperTasks = () => {
             </tr>
           </thead>
           <tbody>
-            {tasks.map((task) => (
-              <tr key={task.id} className="text-center">
-                <td className="p-2 border">{task.guest_name}</td>
-                <td className="p-2 border">{task.room_number}</td>
-                <td className="p-2 border capitalize">{task.service_type}</td>
-                <td className="p-2 border">
-                  {new Date(task.preferred_date).toLocaleDateString()}
-                </td>
-                <td className="p-2 border">{task.preferred_time}</td>
-                <td className="p-2 border capitalize">{task.status}</td>
-                <td className="p-2 border">
-                  {task.status === "approved" ? (
-                    <button
-                      onClick={() => handleAcknowledge(task.id)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded"
-                    >
-                      Acknowledge Task
-                    </button>
-                  ) : task.status === "in_progress" ? (
-                    <button
-                      onClick={() => handleMarkDone(task.id)}
-                      className="px-3 py-1 bg-green-600 text-white rounded"
-                    >
-                      Mark as Done
-                    </button>
-                  ) : (
-                    <span className="text-gray-500">Completed</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {tasks.map((task) => {
+              const now = new Date();
+              const startTimeStr = task.preferred_time.split(" - ")[0]; // e.g. "04:00 PM"
+              const taskStart = parsePreferredTime(
+                task.preferred_date,
+                startTimeStr
+              );
+
+              const canMarkDone = now >= taskStart;
+
+              return (
+                <tr key={task.id} className="text-center">
+                  <td className="p-2 border">{task.guest_name}</td>
+                  <td className="p-2 border">{task.room_number}</td>
+                  <td className="p-2 border capitalize">{task.service_type}</td>
+                  <td className="p-2 border">
+                    {new Date(task.preferred_date).toLocaleDateString()}
+                  </td>
+                  <td className="p-2 border">{task.preferred_time}</td>
+                  <td className="p-2 border capitalize">{task.status}</td>
+                  <td className="p-2 border">
+                    {task.status === "approved" ? (
+                      <button
+                        onClick={() => handleAcknowledge(task.id)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded"
+                      >
+                        Acknowledge Task
+                      </button>
+                    ) : task.status === "in_progress" ? (
+                      <button
+                        onClick={() => handleMarkDone(task.id)}
+                        disabled={!canMarkDone}
+                        className={`px-3 py-1 rounded text-white ${
+                          canMarkDone
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-gray-400 cursor-not-allowed"
+                        }`}
+                      >
+                        Mark as Done
+                      </button>
+                    ) : (
+                      <span className="text-gray-500">Completed</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

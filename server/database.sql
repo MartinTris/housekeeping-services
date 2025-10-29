@@ -70,8 +70,8 @@ CREATE TABLE availability_status (
 
 
 -- Sample input (edit as needed)
-INSERT INTO users (name, email, student_number, password_hash, role) 
-VALUES('test', 'email@gmail.com', '123456789', 'hashed_password', 'admin');
+INSERT INTO users (first_name, last_name, email, student_number, password_hash, role) 
+VALUES('firstname', 'lastname', 'email@gmail.com', '123456789', 'hashed_password', 'admin');
 
 --Altered users table to add facility check
 ALTER TABLE users ADD COLUMN facility TEXT CHECK (facility IN ('RCC', 'Hotel Rafael'));
@@ -126,7 +126,7 @@ CREATE TABLE booking_history (
 );
 
 --set timezone to UTC
-ALTER DATABASE your_database_name SET timezone = 'UTC';
+ALTER DATABASE housekeeping_system SET timezone = 'UTC';
 
 --add service type column to housekeeping_requests
 ALTER TABLE housekeeping_requests
@@ -166,5 +166,24 @@ CREATE TABLE notifications (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   read BOOLEAN DEFAULT false
 );
+
+--list of items for borrowing
+CREATE TABLE borrowable_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  facility VARCHAR(100) NOT NULL,
+  name TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 0,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+--drop name column from users table
+ALTER TABLE users DROP COLUMN name;
+
+--add first_name and last_name columns to users table
+ALTER TABLE users
+ADD COLUMN first_name TEXT,
+ADD COLUMN last_name TEXT;
+
 
 

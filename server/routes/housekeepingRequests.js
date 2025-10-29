@@ -38,7 +38,7 @@ router.post("/", authorization, async (req, res) => {
 
     // Get guest info (facility + name)
     const userRes = await pool.query(
-      `SELECT id, facility, name FROM users WHERE id = $1::uuid`,
+      `SELECT id, facility, first_name, last_name FROM users WHERE id = $1::uuid`,
       [userId]
     );
 
@@ -48,7 +48,8 @@ router.post("/", authorization, async (req, res) => {
         .json({ error: "You must be assigned to a room to request service." });
     }
 
-    const { facility, name: guestName } = userRes.rows[0];
+    const { facility, first_name, last_name } = userRes.rows[0];
+    const guestName = `${first_name} ${last_name}`;
 
     // Ensure consistent facility casing
     const facilityKey = facility.trim().toLowerCase();
@@ -73,7 +74,7 @@ router.post("/", authorization, async (req, res) => {
     const { room_id: roomId, room_number } = bookingRes.rows[0];
 
     // ------------------------------
-    // STEP 1: Find available housekeepers (respect shift + day-offs)
+    // STEP 1: Find available housekeepers
     // ------------------------------
     const currentDay = new Date(preferred_date).toLocaleString("en-US", {
       weekday: "long",
@@ -82,7 +83,7 @@ router.post("/", authorization, async (req, res) => {
       `
       SELECT 
         u.id, 
-        u.name, 
+        (u.first_name || ' ' || u.last_name) AS name,
         hs.shift_time_in, 
         hs.shift_time_out, 
         hs.day_offs
@@ -93,7 +94,6 @@ router.post("/", authorization, async (req, res) => {
         AND LOWER(u.facility) = LOWER($1)
         AND NOT ($2 = ANY(hs.day_offs))
         AND (
-          -- handles both normal and overnight shifts
           (hs.shift_time_in <= hs.shift_time_out AND $3 BETWEEN hs.shift_time_in AND hs.shift_time_out)
           OR (hs.shift_time_in > hs.shift_time_out AND ($3 >= hs.shift_time_in OR $3 <= hs.shift_time_out))
         )
@@ -119,7 +119,6 @@ router.post("/", authorization, async (req, res) => {
         ]
       );
 
-      // Notify admin of same facility
       const adminRes = await pool.query(
         `SELECT id FROM users WHERE role = 'admin' AND LOWER(facility) = LOWER($1) LIMIT 1`,
         [facilityKey]
@@ -150,7 +149,7 @@ router.post("/", authorization, async (req, res) => {
     }
 
     // ------------------------------
-    // STEP 3: Count tasks per housekeeper today
+    // STEP 3–8: (unchanged except for name fields)
     // ------------------------------
     const todayDate = new Date().toISOString().split("T")[0];
     const counts = await pool.query(
@@ -169,9 +168,6 @@ router.post("/", authorization, async (req, res) => {
       countMap[row.hk_id] = parseInt(row.tasks_today);
     });
 
-    // ------------------------------
-    // STEP 4: Pick least busy housekeeper
-    // ------------------------------
     availableHk.rows.sort((a, b) => {
       const countA = countMap[a.id] || 0;
       const countB = countMap[b.id] || 0;
@@ -181,9 +177,6 @@ router.post("/", authorization, async (req, res) => {
 
     const selectedHk = availableHk.rows[0];
 
-    // ------------------------------
-    // STEP 5: Create and assign request
-    // ------------------------------
     const newReq = await pool.query(
       `INSERT INTO housekeeping_requests
        (user_id, room_id, preferred_date, preferred_time, service_type, status, assigned_to)
@@ -199,9 +192,6 @@ router.post("/", authorization, async (req, res) => {
       ]
     );
 
-    // ------------------------------
-    // STEP 6: Notify facility admin
-    // ------------------------------
     const adminRes = await pool.query(
       `SELECT id FROM users WHERE role = 'admin' AND LOWER(facility) = LOWER($1) LIMIT 1`,
       [facilityKey]
@@ -225,9 +215,6 @@ router.post("/", authorization, async (req, res) => {
       }
     }
 
-    // ------------------------------
-    // STEP 7: Notify the guest
-    // ------------------------------
     await pool.query(
       `INSERT INTO notifications (user_id, message, created_at)
        VALUES ($1, $2, NOW())`,
@@ -245,12 +232,9 @@ router.post("/", authorization, async (req, res) => {
       console.log(`📡 Emitted housekeeperAssigned to user:${userId}`);
     }
 
-    // ------------------------------
-    // STEP 8: Notify assigned housekeeper
-    // ------------------------------
     await pool.query(
       `INSERT INTO notifications (user_id, message, created_at)
-   VALUES ($1, $2, NOW())`,
+       VALUES ($1, $2, NOW())`,
       [
         selectedHk.id,
         `A new housekeeping task has been assigned to you for Room ${room_number} at ${normalizedTime}.`,
@@ -295,7 +279,9 @@ router.get("/", authorization, async (req, res) => {
 
     const requests = await pool.query(
       `
-      SELECT hr.*, u.name AS guest_name, r.room_number
+      SELECT hr.*, 
+             (u.first_name || ' ' || u.last_name) AS guest_name, 
+             r.room_number
       FROM housekeeping_requests hr
       JOIN users u ON hr.user_id = u.id
       JOIN rooms r ON hr.room_id = r.id
@@ -331,7 +317,7 @@ router.put("/:id/assign", authorization, async (req, res) => {
     const facility = admin.rows[0].facility;
 
     const hkCheck = await pool.query(
-      `SELECT name FROM users 
+      `SELECT (first_name || ' ' || last_name) AS name FROM users 
        WHERE id = $1::uuid 
          AND role = 'housekeeper' 
          AND facility = $2`,
@@ -416,16 +402,15 @@ router.get("/availability", authorization, async (req, res) => {
   try {
     const { serviceType } = req.query;
 
-    // ✅ Always use today's date
     const date = new Date().toISOString().split("T")[0];
     const facility = req.user.facility;
-    const interval = serviceType === "deep" ? 60 : 30;
+    const duration = serviceType === "deep" ? 60 : 30;
 
     const housekeepers = await pool.query(
       `SELECT u.id, s.shift_time_in, s.shift_time_out, s.day_offs
        FROM users u
        JOIN housekeeper_schedule s ON s.housekeeper_id = u.id
-       WHERE u.role = 'housekeeper' AND u.facility = $1`,
+       WHERE u.role = 'housekeeper' AND LOWER(u.facility) = LOWER($1)`,
       [facility]
     );
 
@@ -433,21 +418,40 @@ router.get("/availability", authorization, async (req, res) => {
       `
       SELECT assigned_to AS housekeeper_id, preferred_time, service_type
       FROM housekeeping_requests
-      WHERE preferred_date = $1 AND assigned_to IS NOT NULL
+      WHERE preferred_date = $1
+      AND assigned_to IS NOT NULL
       `,
       [date]
     );
 
-    const availability = {};
     const startHour = facility.toLowerCase().includes("rafael") ? 6 : 8;
-    const endHour = facility.toLowerCase().includes("rafael") ? 18 : 17;
-
+    const endHour = facility.toLowerCase().includes("rafael") ? 24 : 24;
     const selectedDay = new Date(date).toLocaleDateString("en-US", {
       weekday: "long",
     });
 
+    const toMinutes = (timeStr) => {
+      const [h, m] = timeStr.split(":").map(Number);
+      return h * 60 + m;
+    };
+
+    const busyMap = {};
+    for (const b of busy.rows) {
+      const hkId = b.housekeeper_id;
+      const start = toMinutes(b.preferred_time);
+      const end = start + (b.service_type === "deep" ? 60 : 30);
+      if (!busyMap[hkId]) busyMap[hkId] = [];
+      busyMap[hkId].push({ start, end });
+    }
+
+    const availability = {};
+
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute of [0, 30]) {
+        const start = hour * 60 + minute;
+        const end = start + duration;
+        if (end > endHour * 60) continue;
+
         const timeKey = `${String(hour).padStart(2, "0")}:${String(
           minute
         ).padStart(2, "0")}:00`;
@@ -456,16 +460,16 @@ router.get("/availability", authorization, async (req, res) => {
           const isDayOff = hk.day_offs?.includes(selectedDay);
           if (isDayOff) return false;
 
-          const withinShift =
-            hour >= parseInt(hk.shift_time_in.split(":")[0]) &&
-            hour < parseInt(hk.shift_time_out.split(":")[0]);
-          if (!withinShift) return false;
+          //const shiftStart = toMinutes(hk.shift_time_in);
+          //const shiftEnd = toMinutes(hk.shift_time_out);
+          //if (start < shiftStart || end > shiftEnd) return false;
 
-          const hkBusy = busy.rows.filter(
-            (b) => b.housekeeper_id === hk.id && b.preferred_time === timeKey
-          ).length;
+          const blockedIntervals = busyMap[hk.id] || [];
+          const overlaps = blockedIntervals.some(
+            (b) => start < b.end && end > b.start
+          );
 
-          return hkBusy === 0;
+          return !overlaps;
         });
 
         availability[timeKey] = availableHousekeepers.length > 0;
