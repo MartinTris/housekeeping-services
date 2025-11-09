@@ -18,12 +18,14 @@ import AddHousekeeper from "./pages/admin/AddHousekeeper";
 import ManageGuests from "./pages/admin/ManageGuests";
 import ServiceRequests from "./pages/admin/ServiceRequests";
 import ItemList from "./pages/admin/ItemList";
+import PendingPayments from "./pages/admin/PendingPayments";
 
 // Guest pages
 import GuestLayout from "./pages/guest/GuestLayout";
 import GuestDashboard from "./pages/guest/Dashboard";
 import UserProfile from "./pages/guest/UserProfile";
 import BorrowItems from "./pages/guest/BorrowItems";
+import SystemFeedback from "./pages/guest/SystemFeedback";
 
 // Housekeeper pages
 import HousekeeperLayout from "./pages/housekeeper/HousekeeperLayout";
@@ -80,6 +82,28 @@ function App() {
     }
   }, [location.pathname]);
 
+  // ✅ Listen for user facility updates across the app
+  useEffect(() => {
+    const handleFacilityUpdate = () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const decoded = jwtDecode(token);
+        setUser((prev) => ({
+          ...prev,
+          facility: decoded.facility, // Refresh facility from updated token
+        }));
+      } catch (err) {
+        console.error("Error decoding token on facility update:", err);
+      }
+    };
+
+    window.addEventListener("userFacilityUpdated", handleFacilityUpdate);
+    return () =>
+      window.removeEventListener("userFacilityUpdated", handleFacilityUpdate);
+  }, []);
+
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
@@ -102,6 +126,7 @@ function App() {
               <Route path="guests" element={<ManageGuests />} />
               <Route path="/admin/requests" element={<ServiceRequests />} />
               <Route path="item-list" element={<ItemList />} />
+              <Route path="/admin/pending-payments" element={<PendingPayments />} />
             </Route>
 
             {/* ================= GUEST ROUTE ================= */}
@@ -118,6 +143,7 @@ function App() {
               <Route index element={<GuestDashboard setAuth={setAuth} />} />
               <Route path="profile" element={<UserProfile />} />
               <Route path="borrow-items" element={<BorrowItems />} />
+              <Route path="/guest/system-feedback" element={<SystemFeedback />} />
             </Route>
 
             {/* ================= HOUSEKEEPER ROUTE ================= */}
@@ -170,7 +196,10 @@ function App() {
         </NotificationProvider>
       ) : (
         <Routes>
-          <Route path="/login" element={<Login setAuth={setAuth} setUser={setUser} />} />
+          <Route
+            path="/login"
+            element={<Login setAuth={setAuth} setUser={setUser} />}
+          />
           <Route path="/register" element={<Register setAuth={setAuth} />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>

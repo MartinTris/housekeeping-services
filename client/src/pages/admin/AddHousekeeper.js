@@ -31,6 +31,7 @@ const AddHousekeeper = () => {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await response.json();
+      console.log(data);
       const hkList = Array.isArray(data) ? data : [];
 
       setHousekeepers(hkList);
@@ -55,9 +56,12 @@ const AddHousekeeper = () => {
 
   const getSchedules = async () => {
     try {
-      const res = await fetch("http://localhost:5000/housekeepers/all-schedules", {
-        headers: { token: localStorage.getItem("token") },
-      });
+      const res = await fetch(
+        "http://localhost:5000/housekeepers/all-schedules",
+        {
+          headers: { token: localStorage.getItem("token") },
+        }
+      );
       const data = await res.json();
       setSchedules(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -80,7 +84,6 @@ const AddHousekeeper = () => {
         },
         body: JSON.stringify(inputs),
       });
-
       if (response.ok) {
         const newHk = await response.json();
 
@@ -115,18 +118,39 @@ const AddHousekeeper = () => {
     setShowModal(true);
   };
 
-  const removeHousekeeper = async () => {
+  // const removeHousekeeper = async () => {
+  //   try {
+  //     await fetch(`http://localhost:5000/housekeepers/${selectedId}`, {
+  //       method: "DELETE",
+  //       headers: { token: localStorage.getItem("token") },
+  //     });
+  //     setHousekeepers((prev) => prev.filter((hk) => hk.id !== selectedId));
+  //     setSchedules((prev) =>
+  //       prev.filter((s) => s.housekeeper_id !== selectedId)
+  //     );
+  //     setShowModal(false);
+  //     setSelectedId(null);
+  //   } catch (err) {
+  //     console.error(err.message);
+  //   }
+  // };
+
+  const toggleStatus = async (id) => {
     try {
-      await fetch(`http://localhost:5000/housekeepers/${selectedId}`, {
-        method: "DELETE",
-        headers: { token: localStorage.getItem("token") },
-      });
-      setHousekeepers((prev) => prev.filter((hk) => hk.id !== selectedId));
-      setSchedules((prev) =>
-        prev.filter((s) => s.housekeeper_id !== selectedId)
+      const res = await fetch(
+        `http://localhost:5000/housekeepers/${id}/toggle-status`,
+        {
+          method: "PUT",
+          headers: { token: localStorage.getItem("token") },
+        }
       );
-      setShowModal(false);
-      setSelectedId(null);
+      const data = await res.json();
+
+      setHousekeepers((prev) =>
+        prev.map((hk) =>
+          hk.id === id ? { ...hk, is_active: data.is_active } : hk
+        )
+      );
     } catch (err) {
       console.error(err.message);
     }
@@ -218,7 +242,83 @@ const AddHousekeeper = () => {
         Current Housekeepers
       </h3>
 
+      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
+        Active Housekeepers
+      </h3>
+      <table className="table-auto w-full border-collapse border border-gray-300 text-left mb-8">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border px-4 py-2">Name</th>
+            <th className="border px-4 py-2">Email</th>
+            <th className="border px-4 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {housekeepers
+            .filter((hk) => hk.is_active)
+            .map((hk) => (
+              <tr key={hk.id}>
+                <td className="border px-4 py-2">{hk.name}</td>
+                <td className="border px-4 py-2">{hk.email}</td>
+                <td className="border px-4 py-2">
+                  <button
+                    onClick={() => toggleStatus(hk.id)}
+                    className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
+                  >
+                    Disable
+                  </button>
+                </td>
+              </tr>
+            ))}
+          {housekeepers.filter((hk) => hk.is_active).length === 0 && (
+            <tr>
+              <td colSpan="3" className="text-center py-4 text-gray-500">
+                No active housekeepers.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
+        Disabled Housekeepers
+      </h3>
       <table className="table-auto w-full border-collapse border border-gray-300 text-left">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border px-4 py-2">Name</th>
+            <th className="border px-4 py-2">Email</th>
+            <th className="border px-4 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {housekeepers
+            .filter((hk) => !hk.is_active)
+            .map((hk) => (
+              <tr key={hk.id}>
+                <td className="border px-4 py-2">{hk.name}</td>
+                <td className="border px-4 py-2">{hk.email}</td>
+                <td className="border px-4 py-2">
+                  <button
+                    onClick={() => toggleStatus(hk.id)}
+                    className="bg-green-700 text-white px-3 py-1 rounded-lg hover:bg-green-600"
+                  >
+                    Enable
+                  </button>
+                </td>
+              </tr>
+            ))}
+          {housekeepers.filter((hk) => !hk.is_active).length === 0 && (
+            <tr>
+              <td colSpan="3" className="text-center py-4 text-gray-500">
+                No disabled housekeepers.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+
+      {/* <table className="table-auto w-full border-collapse border border-gray-300 text-left">
         <thead>
           <tr className="bg-gray-100">
             <th className="border px-4 py-2">Name</th>
@@ -229,9 +329,7 @@ const AddHousekeeper = () => {
         <tbody>
           {housekeepers.map((hk) => (
             <tr key={hk.id}>
-              <td className="border px-4 py-2">
-                {hk.first_name} {hk.last_name}
-              </td>
+              <td className="border px-4 py-2">{hk.name}</td>
               <td className="border px-4 py-2">{hk.email}</td>
               <td className="border px-4 py-2">
                 <button
@@ -251,7 +349,7 @@ const AddHousekeeper = () => {
             </tr>
           )}
         </tbody>
-      </table>
+      </table> */}
 
       <div className="mt-10">
         <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
@@ -259,21 +357,20 @@ const AddHousekeeper = () => {
         </h3>
 
         {housekeepers.map((hk) => {
-          const hkSchedule =
-            schedules.find((s) => s.housekeeper_id === hk.id) || {
-              shift_time_in: "08:00",
-              shift_time_out: "17:00",
-              day_offs: [],
-            };
+          const hkSchedule = schedules.find(
+            (s) => s.housekeeper_id === hk.id
+          ) || {
+            shift_time_in: "08:00",
+            shift_time_out: "17:00",
+            day_offs: [],
+          };
 
           return (
             <div
               key={hk.id}
               className="border rounded-lg p-4 mb-4 bg-gray-50 shadow-sm"
             >
-              <h4 className="font-semibold mb-3">
-                {hk.first_name} {hk.last_name}
-              </h4>
+              <h4 className="font-semibold mb-3">{hk.name}</h4>
 
               <div className="flex flex-col sm:flex-row gap-2 items-center mb-3">
                 <label className="flex flex-col">
@@ -366,7 +463,7 @@ const AddHousekeeper = () => {
       <ConfirmModal
         show={showModal}
         onClose={() => setShowModal(false)}
-        onConfirm={removeHousekeeper}
+        onConfirm={toggleStatus}
         message="Are you sure you want to remove this housekeeper?"
       />
     </div>

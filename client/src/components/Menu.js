@@ -18,6 +18,7 @@ const Menu = ({ setAuth, role }) => {
     { name: "Dashboard", path: "/guest" },
     { name: "My Profile", path: "/guest/profile" },
     { name: "Borrow Items", path: "/guest/borrow-items" },
+    { name: "System Feedback", path: "/guest/system-feedback" },
   ];
 
   const housekeeperItems = [

@@ -10,13 +10,38 @@ const BorrowItems = () => {
   const [showModal, setShowModal] = useState(false);
   const [userFacility, setUserFacility] = useState("");
 
-  // Decode JWT to get facility
+  // ✅ Fetch facility directly from backend
+  const fetchUserFacility = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/dashboard/me", {
+        headers: { token: localStorage.token },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user info");
+      const user = await res.json();
+      setUserFacility(user.facility || "");
+    } catch (err) {
+      console.error("Error fetching user facility:", err);
+    }
+  };
+
+  // Decode initial facility (for immediate display) and then sync with backend
   useEffect(() => {
     const token = localStorage.token;
     if (token) {
       const decoded = jwtDecode(token);
-      setUserFacility(decoded.facility);
+      setUserFacility(decoded.facility || "");
     }
+    fetchUserFacility();
+  }, []);
+
+  // ✅ Listen for updates triggered by ManageGuests
+  useEffect(() => {
+    const handler = () => {
+      console.log("Facility updated → refetching user info...");
+      fetchUserFacility();
+    };
+    window.addEventListener("userFacilityUpdated", handler);
+    return () => window.removeEventListener("userFacilityUpdated", handler);
   }, []);
 
   const fetchItems = async () => {
@@ -70,7 +95,6 @@ const BorrowItems = () => {
     if (userFacility) fetchItems();
   }, [userFacility]);
 
-  // If user not assigned to facility
   if (!userFacility) {
     return (
       <div className="p-6">
@@ -139,6 +163,7 @@ const BorrowItems = () => {
                 placeholder="Quantity"
                 value={borrowQty}
                 onChange={(e) => setBorrowQty(e.target.value)}
+                min="1"
                 className="border p-2 rounded"
               />
 

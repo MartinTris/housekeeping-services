@@ -1,13 +1,17 @@
 import Information from "../../components/Information";
 import { useState, useEffect } from "react";
+import BorrowedItemsList from "../../components/BorrowedItemsList";
+import DashboardToggle from "../../components/DashboardToggle.js";
+import Announcements from "../../components/Announcements";
+import FeedbackWidget from "../../components/FeedbackWidget";
 
 const pad = (n) => String(n).padStart(2, "0");
 
 const GuestDashboard = () => {
+  const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [profile, setProfile] = useState(null);
   const [showModal, setShowModal] = useState(false);
-
   const [preferredDate, setPreferredDate] = useState("");
   const [preferredTime, setPreferredTime] = useState("");
   const [timeSlots, setTimeSlots] = useState([]);
@@ -34,6 +38,10 @@ const GuestDashboard = () => {
     }
   }
 
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
   const generateTimeSlots = () => {
     if (!profile?.facility) {
       setTimeSlots([]);
@@ -45,7 +53,7 @@ const GuestDashboard = () => {
       profile.facility.toLowerCase().includes("rafael");
 
     const startHour = isHotelRafael ? 6 : 8;
-    const endHour = isHotelRafael ? 24 : 24;
+    const endHour = isHotelRafael ? 17 : 18;
     const intervalMinutes = serviceType === "regular" ? 30 : 60;
     const now = new Date();
 
@@ -198,9 +206,21 @@ const GuestDashboard = () => {
     fetchAvailability();
   }, [profile, serviceType, preferredDate]);
 
+    if (view === "announcements") {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <main className="flex-1 p-8">
+          <DashboardToggle view={view} setView={setView} />
+          <Announcements />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <main className="flex-1 p-8">
+        <DashboardToggle view={view} setView={setView} />
         <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
           Welcome, {name}
         </h2>
@@ -216,6 +236,11 @@ const GuestDashboard = () => {
           <Information infoName="Request Cooldown" />
           <Information infoName="Remaining Requests (per day)" />
         </div>
+        <div className="mt-10">
+          <h3 className="text-xl font-semibold mb-4">My Borrowed Items</h3>
+          <BorrowedItemsList />
+        </div>
+        <FeedbackWidget />
       </main>
 
       {showModal && (

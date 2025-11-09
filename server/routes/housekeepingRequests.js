@@ -54,6 +54,32 @@ router.post("/", authorization, async (req, res) => {
     // Ensure consistent facility casing
     const facilityKey = facility.trim().toLowerCase();
 
+    // ✅ Prevent duplicate or overlapping requests by the same user
+    const overlapCheck = await pool.query(
+      `
+  SELECT 1
+  FROM housekeeping_requests
+  WHERE user_id = $1
+    AND preferred_date = $2
+    AND status IN ('pending', 'approved', 'in_progress')
+    AND (
+      preferred_time < ($3::time + 
+        CASE WHEN $4 = 'deep' THEN interval '1 hour' ELSE interval '30 minutes' END)
+      AND (preferred_time + 
+        CASE WHEN service_type = 'deep' THEN interval '1 hour' ELSE interval '30 minutes' END) > $3::time
+    )
+  LIMIT 1
+  `,
+      [userId, preferred_date, normalizedTime, service_type]
+    );
+
+    if (overlapCheck.rows.length > 0) {
+      return res.status(400).json({
+        error:
+          "You already have a housekeeping request that overlaps with this timeslot.",
+      });
+    }
+
     // Find active booking for this guest
     const bookingRes = await pool.query(
       `SELECT rb.room_id, r.room_number
@@ -91,6 +117,7 @@ router.post("/", authorization, async (req, res) => {
       JOIN housekeeper_schedule hs ON hs.housekeeper_id = u.id
       WHERE 
         u.role = 'housekeeper'
+        AND u.is_active = TRUE
         AND LOWER(u.facility) = LOWER($1)
         AND NOT ($2 = ANY(hs.day_offs))
         AND (
@@ -102,9 +129,86 @@ router.post("/", authorization, async (req, res) => {
     );
 
     // ------------------------------
+    // ✅ NEW: Filter out overlapping assignments (robust)
+    // ------------------------------
+
+    // helper to add minutes to an HH:MM(:SS) time string (returns HH:MM:SS)
+    function addMinutesToTimeStr(timeStr, minutesToAdd) {
+      const [hours, minutes, seconds = "00"] = timeStr.split(":").map(Number);
+      const totalMinutes = hours * 60 + minutes + minutesToAdd;
+      const newHours = Math.floor(totalMinutes / 60) % 24;
+      const newMinutes = totalMinutes % 60;
+      return `${String(newHours).padStart(2, "0")}:${String(
+        newMinutes
+      ).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    const startTime = normalizedTime; // 'HH:MM:SS'
+    const durationMinutes = service_type === "deep" ? 60 : 30;
+    const endTimeStr = addMinutesToTimeStr(startTime, durationMinutes);
+
+    // --- gather busy housekeepers from housekeeping_requests (approved/in_progress) ---
+    const busyReqs = await pool.query(
+      `
+  SELECT assigned_to, preferred_time, service_type
+  FROM housekeeping_requests
+  WHERE preferred_date = $1
+    AND assigned_to IS NOT NULL
+    AND status IN ('approved','in_progress')
+  `,
+      [preferred_date]
+    );
+
+    // --- gather busy housekeepers from service_history (approved/in_progress) ---
+    // include service_history entries that represent currently scheduled tasks (approved/in_progress)
+    const busyHistory = await pool.query(
+      `
+  SELECT housekeeper_id AS assigned_to, preferred_time, service_type
+  FROM service_history
+  WHERE preferred_date = $1
+    AND housekeeper_id IS NOT NULL
+    AND status IN ('approved','in_progress')
+  `,
+      [preferred_date]
+    );
+
+    // combine both sources
+    const combinedBusy = [...busyReqs.rows, ...busyHistory.rows];
+
+    // convert each busy interval to minutes and detect overlap with new request
+    const toMinutes = (t) => {
+      const [h, m] = t.split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+
+    const newStartMin = toMinutes(startTime);
+    const newEndMin = toMinutes(endTimeStr);
+
+    const busyIdsSet = new Set();
+
+    for (const row of combinedBusy) {
+      if (!row.assigned_to) continue;
+      const otherStartMin = toMinutes(row.preferred_time);
+      const otherDuration = row.service_type === "deep" ? 60 : 30;
+      const otherEndMin = (otherStartMin + otherDuration) % (24 * 60);
+
+      // overlap check: other_start < new_end AND other_end > new_start
+      // Note: simple linear compare works because times are same-day; wrap-around already normalized
+      if (otherStartMin < newEndMin && otherEndMin > newStartMin) {
+        busyIdsSet.add(String(row.assigned_to));
+      }
+    }
+
+    // filter available housekeepers
+    const busyIds = Array.from(busyIdsSet);
+    const freeHk = availableHk.rows.filter(
+      (hk) => !busyIds.includes(String(hk.id))
+    );
+
+    // ------------------------------
     // STEP 2: Handle no available housekeeper
     // ------------------------------
-    if (availableHk.rows.length === 0) {
+    if (freeHk.length === 0) {
       const pending = await pool.query(
         `INSERT INTO housekeeping_requests
          (user_id, room_id, preferred_date, preferred_time, service_type, status)
@@ -144,22 +248,23 @@ router.post("/", authorization, async (req, res) => {
       return res.json({
         ...pending.rows[0],
         message:
-          "No housekeeper available right now (all off-duty or on day-off). Request pending approval.",
+          "No housekeeper available right now (all off-duty, busy, or on day-off). Request pending approval.",
       });
     }
 
     // ------------------------------
-    // STEP 3–8: (unchanged except for name fields)
+    // STEP 3–8: Assignment
     // ------------------------------
     const todayDate = new Date().toISOString().split("T")[0];
     const counts = await pool.query(
       `
-      SELECT assigned_to AS hk_id, COUNT(*) AS tasks_today
-      FROM housekeeping_requests
-      WHERE DATE(created_at) = $1
-        AND status IN ('approved', 'done')
-      GROUP BY assigned_to
-      `,
+  SELECT assigned_to AS hk_id, COUNT(*) AS tasks_today
+  FROM housekeeping_requests
+  WHERE DATE(created_at) = $1
+    AND assigned_to IS NOT NULL
+    AND status IN ('approved','in_progress')
+  GROUP BY assigned_to
+  `,
       [todayDate]
     );
 
@@ -168,14 +273,14 @@ router.post("/", authorization, async (req, res) => {
       countMap[row.hk_id] = parseInt(row.tasks_today);
     });
 
-    availableHk.rows.sort((a, b) => {
+    freeHk.sort((a, b) => {
       const countA = countMap[a.id] || 0;
       const countB = countMap[b.id] || 0;
       if (countA === countB) return a.name.localeCompare(b.name);
       return countA - countB;
     });
 
-    const selectedHk = availableHk.rows[0];
+    const selectedHk = freeHk[0];
 
     const newReq = await pool.query(
       `INSERT INTO housekeeping_requests
@@ -317,7 +422,8 @@ router.put("/:id/assign", authorization, async (req, res) => {
     const facility = admin.rows[0].facility;
 
     const hkCheck = await pool.query(
-      `SELECT (first_name || ' ' || last_name) AS name FROM users 
+      `SELECT (first_name || ' ' || last_name) AS name, is_active 
+      FROM users 
        WHERE id = $1::uuid 
          AND role = 'housekeeper' 
          AND facility = $2`,
@@ -328,6 +434,15 @@ router.put("/:id/assign", authorization, async (req, res) => {
       return res
         .status(400)
         .json({ error: "Housekeeper not found in your facility." });
+    }
+
+    if (!hkCheck.rows[0].is_active) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "This housekeeper is currently disabled and cannot be assigned.",
+        });
     }
 
     const hkName = hkCheck.rows[0].name;
@@ -425,7 +540,7 @@ router.get("/availability", authorization, async (req, res) => {
     );
 
     const startHour = facility.toLowerCase().includes("rafael") ? 6 : 8;
-    const endHour = facility.toLowerCase().includes("rafael") ? 24 : 24;
+    const endHour = facility.toLowerCase().includes("rafael") ? 17 : 18;
     const selectedDay = new Date(date).toLocaleDateString("en-US", {
       weekday: "long",
     });
@@ -459,10 +574,6 @@ router.get("/availability", authorization, async (req, res) => {
         const availableHousekeepers = housekeepers.rows.filter((hk) => {
           const isDayOff = hk.day_offs?.includes(selectedDay);
           if (isDayOff) return false;
-
-          //const shiftStart = toMinutes(hk.shift_time_in);
-          //const shiftEnd = toMinutes(hk.shift_time_out);
-          //if (start < shiftStart || end > shiftEnd) return false;
 
           const blockedIntervals = busyMap[hk.id] || [];
           const overlaps = blockedIntervals.some(

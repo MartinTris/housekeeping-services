@@ -97,7 +97,9 @@ const ServiceRequests = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-green-900 text-2xl font-poppins font-bold mb-4">Service Requests</h2>
+      <h2 className="text-green-900 text-2xl font-poppins font-bold mb-4">
+        Service Requests
+      </h2>
       {requests.length === 0 ? (
         <p>No requests found for your facility.</p>
       ) : (
@@ -126,12 +128,12 @@ const ServiceRequests = () => {
                 <td className="p-2 border capitalize">{req.status}</td>
                 <td className="p-2 border">
                   {req.assigned_to
-                    ? housekeepers.find((hk) => hk.id === req.assigned_to)?.name ||
-                      "Assigned"
+                    ? housekeepers.find((hk) => hk.id === req.assigned_to)
+                        ?.name || "Assigned"
                     : "Not assigned"}
                 </td>
                 <td className="p-2 border">
-                  {new Date(req.created_at).toLocaleString()}
+                    {new Date(req.created_at).toLocaleString()}
                 </td>
                 <td className="p-2 border">
                   {req.status === "pending" ? (
@@ -169,8 +171,8 @@ const ServiceRequests = () => {
             >
               <option value="">Select a housekeeper</option>
               {housekeepers.map((hk) => (
-                <option key={hk.id} value={hk.id}>
-                  {hk.name}
+                <option key={hk.id} value={hk.id} disabled={!hk.is_active}>
+                  {hk.name} {hk.is_active ? "" : "(Disabled)"}
                 </option>
               ))}
             </select>

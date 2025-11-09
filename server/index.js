@@ -1,3 +1,5 @@
+process.env.TZ = 'Asia/Manila';
+
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -28,6 +30,8 @@ app.use("/users", require("./routes/users"));
 app.use("/housekeeping-requests", require("./routes/housekeepingRequests"));
 app.use("/notifications", require("./routes/notifications"));
 app.use("/items", require("./routes/items"));
+app.use("/announcements", require("./routes/announcements"));
+app.use("/feedback", require("./routes/feedback"));
 
 require("./tasks/expireBookings");
 

@@ -125,8 +125,9 @@ CREATE TABLE booking_history (
   moved_from_booking UUID
 );
 
---set timezone to UTC
-ALTER DATABASE housekeeping_system SET timezone = 'UTC';
+--set timezone to Asia/Manila
+ALTER DATABASE housekeeping_system SET timezone = 'Asia/Manila';
+
 
 --add service type column to housekeeping_requests
 ALTER TABLE housekeeping_requests
@@ -185,5 +186,28 @@ ALTER TABLE users
 ADD COLUMN first_name TEXT,
 ADD COLUMN last_name TEXT;
 
+--change column name in borrowed_items table
+ALTER TABLE borrowed_items RENAME COLUMN borrowed_at TO created_at;
 
+--drop return_due column
+ALTER TABLE borrowed_items DROP COLUMN return_due;
+
+--announcements table
+CREATE TABLE announcements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT DEFAULT 'Announcement',
+  message TEXT NOT NULL,
+  target_students BOOLEAN DEFAULT FALSE,
+  target_guests BOOLEAN DEFAULT FALSE,
+  target_housekeepers BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  posted_by UUID REFERENCES users(id) ON DELETE SET NULL
+  facility TEXT
+);
+
+--add type column to feedback table
+ALTER TABLE feedback ADD COLUMN type VARCHAR(20) DEFAULT 'system' CHECK (type IN ('system', 'service'));
+
+--add is_active column to users table
+ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true;
 

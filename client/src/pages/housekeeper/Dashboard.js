@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import Information from "../../components/Information";
+import DashboardToggle from "../../components/DashboardToggle.js";
+import Announcements from "../../components/Announcements";
 
 const HousekeeperDashboard = ({ setAuth }) => {
+  const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [facility, setFacility] = useState("");
 
@@ -25,9 +28,21 @@ const HousekeeperDashboard = ({ setAuth }) => {
     getName();
   }, []);
 
+  if (view === "announcements") {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <main className="flex-1 p-8">
+          <DashboardToggle view={view} setView={setView} />
+          <Announcements />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <main className="flex-1 p-8">
+        <DashboardToggle view={view} setView={setView} />
         <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
           Welcome, {name}
         </h2>

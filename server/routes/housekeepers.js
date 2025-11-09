@@ -13,7 +13,7 @@ router.get("/", authorization, async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT id, first_name, last_name, email 
+      `SELECT id, first_name, last_name, email, is_active 
        FROM users 
        WHERE role = 'housekeeper' AND facility = $1 
        ORDER BY last_name ASC, first_name ASC`,
@@ -25,6 +25,7 @@ router.get("/", authorization, async (req, res) => {
       id: u.id,
       name: `${u.first_name} ${u.last_name}`,
       email: u.email,
+      is_active: u.is_active,
     }));
 
     res.json(formatted);
@@ -75,7 +76,29 @@ router.post("/", authorization, async (req, res) => {
 });
 
 // ---------------------- DELETE HOUSEKEEPER ----------------------
-router.delete("/:id", authorization, async (req, res) => {
+// router.delete("/:id", authorization, async (req, res) => {
+//   try {
+//     const { facility, role } = req.user;
+//     const { id } = req.params;
+
+//     if (role !== "admin") {
+//       return res.status(403).json({ message: "Access denied" });
+//     }
+
+//     await pool.query(
+//       "DELETE FROM users WHERE id = $1 AND facility = $2 AND role = 'housekeeper'",
+//       [id, facility]
+//     );
+
+//     res.json({ message: "Housekeeper removed" });
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).send("Server Error");
+//   }
+// });
+
+// ---------------------- TOGGLE HOUSEKEEPER STATUS ----------------------
+router.put("/:id/toggle-status", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
     const { id } = req.params;
@@ -84,12 +107,27 @@ router.delete("/:id", authorization, async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    await pool.query(
-      "DELETE FROM users WHERE id = $1 AND facility = $2 AND role = 'housekeeper'",
+    // Get current status
+    const existing = await pool.query(
+      "SELECT is_active FROM users WHERE id = $1 AND facility = $2 AND role = 'housekeeper'",
       [id, facility]
     );
 
-    res.json({ message: "Housekeeper removed" });
+    if (existing.rowCount === 0) {
+      return res.status(404).json({ message: "Housekeeper not found" });
+    }
+
+    const newStatus = !existing.rows[0].is_active;
+
+    await pool.query(
+      "UPDATE users SET is_active = $1 WHERE id = $2",
+      [newStatus, id]
+    );
+
+    res.json({
+      message: `Housekeeper ${newStatus ? "enabled" : "disabled"} successfully`,
+      is_active: newStatus,
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error");

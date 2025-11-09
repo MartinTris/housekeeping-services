@@ -12,13 +12,13 @@ const ManageGuests = () => {
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [timeOut, setTimeOut] = useState("");
 
-  // admin modals
+  // Admin modals
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
 
-  // rename state
+  // Rename state
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editedRoomName, setEditedRoomName] = useState("");
 
@@ -28,11 +28,13 @@ const ManageGuests = () => {
       const res = await fetch("http://localhost:5000/rooms", {
         headers: { token: localStorage.token },
       });
+
       if (!res.ok) {
         console.error("Failed to fetch rooms:", res.status);
         setRooms([]);
         return;
       }
+
       const data = await res.json();
       setRooms(data || []);
     } catch (err) {
@@ -47,6 +49,7 @@ const ManageGuests = () => {
     fetchRooms();
   }, []);
 
+  // Guest search
   useEffect(() => {
     if (!searchQuery || searchQuery.trim().length < 2) {
       setSuggestions([]);
@@ -88,6 +91,7 @@ const ManageGuests = () => {
       alert("Cannot assign — room is currently occupied.");
       return;
     }
+
     setSelectedRoom(room);
     setSelectedGuest(null);
     setSearchQuery("");
@@ -134,14 +138,17 @@ const ManageGuests = () => {
 
       setShowModal(false);
       await fetchRooms();
-      window.dispatchEvent(new Event("userFacilityUpdated"));
-      
+      // ✅ Fire event after the backend update + UI refresh
+      setTimeout(() => {
+        window.dispatchEvent(new Event("userFacilityUpdated"));
+      }, 300);
     } catch (err) {
       console.error("Assign network error:", err);
       alert("Network error. See console.");
     }
   };
 
+  // Socket setup
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -152,9 +159,7 @@ const ManageGuests = () => {
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
+    socket.on("connect", () => console.log("Socket connected:", socket.id));
 
     const refresh = () => fetchRooms();
     socket.on("booking:assigned", refresh);
@@ -165,9 +170,7 @@ const ManageGuests = () => {
     socket.on("room:updated", refresh);
     socket.on("room:deleted", refresh);
 
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected");
-    });
+    socket.on("disconnect", () => console.log("Socket disconnected"));
 
     return () => {
       socket.disconnect();
@@ -179,13 +182,10 @@ const ManageGuests = () => {
     if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
 
     try {
-      const res = await fetch(
-        `http://localhost:5000/rooms/${room.id}/remove`,
-        {
-          method: "PUT",
-          headers: { token: localStorage.token },
-        }
-      );
+      const res = await fetch(`http://localhost:5000/rooms/${room.id}/remove`, {
+        method: "PUT",
+        headers: { token: localStorage.token },
+      });
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -195,8 +195,9 @@ const ManageGuests = () => {
 
       await fetchRooms();
       alert("Guest checked out.");
-      window.dispatchEvent(new Event("userFacilityUpdated"));
-
+      setTimeout(() => {
+        window.dispatchEvent(new Event("userFacilityUpdated"));
+      }, 300);
     } catch (err) {
       console.error("Remove error:", err);
       alert("Network error. See console.");
@@ -299,6 +300,7 @@ const ManageGuests = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {rooms.map((room) => {
             const isActive = room.booking?.is_active;
+
             return (
               <div
                 key={room.id}
@@ -350,7 +352,10 @@ const ManageGuests = () => {
                     }}
                   >
                     {room.room_number}
-                    <Edit3 size={15} className="text-gray-400 hover:text-gray-700" />
+                    <Edit3
+                      size={15}
+                      className="text-gray-400 hover:text-gray-700"
+                    />
                   </h3>
                 )}
 
@@ -470,7 +475,6 @@ const ManageGuests = () => {
             <h3 className="text-xl font-bold mb-4">
               Assign Guest to {selectedRoom.room_number}
             </h3>
-
             <input
               type="text"
               placeholder="Search guest / student (min 2 chars)"
@@ -478,7 +482,6 @@ const ManageGuests = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border p-2 w-full mb-2 rounded"
             />
-
             {suggestions.length > 0 && (
               <ul className="border rounded bg-gray-50 max-h-40 overflow-y-auto mb-2">
                 {suggestions.map((g) => (

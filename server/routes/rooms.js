@@ -4,13 +4,10 @@ const authorization = require("../middleware/authorization");
 const { getIo } = require("../realtime");
 
 // get rooms
-// get rooms
 router.get("/", authorization, async (req, res) => {
   try {
     const adminId = req.user.id;
-    const admin = await pool.query("SELECT facility FROM users WHERE id = $1", [
-      adminId,
-    ]);
+    const admin = await pool.query("SELECT facility FROM users WHERE id = $1", [adminId]);
 
     if (!admin.rows.length) {
       return res.status(404).json({ message: "Admin not found" });
@@ -19,16 +16,19 @@ router.get("/", authorization, async (req, res) => {
     const facility = admin.rows[0].facility;
 
     const query = `
-      SELECT r.id, r.facility, r.room_number,
-             b.id AS booking_id,
-             b.time_in, b.time_out,
-             u.id AS guest_id,
-             CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
-             (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
+      SELECT 
+        r.id, 
+        r.facility, 
+        r.room_number, 
+        b.id AS booking_id, 
+        b.time_in, 
+        b.time_out, 
+        u.id AS guest_id, 
+        CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
+        (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
       FROM rooms r
       LEFT JOIN LATERAL (
-        SELECT *
-        FROM room_bookings rb
+        SELECT * FROM room_bookings rb
         WHERE rb.room_id = r.id
         ORDER BY rb.time_in DESC
         LIMIT 1
@@ -63,7 +63,6 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-
 // assign room
 router.post("/:id/assign", authorization, async (req, res) => {
   try {
@@ -87,6 +86,7 @@ router.post("/:id/assign", authorization, async (req, res) => {
       "SELECT * FROM users WHERE id = $1 AND (role = 'guest' OR role = 'student')",
       [guest_id]
     );
+
     if (user.rows.length === 0) {
       return res
         .status(400)
@@ -95,28 +95,26 @@ router.post("/:id/assign", authorization, async (req, res) => {
 
     const roomOverlap = await pool.query(
       `
-      SELECT 1
-      FROM room_bookings
-      WHERE room_id = $1
-        AND (time_out IS NULL OR time_out > NOW())
+      SELECT 1 FROM room_bookings
+      WHERE room_id = $1 AND (time_out IS NULL OR time_out > NOW())
       LIMIT 1
       `,
       [id]
     );
+
     if (roomOverlap.rows.length > 0) {
       return res.status(400).json({ error: "Room is already occupied." });
     }
 
     const guestOverlap = await pool.query(
       `
-      SELECT 1
-      FROM room_bookings
-      WHERE guest_id = $1
-        AND (time_out IS NULL OR time_out > NOW())
+      SELECT 1 FROM room_bookings
+      WHERE guest_id = $1 AND (time_out IS NULL OR time_out > NOW())
       LIMIT 1
       `,
       [guest_id]
     );
+
     if (guestOverlap.rows.length > 0) {
       return res
         .status(400)
@@ -133,7 +131,11 @@ router.post("/:id/assign", authorization, async (req, res) => {
     );
 
     await pool.query(
-      `UPDATE users SET facility = (SELECT facility FROM rooms WHERE id = $1) WHERE id = $2`,
+      `
+      UPDATE users 
+      SET facility = (SELECT facility FROM rooms WHERE id = $1) 
+      WHERE id = $2
+      `,
       [id, guest_id]
     );
 
@@ -159,8 +161,8 @@ router.put("/:id/remove", authorization, async (req, res) => {
       WITH active AS (
         SELECT id, room_id, guest_id, time_in, time_out
         FROM room_bookings
-        WHERE room_id = $1
-          AND time_in <= NOW()
+        WHERE room_id = $1 
+          AND time_in <= NOW() 
           AND (time_out IS NULL OR time_out > NOW())
         ORDER BY time_in DESC
         LIMIT 1
@@ -172,31 +174,27 @@ router.put("/:id/remove", authorization, async (req, res) => {
         RETURNING *
       ),
       deleted AS (
-        DELETE FROM room_bookings
-        WHERE id IN (SELECT id FROM active)
+        DELETE FROM room_bookings WHERE id IN (SELECT id FROM active)
         RETURNING *
       )
-      SELECT moved.*, deleted.*
-      FROM moved
+      SELECT moved.*, deleted.* 
+      FROM moved 
       LEFT JOIN deleted ON moved.moved_from_booking = deleted.id;
       `,
       [id]
     );
 
     if (result.rows.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No active booking found for this room." });
+      return res.status(400).json({ error: "No active booking found for this room." });
     }
 
     const guestId = result.rows[0].guest_id;
+    await pool.query("UPDATE users SET facility = NULL WHERE id = $1", [guestId]);
 
-    await pool.query(
-      `UPDATE users SET facility = NULL WHERE id = $1`,
-      [guestId]
-    );
-
-    getIo().emit("booking:removed", { room_id: id, history: result.rows[0] });
+    getIo().emit("booking:removed", {
+      room_id: id,
+      history: result.rows[0],
+    });
 
     res.json({
       message: "Guest checked out and moved to booking_history",
@@ -216,9 +214,9 @@ router.put("/:id/update-timeout", authorization, async (req, res) => {
 
     const result = await pool.query(
       `
-      UPDATE room_bookings
-      SET time_out = $1::timestamptz
-      WHERE id = $2
+      UPDATE room_bookings 
+      SET time_out = $1::timestamptz 
+      WHERE id = $2 
       RETURNING *
       `,
       [time_out || null, id]
@@ -252,11 +250,11 @@ router.post("/", authorization, async (req, res) => {
 
     const facility = admin.rows[0].facility;
 
-    // Check duplicate room number within same facility
     const exists = await pool.query(
       "SELECT 1 FROM rooms WHERE facility = $1 AND room_number = $2",
       [facility, room_number.trim()]
     );
+
     if (exists.rows.length > 0) {
       return res.status(400).json({ error: "Room already exists in this facility." });
     }
@@ -304,11 +302,10 @@ router.delete("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if room currently has an active booking
     const active = await pool.query(
       `
-      SELECT 1 FROM room_bookings
-      WHERE room_id = $1 AND (time_out IS NULL OR time_out > NOW())
+      SELECT 1 FROM room_bookings 
+      WHERE room_id = $1 AND (time_out IS NULL OR time_out > NOW()) 
       LIMIT 1
       `,
       [id]

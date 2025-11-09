@@ -59,6 +59,7 @@ const ItemList = () => {
       setShowModal(false);
       setNewItem({ name: "", quantity: "", price: "" });
       fetchItems();
+      window.dispatchEvent(new Event("itemsUpdated"));
     } catch (err) {
       console.error(err);
       toast.error("Error adding item.");
@@ -79,6 +80,7 @@ const ItemList = () => {
 
       toast.success("Item deleted successfully!");
       setItems(items.filter((item) => item.id !== id));
+      window.dispatchEvent(new Event("itemsUpdated"));
     } catch (err) {
       console.error(err);
       toast.error("Error deleting item.");
@@ -114,6 +116,7 @@ const ItemList = () => {
       setEditModal(false);
       setSelectedItem(null);
       fetchItems();
+      window.dispatchEvent(new Event("itemsUpdated"));
     } catch (err) {
       console.error(err);
       toast.error("Error updating item.");
@@ -204,6 +207,7 @@ const ItemList = () => {
                 onChange={(e) =>
                   setNewItem({ ...newItem, quantity: e.target.value })
                 }
+                min="1"
                 className="border p-2 rounded"
               />
               <input
@@ -213,6 +217,7 @@ const ItemList = () => {
                 onChange={(e) =>
                   setNewItem({ ...newItem, price: e.target.value })
                 }
+                min="1"
                 className="border p-2 rounded"
               />
 
@@ -251,6 +256,7 @@ const ItemList = () => {
                 onChange={(e) =>
                   setEditData({ ...editData, quantity: e.target.value })
                 }
+                min="1"
                 className="border p-2 rounded"
               />
               <input
@@ -260,6 +266,7 @@ const ItemList = () => {
                 onChange={(e) =>
                   setEditData({ ...editData, price: e.target.value })
                 }
+                min="1"
                 className="border p-2 rounded"
               />
 
