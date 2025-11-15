@@ -477,7 +477,7 @@ const ManageGuests = () => {
             </h3>
             <input
               type="text"
-              placeholder="Search guest / student (min 2 chars)"
+              placeholder="Search guest (min 2 chars)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="border p-2 w-full mb-2 rounded"

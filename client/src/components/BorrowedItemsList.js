@@ -32,18 +32,16 @@ const BorrowedItemsList = () => {
       if (response.ok) {
         const validData = Array.isArray(data) ? data : [];
 
-        // ✅ Normalize and filter unpaid items safely
         const unpaidItems = validData.filter((item) => {
           const isPaid =
             item.is_paid === true ||
             item.is_paid === "true" ||
             item.is_paid === 1;
-          return !isPaid; // keep only unpaid
+          return !isPaid;
         });
 
         setItems(unpaidItems);
 
-        // ✅ Guest total for unpaid only
         const totalAmount = unpaidItems.reduce(
           (sum, item) => sum + Number(item.charge_amount || 0),
           0
@@ -64,14 +62,12 @@ const BorrowedItemsList = () => {
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-md w-full max-w-lg mx-auto flex flex-col h-[400px]">
-      {/* Header */}
       <div className="flex-shrink-0 border-b pb-2 mb-2">
         <h2 className="text-xl font-semibold text-green-800 text-center">
           Borrowed Items
         </h2>
       </div>
 
-      {/* Scrollable List */}
       <div className="flex-grow overflow-y-auto space-y-2">
         {error ? (
           <p className="text-red-500 text-center">{error}</p>
@@ -83,7 +79,6 @@ const BorrowedItemsList = () => {
               key={item.id}
               className="p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
             >
-              {/* Admin view shows borrower */}
               {user?.role === "admin" && (
                 <div className="mb-2">
                   <p className="text-sm font-semibold text-gray-700">
@@ -92,7 +87,6 @@ const BorrowedItemsList = () => {
                 </div>
               )}
 
-              {/* Item Info */}
               <div className="flex justify-between items-center">
                 <div>
                   <p className="font-medium text-gray-800">{item.item_name}</p>
@@ -109,16 +103,13 @@ const BorrowedItemsList = () => {
         )}
       </div>
 
-      {/* Bottom Section */}
       <div className="flex-shrink-0 border-t pt-2 mt-2">
-        {/* Guest total */}
         {user?.role === "guest" && (
           <p className="text-lg font-semibold text-green-700 text-right">
             Total: ₱{total.toFixed(2)}
           </p>
         )}
 
-        {/* Admin “View More Details” Button */}
         {user?.role === "admin" && (
           <div className="text-center mt-2">
             <button

@@ -1,9 +1,9 @@
 const router = require("express").Router();
 const pool = require("../db");
-const authorization = require("../middleware/authorization");
+const { authorization } = require("../middleware/authorization");
 const { getIo } = require("../realtime");
 
-// get rooms
+// Get rooms
 router.get("/", authorization, async (req, res) => {
   try {
     const adminId = req.user.id;
@@ -83,7 +83,7 @@ router.post("/:id/assign", authorization, async (req, res) => {
     }
 
     const user = await pool.query(
-      "SELECT * FROM users WHERE id = $1 AND (role = 'guest' OR role = 'student')",
+      "SELECT * FROM users WHERE id = $1 AND role = 'guest'",
       [guest_id]
     );
 

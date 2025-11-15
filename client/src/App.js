@@ -19,6 +19,9 @@ import ManageGuests from "./pages/admin/ManageGuests";
 import ServiceRequests from "./pages/admin/ServiceRequests";
 import ItemList from "./pages/admin/ItemList";
 import PendingPayments from "./pages/admin/PendingPayments";
+import Reports from "./pages/admin/Reports";
+import ServiceTypes from "./pages/admin/ServiceTypes";
+import AdminProfile from "./pages/admin/AdminProfile";
 
 // Guest pages
 import GuestLayout from "./pages/guest/GuestLayout";
@@ -31,10 +34,12 @@ import SystemFeedback from "./pages/guest/SystemFeedback";
 import HousekeeperLayout from "./pages/housekeeper/HousekeeperLayout";
 import HousekeeperDashboard from "./pages/housekeeper/Dashboard";
 import HousekeeperTasks from "./pages/housekeeper/HousekeeperTasks";
+import HousekeeperProfile from "./pages/housekeeper/HousekeeperProfile";
 
 // Auth
 import Login from "./components/Login";
 import Register from "./components/Register";
+import ForceChangePassword from "./components/ForceChangePassword";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -60,8 +65,12 @@ function App() {
   }
 
   useEffect(() => {
-    // ✅ Skip auth check on /login and /register
-    if (location.pathname !== "/login" && location.pathname !== "/register") {
+    // ✅ Skip auth check on /login, /register, and /force-change-password
+    if (
+      location.pathname !== "/login" &&
+      location.pathname !== "/register" &&
+      location.pathname !== "/force-change-password"
+    ) {
       isAuth();
     }
 
@@ -73,7 +82,7 @@ function App() {
           id: decoded.id,
           name: decoded.name,
           role: decoded.role,
-          facility: decoded.facility, // ✅ Include facility if available
+          facility: decoded.facility,
         });
       } catch (err) {
         console.error("Invalid token", err.message);
@@ -123,10 +132,13 @@ function App() {
             >
               <Route index element={<AdminDashboard setAuth={setAuth} />} />
               <Route path="housekeepers" element={<AddHousekeeper />} />
+              <Route path="profile" element={<AdminProfile />} />
               <Route path="guests" element={<ManageGuests />} />
               <Route path="/admin/requests" element={<ServiceRequests />} />
               <Route path="item-list" element={<ItemList />} />
               <Route path="/admin/pending-payments" element={<PendingPayments />} />
+              <Route path="/admin/service-types" element={<ServiceTypes />} />
+              <Route path="/admin/reports" element={<Reports />} />
             </Route>
 
             {/* ================= GUEST ROUTE ================= */}
@@ -161,6 +173,7 @@ function App() {
                 index
                 element={<HousekeeperDashboard setAuth={setAuth} />}
               />
+              <Route path="profile" element={<HousekeeperProfile />} />
               <Route path="tasks" element={<HousekeeperTasks />} />
             </Route>
 
@@ -170,15 +183,33 @@ function App() {
               element={
                 !isAuthenticated ? (
                   <Login setAuth={setAuth} setUser={setUser} />
-                ) : user?.role === "admin" ? (
-                  <Navigate to="/admin" />
-                ) : user?.role === "housekeeper" ? (
-                  <Navigate to="/housekeeper" />
                 ) : (
-                  <Navigate to="/guest" />
+                  // Check if user needs to change password first
+                  localStorage.getItem("first_login") === "true" ? (
+                    <Navigate to="/force-change-password" />
+                  ) : user?.role === "admin" ? (
+                    <Navigate to="/admin" />
+                  ) : user?.role === "housekeeper" ? (
+                    <Navigate to="/housekeeper" />
+                  ) : (
+                    <Navigate to="/guest" />
+                  )
                 )
               }
             />
+            
+            {/* ================= FORCE PASSWORD CHANGE ROUTE ================= */}
+            <Route
+              path="/force-change-password"
+              element={
+                isAuthenticated ? (
+                  <ForceChangePassword />
+                ) : (
+                  <Navigate to="/login" />
+                )
+              }
+            />
+            
             <Route
               path="/register"
               element={
@@ -208,7 +239,6 @@ function App() {
   );
 }
 
-// ✅ Wrap App with Router (so useLocation works)
 export default function AppWrapper() {
   return (
     <Router>

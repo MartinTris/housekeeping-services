@@ -1,10 +1,9 @@
 const router = require("express").Router();
 const pool = require("../db");
-const authorization = require("../middleware/authorization");
+const { authorization } = require("../middleware/authorization");
 
 router.get("/", authorization, async (req, res) => {
   try {
-    // get the user with role
     const userResult = await pool.query(
       "SELECT id, first_name, last_name, role, facility FROM users WHERE id = $1",
       [req.user.id]
@@ -17,10 +16,15 @@ router.get("/", authorization, async (req, res) => {
     const user = userResult.rows[0];
     const fullName = `${user.first_name} ${user.last_name}`;
 
+    const displayFacility = user.role === 'superadmin' 
+      ? `${user.facility} (All Facilities Access)` 
+      : (user.facility || 'Not Assigned');
+
     return res.json({
       message: `Welcome ${user.role}`,
       name: fullName,
-      facility: user.facility,
+      role: user.role,
+      facility: displayFacility,
     });
 
   } catch (err) {

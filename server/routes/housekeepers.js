@@ -1,9 +1,8 @@
 const router = require("express").Router();
 const pool = require("../db");
-const authorization = require("../middleware/authorization");
+const { authorization } = require("../middleware/authorization");
 const bcrypt = require("bcrypt");
 
-// ---------------------- GET ALL HOUSEKEEPERS ----------------------
 router.get("/", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
@@ -20,7 +19,6 @@ router.get("/", authorization, async (req, res) => {
       [facility]
     );
 
-    // Return a unified "name" field for frontend compatibility
     const formatted = result.rows.map((u) => ({
       id: u.id,
       name: `${u.first_name} ${u.last_name}`,
@@ -35,7 +33,7 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- ADD HOUSEKEEPER ----------------------
+// Add housekeeper
 router.post("/", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
@@ -45,9 +43,10 @@ router.post("/", authorization, async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const userExists = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const userExists = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
 
     if (userExists.rows.length > 0) {
       return res.status(400).json({ message: "User already exists" });
@@ -56,10 +55,11 @@ router.post("/", authorization, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
+    // FIXED: Added is_active = TRUE to the INSERT statement
     const newUser = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, password_hash, role, facility)
-       VALUES ($1, $2, $3, $4, 'housekeeper', $5)
-       RETURNING id, first_name, last_name, email`,
+      `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, is_active)
+       VALUES ($1, $2, $3, $4, 'housekeeper', $5, TRUE)
+       RETURNING id, first_name, last_name, email, is_active`,
       [first_name, last_name, email, bcryptPassword, facility]
     );
 
@@ -68,6 +68,7 @@ router.post("/", authorization, async (req, res) => {
       id: hk.id,
       name: `${hk.first_name} ${hk.last_name}`,
       email: hk.email,
+      is_active: hk.is_active, // Also return is_active status
     });
   } catch (err) {
     console.error(err.message);
@@ -75,29 +76,7 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- DELETE HOUSEKEEPER ----------------------
-// router.delete("/:id", authorization, async (req, res) => {
-//   try {
-//     const { facility, role } = req.user;
-//     const { id } = req.params;
-
-//     if (role !== "admin") {
-//       return res.status(403).json({ message: "Access denied" });
-//     }
-
-//     await pool.query(
-//       "DELETE FROM users WHERE id = $1 AND facility = $2 AND role = 'housekeeper'",
-//       [id, facility]
-//     );
-
-//     res.json({ message: "Housekeeper removed" });
-//   } catch (err) {
-//     console.error(err.message);
-//     res.status(500).send("Server Error");
-//   }
-// });
-
-// ---------------------- TOGGLE HOUSEKEEPER STATUS ----------------------
+// Toggle housekeeper active/inactive status
 router.put("/:id/toggle-status", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
@@ -107,7 +86,6 @@ router.put("/:id/toggle-status", authorization, async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Get current status
     const existing = await pool.query(
       "SELECT is_active FROM users WHERE id = $1 AND facility = $2 AND role = 'housekeeper'",
       [id, facility]
@@ -119,10 +97,10 @@ router.put("/:id/toggle-status", authorization, async (req, res) => {
 
     const newStatus = !existing.rows[0].is_active;
 
-    await pool.query(
-      "UPDATE users SET is_active = $1 WHERE id = $2",
-      [newStatus, id]
-    );
+    await pool.query("UPDATE users SET is_active = $1 WHERE id = $2", [
+      newStatus,
+      id,
+    ]);
 
     res.json({
       message: `Housekeeper ${newStatus ? "enabled" : "disabled"} successfully`,
@@ -134,12 +112,13 @@ router.put("/:id/toggle-status", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- GET ALL SCHEDULES ----------------------
 router.get("/all-schedules", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
     if (role !== "admin")
-      return res.status(403).json({ message: "Only admins can view all schedules" });
+      return res
+        .status(403)
+        .json({ message: "Only admins can view all schedules" });
 
     const result = await pool.query(
       `SELECT s.*, CONCAT(u.first_name, ' ', u.last_name) AS housekeeper_name, u.id AS housekeeper_id
@@ -156,14 +135,16 @@ router.get("/all-schedules", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- GET INDIVIDUAL SCHEDULE ----------------------
+// Get individual schedule
 router.get("/:id/schedule", authorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { facility, role } = req.user;
 
     if (role !== "admin")
-      return res.status(403).json({ message: "Only admins can view schedules" });
+      return res
+        .status(403)
+        .json({ message: "Only admins can view schedules" });
 
     const housekeeper = await pool.query(
       `SELECT id, first_name, last_name FROM users WHERE id = $1 AND role = 'housekeeper' AND facility = $2`,
@@ -195,7 +176,7 @@ router.get("/:id/schedule", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- CREATE / UPDATE SCHEDULE ----------------------
+// Create/Update individual schedule
 router.post("/:id/schedule", authorization, async (req, res) => {
   try {
     const { id } = req.params; // housekeeper_id
@@ -203,18 +184,20 @@ router.post("/:id/schedule", authorization, async (req, res) => {
     const { role, facility } = req.user;
 
     if (role !== "admin")
-      return res.status(403).json({ message: "Only admins can manage schedules" });
+      return res
+        .status(403)
+        .json({ message: "Only admins can manage schedules" });
 
-    // Check if housekeeper belongs to this facility
     const hk = await pool.query(
       "SELECT id FROM users WHERE id = $1 AND role = 'housekeeper' AND facility = $2",
       [id, facility]
     );
 
     if (hk.rowCount === 0)
-      return res.status(404).json({ message: "Housekeeper not found in your facility" });
+      return res
+        .status(404)
+        .json({ message: "Housekeeper not found in your facility" });
 
-    // Check if schedule exists
     const existing = await pool.query(
       "SELECT id FROM housekeeper_schedule WHERE housekeeper_id = $1",
       [id]
@@ -244,37 +227,71 @@ router.post("/:id/schedule", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- GET TASKS FOR HOUSEKEEPER ----------------------
+// Get housekeeper tasks
 router.get("/tasks", authorization, async (req, res) => {
   try {
-    const housekeeperId = req.user.id; // authenticated housekeeper
+    const housekeeperId = req.user.id;
 
-    const result = await pool.query(
+    // Get housekeeping tasks - FIXED to use service_type_id
+    const housekeepingTasks = await pool.query(
       `SELECT 
          hr.id,
          hr.status,
          hr.preferred_date,
          TO_CHAR(hr.preferred_time, 'HH12:MI AM') AS preferred_time,
-         COALESCE(hr.service_type, 'regular') AS service_type,
+         st.name AS service_type,
          r.room_number,
          r.facility,
-         (u.first_name || ' ' || u.last_name) AS guest_name
+         (u.first_name || ' ' || u.last_name) AS guest_name,
+         'housekeeping' AS task_type
        FROM housekeeping_requests AS hr
        LEFT JOIN rooms AS r ON hr.room_id = r.id
        LEFT JOIN users AS u ON hr.user_id = u.id
+       LEFT JOIN service_types st ON hr.service_type_id = st.id
        WHERE hr.assigned_to = $1
+       AND hr.archived = FALSE
        ORDER BY hr.created_at DESC`,
       [housekeeperId]
     );
 
-    res.json(result.rows);
+    // Get delivery tasks
+    const deliveryTasks = await pool.query(
+      `SELECT 
+         bi.id,
+         bi.item_name,
+         bi.quantity,
+         bi.charge_amount,
+         bi.created_at,
+         (u.first_name || ' ' || u.last_name) AS guest_name,
+         r.room_number,
+         r.facility,
+         'delivery' AS task_type,
+         'pending_delivery' AS status
+       FROM borrowed_items bi
+       JOIN users u ON bi.user_id = u.id
+       LEFT JOIN room_bookings rb ON rb.guest_id = u.id 
+         AND rb.time_in <= NOW() 
+         AND (rb.time_out IS NULL OR rb.time_out > NOW())
+       LEFT JOIN rooms r ON rb.room_id = r.id
+       WHERE bi.housekeeper_id = $1
+       AND bi.delivery_status = 'pending_delivery'
+       ORDER BY bi.created_at DESC`,
+      [housekeeperId]
+    );
+
+    const allTasks = {
+      housekeeping: housekeepingTasks.rows,
+      delivery: deliveryTasks.rows,
+    };
+
+    res.json(allTasks);
   } catch (err) {
     console.error("Error fetching housekeeper tasks:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// ---------------------- ACKNOWLEDGE TASK ----------------------
+// Acknowledge task
 router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
   try {
     const { id: hkId, role } = req.user;
@@ -284,7 +301,6 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    // Update status and return guest user id
     const updated = await pool.query(
       `UPDATE housekeeping_requests 
        SET status = 'in_progress' 
@@ -294,25 +310,26 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
     );
 
     if (updated.rowCount === 0)
-      return res.status(404).json({ error: "Task not found or not assigned to you" });
+      return res
+        .status(404)
+        .json({ error: "Task not found or not assigned to you" });
 
     const guestId = updated.rows[0].user_id;
 
-    // Insert notification for the guest (match your notifications schema)
-    const message = "Your housekeeping request has been acknowledged and is now in progress.";
+    const message =
+      "Your housekeeping request has been acknowledged and is now in progress.";
     await pool.query(
       `INSERT INTO notifications (user_id, message, created_at)
        VALUES ($1, $2, NOW())`,
       [guestId, message]
     );
 
-    // Emit real-time notification using req.io (index.js attaches io to req)
     if (req.io) {
       req.io.to(`user:${guestId}`).emit("newNotification", {
         message,
         type: "info",
       });
-      console.log(`📢 Sent real-time notification to user:${guestId}`);
+      console.log(`Sent real-time notification to user:${guestId}`);
     }
 
     res.json({ message: "Task acknowledged." });
@@ -322,7 +339,6 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
   }
 });
 
-// ---------------------- COMPLETE TASK ----------------------
 router.put("/tasks/:id/complete", authorization, async (req, res) => {
   try {
     const { id: hkId, role } = req.user;
@@ -332,24 +348,25 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    // Step 1: Fetch the task details
     const taskRes = await pool.query(
-      `SELECT *
-       FROM housekeeping_requests
-       WHERE id = $1 AND assigned_to = $2`,
+      `SELECT hr.*, st.name AS service_type_name
+       FROM housekeeping_requests hr
+       LEFT JOIN service_types st ON hr.service_type_id = st.id
+       WHERE hr.id = $1 AND hr.assigned_to = $2`,
       [id, hkId]
     );
 
     if (taskRes.rowCount === 0) {
-      return res.status(404).json({ error: "Task not found or not assigned to you" });
+      return res
+        .status(404)
+        .json({ error: "Task not found or not assigned to you" });
     }
 
     const task = taskRes.rows[0];
 
-    // Step 2: Validate that current time >= scheduled time
     const now = new Date();
     const serviceDate = new Date(task.preferred_date);
-    const [startTimeStr] = task.preferred_time.split(" - "); // "01:00 PM - 01:30 PM"
+    const [startTimeStr] = task.preferred_time.split(" - ");
     const serviceDateTime = new Date(`${task.preferred_date} ${startTimeStr}`);
 
     if (now < serviceDateTime) {
@@ -358,11 +375,11 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
       });
     }
 
-    // Step 3: Insert into service_history
+    // Insert into service_history with service_type_id
     await pool.query(
       `INSERT INTO service_history (
         request_id, guest_id, housekeeper_id, room_id, facility,
-        service_type, preferred_date, preferred_time, status
+        service_type_id, preferred_date, preferred_time, status
       )
       VALUES ($1, $2, $3, $4, 
               (SELECT facility FROM rooms WHERE id = $4),
@@ -372,16 +389,22 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
         task.user_id,
         hkId,
         task.room_id,
-        task.service_type || "regular",
+        task.service_type_id, 
         task.preferred_date,
         task.preferred_time,
       ]
     );
 
-    // Step 4: Delete from housekeeping_requests
-    await pool.query(`DELETE FROM housekeeping_requests WHERE id = $1`, [id]);
+    await pool.query(
+      `UPDATE service_history SET status = 'completed' WHERE request_id = $1`,
+      [id]
+    );
 
-    // Step 5: Notify guest
+    await pool.query(
+      `UPDATE housekeeping_requests SET archived = TRUE WHERE id = $1`,
+      [id]
+    );
+
     const guestId = task.user_id;
     const completeMessage = "Your housekeeping request has been completed.";
 
@@ -396,12 +419,67 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
         message: completeMessage,
         type: "success",
       });
-      console.log(`📢 Sent completion notification to user:${guestId}`);
+      console.log(`Sent completion notification to user:${guestId}`);
     }
 
     res.json({ message: "Task completed and moved to service history." });
   } catch (err) {
     console.error("Error completing task:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Confirm item delivery
+router.put("/delivery/:id/confirm", authorization, async (req, res) => {
+  try {
+    const { id: hkId, role } = req.user;
+    const { id } = req.params;
+
+    if (role !== "housekeeper") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const itemRes = await pool.query(
+      `SELECT bi.*, u.first_name, u.last_name
+       FROM borrowed_items bi
+       JOIN users u ON bi.user_id = u.id
+       WHERE bi.id = $1 AND bi.housekeeper_id = $2 AND bi.delivery_status = 'pending_delivery'`,
+      [id, hkId]
+    );
+
+    if (itemRes.rowCount === 0) {
+      return res.status(404).json({
+        error: "Delivery task not found or not assigned to you",
+      });
+    }
+
+    const item = itemRes.rows[0];
+    const guestName = `${item.first_name} ${item.last_name}`;
+
+    await pool.query(
+      `UPDATE borrowed_items 
+       SET delivery_status = 'delivered'
+       WHERE id = $1`,
+      [id]
+    );
+
+    const message = `Your borrowed item (${item.item_name} x${item.quantity}) has been delivered. You have been billed ₱${item.charge_amount}.`;
+    await pool.query(
+      `INSERT INTO notifications (user_id, message, created_at)
+       VALUES ($1, $2, NOW())`,
+      [item.user_id, message]
+    );
+
+    if (req.io) {
+      req.io.to(`user:${item.user_id}`).emit("newNotification", {
+        message,
+        type: "success",
+      });
+    }
+
+    res.json({ message: "Delivery confirmed and guest billed successfully." });
+  } catch (err) {
+    console.error("Error confirming delivery:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

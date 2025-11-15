@@ -32,6 +32,9 @@ app.use("/notifications", require("./routes/notifications"));
 app.use("/items", require("./routes/items"));
 app.use("/announcements", require("./routes/announcements"));
 app.use("/feedback", require("./routes/feedback"));
+app.use("/api/trends", require("./routes/adminTrends"));
+app.use("/api/admin/reports", require("./routes/adminReports"));
+app.use("/service-types", require("./routes/serviceTypes"));
 
 require("./tasks/expireBookings");
 

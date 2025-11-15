@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const pool = require("../db");
-const authorization = require("../middleware/authorization");
+const { authorization } = require("../middleware/authorization");
 
 router.get("/rooms", authorization, async (req, res) => {
   try {
@@ -39,7 +39,7 @@ router.get("/search", authorization, async (req, res) => {
               CONCAT(first_name, ' ', last_name) AS name, 
               email 
        FROM users 
-       WHERE role IN ('guest', 'student')
+       WHERE role = 'guest'
        AND (
          first_name ILIKE $1 
          OR last_name ILIKE $1 

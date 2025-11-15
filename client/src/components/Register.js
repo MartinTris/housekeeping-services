@@ -2,46 +2,26 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Register = () => {
-  const [role, setRole] = useState("student");
+  const [role, setRole] = useState("guest");
   const [inputs, setInputs] = useState({
     first_name: "",
     last_name: "",
     email: "",
-    student_number: "",
     password: "",
   });
 
-  const { first_name, last_name, email, student_number, password } = inputs;
+  const { first_name, last_name, email, password } = inputs;
   const navigate = useNavigate();
 
   const onChange = (e) => {
     setInputs({ ...inputs, [e.target.name]: e.target.value });
   };
 
-  const validateStudent = () => {
-    if (role === "student") {
-      const lastFour = student_number.slice(-4);
-
-      if (!email.endsWith("@dlsud.edu.ph")) {
-        alert("Email must be a DLSU-D email address");
-        return false;
-      }
-
-      if (!email.includes(lastFour)) {
-        alert("Invalid student number or email");
-        return false;
-      }
-    }
-    return true;
-  };
-
   const onSubmitForm = async (e) => {
     e.preventDefault();
 
-    if (!validateStudent()) return;
-
     try {
-      const body = { first_name, last_name, email, student_number, password, role };
+      const body = { first_name, last_name, email, password, role };
 
       const response = await fetch("http://localhost:5000/auth/register", {
         method: "POST",
@@ -71,7 +51,6 @@ const Register = () => {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left Section (Image) */}
       <div className="w-1/2 relative">
         <img
           src="/images/rotonda-image.jpg"
@@ -86,37 +65,11 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Right Section (Form) */}
       <div className="w-1/2 flex flex-col justify-center items-center bg-gray-100">
         <div className="w-3/4 max-w-md p-8 bg-white shadow-lg rounded-lg">
           <h2 className="text-2xl font-bold text-green-900 mb-6 text-center">
-            Register
+            Guest Registration
           </h2>
-
-          <div className="flex justify-center gap-6 mb-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="role"
-                value="student"
-                checked={role === "student"}
-                onChange={(e) => setRole(e.target.value)}
-                className="accent-green-700"
-              />
-              Student
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="role"
-                value="guest"
-                checked={role === "guest"}
-                onChange={(e) => setRole(e.target.value)}
-                className="accent-green-700"
-              />
-              Guest
-            </label>
-          </div>
 
           <form onSubmit={onSubmitForm} className="flex flex-col gap-4">
             <div className="flex gap-2">
@@ -140,40 +93,15 @@ const Register = () => {
               />
             </div>
 
-            {role === "guest" && (
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={email}
-                onChange={onChange}
-                required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-              />
-            )}
-
-            {role === "student" && (
-              <>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Student Email"
-                  value={email}
-                  onChange={onChange}
-                  required
-                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-                />
-                <input
-                  type="text"
-                  name="student_number"
-                  placeholder="Student Number"
-                  value={student_number}
-                  onChange={onChange}
-                  required
-                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-                />
-              </>
-            )}
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={email}
+              onChange={onChange}
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+            />
 
             <input
               type="password"

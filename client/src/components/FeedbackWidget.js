@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import { Star } from "lucide-react";
 
 const FeedbackWidget = () => {
   const [recentCompleted, setRecentCompleted] = useState([]);
   const [feedbackModal, setFeedbackModal] = useState({ show: false, requestId: null });
   const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
 
-  // Fetch recently completed housekeeping requests (no feedback yet)
+  // 🔄 Fetch completed requests eligible for feedback
   const fetchRecentCompleted = async () => {
     try {
       const res = await fetch("http://localhost:5000/feedback/recent", {
@@ -23,9 +25,11 @@ const FeedbackWidget = () => {
     fetchRecentCompleted();
   }, []);
 
-  // Submit feedback
+  // 📤 Submit feedback
   const handleSubmitFeedback = async () => {
     try {
+      if (!feedbackModal.requestId) throw new Error("Missing request ID");
+
       const res = await fetch("http://localhost:5000/feedback", {
         method: "POST",
         headers: {
@@ -33,25 +37,70 @@ const FeedbackWidget = () => {
           token: localStorage.token,
         },
         body: JSON.stringify({
-          request_id: feedbackModal.requestId,
           rating,
           comment,
+          request_id: feedbackModal.requestId,
         }),
       });
 
+      if (!res.ok) throw new Error("Failed to submit feedback");
+
       const data = await res.json();
-      if (res.ok) {
-        alert("Feedback submitted!");
+      if (data && data.id) {
+        alert("Feedback submitted successfully!");
         setFeedbackModal({ show: false, requestId: null });
         setRating(0);
+        setHover(0);
         setComment("");
-        fetchRecentCompleted(); // refresh list
-      } else {
-        alert(data.error || "Failed to submit feedback.");
+        fetchRecentCompleted();
       }
     } catch (err) {
-      console.error("Feedback error:", err.message);
+      console.error("Error submitting feedback:", err.message);
+      alert("Failed to submit feedback. Please try again.");
     }
+  };
+
+  const displayRating = hover || rating;
+
+  // ⭐ Renders interactive stars with half support
+  const renderStars = () => {
+    return [1, 2, 3, 4, 5].map((star) => {
+      const isFull = displayRating >= star;
+      const isHalf = displayRating >= star - 0.5 && displayRating < star;
+
+      return (
+        <div
+          key={star}
+          className="relative cursor-pointer"
+          onMouseMove={(e) => {
+            const { left, width } = e.currentTarget.getBoundingClientRect();
+            const percent = (e.clientX - left) / width;
+            setHover(percent <= 0.5 ? star - 0.5 : star);
+          }}
+          onMouseLeave={() => setHover(0)}
+          onClick={(e) => {
+            const { left, width } = e.currentTarget.getBoundingClientRect();
+            const percent = (e.clientX - left) / width;
+            setRating(percent <= 0.5 ? star - 0.5 : star);
+          }}
+        >
+          {/* Base empty star */}
+          <Star size={32} className="text-gray-300" />
+          {/* Filled portion (full or half) */}
+          <div
+            className="absolute top-0 left-0 overflow-hidden"
+            style={{
+              width: isFull ? "100%" : isHalf ? "50%" : "0%",
+            }}
+          >
+            <Star
+              size={32}
+              className="text-yellow-400 fill-yellow-400 transition-transform transform hover:scale-110"
+            />
+          </div>
+        </div>
+      );
+    });
   };
 
   return (
@@ -100,29 +149,24 @@ const FeedbackWidget = () => {
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h3 className="text-xl font-bold mb-4">Submit Feedback</h3>
 
+            {/* ⭐ Interactive Star Rating (half support) */}
             <label className="block mb-2">Rating:</label>
-            <select
-              value={rating}
-              onChange={(e) => setRating(Number(e.target.value))}
-              className="w-full border rounded p-2 mb-4"
-            >
-              <option value={0}>Select rating</option>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n} Star{n > 1 && "s"}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center space-x-1 mb-2">{renderStars()}</div>
+            <p className="text-sm text-gray-600 mb-4">
+              {displayRating ? `${displayRating} / 5` : "Select a rating"}
+            </p>
 
+            {/* 💬 Comment */}
             <label className="block mb-2">Comment:</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows="3"
-              className="w-full border rounded p-2 mb-4"
+              className="w-full border rounded p-2 mb-4 focus:ring-2 focus:ring-green-500"
               placeholder="Share your experience..."
             />
 
+            {/* Buttons */}
             <div className="flex justify-end gap-2">
               <button
                 className="px-4 py-2 bg-gray-200 rounded"
@@ -131,8 +175,13 @@ const FeedbackWidget = () => {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded"
+                className={`px-4 py-2 rounded text-white ${
+                  rating === 0
+                    ? "bg-green-400 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
+                }`}
                 onClick={handleSubmitFeedback}
+                disabled={rating === 0}
               >
                 Submit
               </button>

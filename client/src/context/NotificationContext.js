@@ -15,7 +15,6 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [user, setUser] = useState(null);
 
-  // 🧠 Fetch user info
   const fetchUser = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -31,7 +30,6 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // 📩 Fetch notifications for current user
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -43,7 +41,21 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [user?.id]);
 
-  // ⚙️ Run once
+  const markAllAsRead = async () => {
+  if (!user?.id) return;
+  try {
+    const res = await fetch(`http://localhost:5000/notifications/user/${user.id}/read-all`, {
+      method: "PUT",
+    });
+    if (!res.ok) throw new Error("Failed to mark all as read");
+    toast.success("All notifications marked as read!");
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  } catch (err) {
+    console.error("Error marking all as read:", err);
+    toast.error("Failed to mark all as read");
+  }
+};
+
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
@@ -83,7 +95,6 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [user]);
 
-  // ⚡ Socket lifecycle
   useEffect(() => {
     if (!user) {
       socket.disconnect();
@@ -95,14 +106,12 @@ export const NotificationProvider = ({ children }) => {
       console.log("🔌 Socket connected for user:", user.id);
     }
 
-    // 🔍 Log all events
     socket.onAny((event, ...args) => {
-      console.log("⚡ SOCKET EVENT FIRED:", event, args);
+      console.log("Socket Event:", event, args);
     });
 
-    // 🧠 Handle new housekeeping request (for admin)
     const handleNewRequest = (data) => {
-      console.log("📥 handleNewRequest triggered:", data);
+      console.log("handleNewRequest triggered:", data);
       if (user.role !== "admin") return;
 
       const newNotification = {
@@ -113,7 +122,6 @@ export const NotificationProvider = ({ children }) => {
       };
 
       setNotifications((prev) => {
-        // Check if notification already exists
         const exists = prev.some(
           (n) =>
             n.message === data.message &&
@@ -131,7 +139,6 @@ export const NotificationProvider = ({ children }) => {
       });
     };
 
-    // 🧩 Handle "housekeeper assigned" (for guest)
     const handleHousekeeperAssigned = (data) => {
       console.log("📥 handleHousekeeperAssigned triggered:", data);
       if (user.role !== "guest") return;
@@ -144,7 +151,6 @@ export const NotificationProvider = ({ children }) => {
       };
 
       setNotifications((prev) => {
-        // Check if notification already exists
         const exists = prev.some(
           (n) =>
             n.message === data.message &&
@@ -162,7 +168,6 @@ export const NotificationProvider = ({ children }) => {
       });
     };
 
-    // 🧩 Handle "new assignment" (for housekeeper)
     const handleNewAssignment = (data) => {
       console.log("📥 handleNewAssignment triggered:", data);
       if (user.role !== "housekeeper") return;
@@ -212,7 +217,6 @@ export const NotificationProvider = ({ children }) => {
       toast.success(data.message, { duration: 4000, position: "top-right" });
     });
 
-    // 🧹 Cleanup
     return () => {
       console.log("🧹 Cleaning up socket listeners...");
       socket.off("newRequest", handleNewRequest);
@@ -222,7 +226,6 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [user]);
 
-  // Load notifications on mount
   useEffect(() => {
     if (user?.id) {
       fetchNotifications();
@@ -235,6 +238,7 @@ export const NotificationProvider = ({ children }) => {
         notifications,
         fetchNotifications,
         user,
+        markAllAsRead,
       }}
     >
       {children}

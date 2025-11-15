@@ -1,13 +1,11 @@
-// src/components/NotificationBell.jsx
 import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 
 const NotificationBell = () => {
   const [showDropdown, setShowDropdown] = useState(false);
-  const { notifications, fetchNotifications, user } = useNotifications();
+  const { notifications, fetchNotifications, user, markAllAsRead } = useNotifications();
 
-  // Initial load from backend (safe fallback)
   useEffect(() => {
     if (user?.id) fetchNotifications();
   }, [user, fetchNotifications]);
@@ -17,12 +15,13 @@ const NotificationBell = () => {
       await fetch(`http://localhost:5000/notifications/${id}/read`, {
         method: "PUT",
       });
-      // Optional: optimistic update
       fetchNotifications();
     } catch (err) {
       console.error("Failed to mark notification:", err);
     }
   };
+
+  const hasUnread = notifications.some((n) => !n.read);
 
   return (
     <div className="relative">
@@ -39,6 +38,16 @@ const NotificationBell = () => {
       {showDropdown && (
         <div className="absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-50">
           <h3 className="font-semibold px-4 py-2 border-b">Notifications</h3>
+          {hasUnread && (
+              <button
+                onClick={() => {
+                  markAllAsRead();
+                }}
+                className="text-xs text-green-700 hover:text-green-800 font-medium"
+              >
+                Mark all as read
+              </button>
+            )}
           <ul className="max-h-64 overflow-y-auto">
             {notifications.length === 0 ? (
               <li className="px-4 py-2 text-gray-500 text-sm">

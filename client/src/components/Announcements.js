@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
+import { Megaphone } from "lucide-react";
 
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [facility, setFacility] = useState("");
   const [notCheckedIn, setNotCheckedIn] = useState(false);
 
-  // 🔹 Fetch facility and announcements
   const fetchAnnouncements = async () => {
     try {
       const res = await fetch("http://localhost:5000/dashboard/", {
@@ -38,7 +38,6 @@ const Announcements = () => {
     }
   };
 
-  // 🔁 Fetch on mount and auto-refresh every 10s
   useEffect(() => {
     fetchAnnouncements();
     const interval = setInterval(fetchAnnouncements, 3000);
@@ -46,32 +45,36 @@ const Announcements = () => {
   }, []);
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mt-4">
-      <h3 className="text-2xl font-semibold text-green-900 mb-4">
-        Facility Announcements
-      </h3>
+    <div className="bg-white/80 backdrop-blur-sm border border-green-200 rounded-3xl shadow-lg p-8 max-w-3xl mx-auto transition-all duration-300">
+      <div className="flex items-center gap-3 mb-6 border-b border-green-100 pb-3">
+        <Megaphone className="text-green-800 w-7 h-7" />
+        <h3 className="text-2xl font-bold text-green-900 font-poppins">
+          Facility Announcements
+        </h3>
+      </div>
 
-      {/* 🔴 Show message if user not checked in */}
       {notCheckedIn ? (
-        <p className="text-red-600 font-medium">
+        <p className="text-red-600 font-medium text-lg">
           You are not checked in to a facility.
         </p>
       ) : announcements.length === 0 ? (
-        <p className="text-gray-500">No current announcements.</p>
+        <p className="text-gray-500 text-lg">No current announcements.</p>
       ) : (
-        <ul className="space-y-4">
+        <ul className="space-y-5 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-green-300 scrollbar-track-green-100 hover:scrollbar-thumb-green-400">
           {announcements.map((a, i) => (
             <li
               key={i}
-              className="border border-gray-200 rounded p-4 hover:bg-gray-50 transition"
+              className="bg-green-50 border border-green-100 rounded-2xl p-6 shadow-sm hover:shadow-md hover:bg-green-50/80 transition-all duration-300"
             >
-              <p className="font-bold text-gray-900">
+              <p className="font-semibold text-xl text-green-900">
                 {a.title || "Announcement"}
               </p>
-              <p className="text-gray-600 mt-1">{a.message}</p>
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="text-gray-700 text-base mt-2 leading-relaxed">
+                {a.message}
+              </p>
+              <p className="text-gray-500 text-sm mt-3">
                 Posted by{" "}
-                <span className="font-medium text-gray-800">
+                <span className="font-medium text-green-800">
                   {a.admin_name || "Unknown Admin"}
                 </span>{" "}
                 • {new Date(a.created_at).toLocaleString()}

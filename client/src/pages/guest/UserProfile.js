@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import ResetPassword from "../../components/ResetPassword";
 
 const UserProfile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -43,7 +45,7 @@ const UserProfile = () => {
         <div className="bg-white rounded-lg shadow p-6 max-w-2xl">
           <div className="flex items-start gap-6">
             <div className="flex-1">
-              <p className="text-xl font-semibold">{profile.name}</p>
+              <p className="text-xl font-semibold">{profile.first_name} {profile.last_name}</p>
               <p className="text-sm text-gray-600 mb-2">{profile.email}</p>
 
               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -56,6 +58,13 @@ const UserProfile = () => {
                   <p className="font-medium">{profile.facility || "—"}</p>
                 </div>
               </div>
+
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="mt-4 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 text-sm"
+              >
+                Reset Password
+              </button>
             </div>
           </div>
 
@@ -88,6 +97,10 @@ const UserProfile = () => {
         </div>
       ) : (
         <p className="text-red-600">Unable to load profile.</p>
+      )}
+
+      {showResetModal && (
+        <ResetPassword onClose={() => setShowResetModal(false)} />
       )}
     </div>
   );

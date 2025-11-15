@@ -211,3 +211,92 @@ ALTER TABLE feedback ADD COLUMN type VARCHAR(20) DEFAULT 'system' CHECK (type IN
 --add is_active column to users table
 ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true;
 
+--add archived column to housekeeping_requests table
+ALTER TABLE housekeeping_requests ADD COLUMN archived BOOLEAN DEFAULT FALSE;
+
+-- removing student role in users step by step:
+
+-- Step 1: Drop student_number_required constraint
+ALTER TABLE users
+DROP CONSTRAINT student_number_required;
+
+-- Step 2: Drop old user role check constraint
+ALTER TABLE users
+DROP CONSTRAINT users_role_check;
+
+-- Step 3: Recreate the role check constraint (without 'student')
+ALTER TABLE users
+ADD CONSTRAINT users_role_check
+CHECK (role IN ('guest', 'housekeeper', 'admin'));
+
+-- Step 4: Drop student_number column
+ALTER TABLE users
+DROP COLUMN student_number;
+
+-- borrowed_items table modifications
+ALTER TABLE borrowed_items
+ADD COLUMN housekeeper_id UUID REFERENCES users(id),
+ADD COLUMN delivery_status VARCHAR(50) DEFAULT 'pending_delivery';
+
+-- Indexes for borrowed_items table
+CREATE INDEX idx_borrowed_items_housekeeper ON borrowed_items(housekeeper_id);
+CREATE INDEX idx_borrowed_items_delivery_status ON borrowed_items(delivery_status);
+
+--alter feedback table
+ALTER TABLE feedback
+ALTER COLUMN rating TYPE REAL
+USING rating::real;
+
+--service types table
+CREATE TABLE service_types (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  facility TEXT NOT NULL,
+  name TEXT NOT NULL,
+  duration INTEGER NOT NULL CHECK (duration > 0),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+--drop service_type column from housekeeping_requests
+ALTER TABLE housekeeping_requests
+DROP COLUMN service_type;
+
+--add service_type_id column to housekeeping_requests
+ALTER TABLE housekeeping_requests
+ADD COLUMN service_type_id UUID REFERENCES service_types(id) ON DELETE SET NULL;
+
+-- add service_type_id in service_history table
+ALTER TABLE service_history 
+DROP COLUMN service_type,
+ADD COLUMN service_type_id UUID REFERENCES service_types(id);
+
+-- add first login column to users table
+ALTER TABLE users
+ADD COLUMN first_login BOOLEAN DEFAULT TRUE;
+
+--process to add superadmin role
+-- 1. drop the existing role constraint
+ALTER TABLE users DROP CONSTRAINT users_role_check;
+
+-- 2. add the new constraint that includes 'superadmin'
+ALTER TABLE users ADD CONSTRAINT users_role_check 
+CHECK (role = ANY (ARRAY['guest'::text, 'housekeeper'::text, 'admin'::text, 'superadmin'::text]));
+
+-- 3. make facility nullable for superadmin (can access all facilities)
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_facility_check;
+
+-- 4. add updated facility constraint that allows NULL for superadmin
+ALTER TABLE users ADD CONSTRAINT users_facility_check 
+CHECK (facility = ANY (ARRAY['RCC'::text, 'Hotel Rafael'::text]) OR facility IS NULL);
+
+--ensure superadmin has hotel rafael facility
+UPDATE users 
+SET facility = 'Hotel Rafael' 
+WHERE role = 'superadmin' AND facility IS NULL;
+
+-- Update constraint to require facility for superadmin too
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_facility_check;
+ALTER TABLE users ADD CONSTRAINT users_facility_check 
+CHECK (
+  (role IN ('admin', 'housekeeper', 'superadmin') AND facility IN ('RCC', 'Hotel Rafael')) OR
+  (role = 'guest' AND (facility IS NULL OR facility IN ('RCC', 'Hotel Rafael')))
+);

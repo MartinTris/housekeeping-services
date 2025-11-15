@@ -48,4 +48,15 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// Mark all notifications as read for a user
+router.put("/user/:user_id/read-all", async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    await pool.query(`UPDATE notifications SET read = TRUE WHERE user_id = $1`, [user_id]);
+    res.json({ message: "All notifications marked as read" });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 module.exports = router;

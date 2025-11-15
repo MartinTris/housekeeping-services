@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 
-const AdminFeedbackWidget = () => {
+const HousekeeperFeedbackWidget = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchFeedbacks = async () => {
     try {
-      const res = await fetch("http://localhost:5000/feedback/admin", {
+      const res = await fetch("http://localhost:5000/feedback/housekeeper", {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
       if (res.ok) setFeedbacks(data);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching feedbacks:", err.message);
+      console.error("Error fetching housekeeper feedback:", err.message);
       setLoading(false);
     }
   };
@@ -21,24 +21,23 @@ const AdminFeedbackWidget = () => {
   useEffect(() => {
     fetchFeedbacks();
 
-    const interval = setInterval(fetchFeedbacks, 10000);
+    const interval = setInterval(fetchFeedbacks, 300000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="mt-10">
-      <h3 className="text-xl font-poppins text-green-900 font-bold mb-4">Guest Feedback</h3>
+      <h3 className="text-xl font-semibold mb-4">Guest Feedback</h3>
 
       {loading ? (
         <p className="text-gray-600">Loading feedback...</p>
       ) : feedbacks.length === 0 ? (
-        <p className="text-gray-600">No feedback available yet.</p>
+        <p className="text-gray-600">No feedback assigned to you yet.</p>
       ) : (
         <table className="w-full border border-gray-300">
           <thead>
             <tr className="bg-gray-100 text-left">
               <th className="p-2 border">Guest</th>
-              <th className="p-2 border">Housekeeper Assigned</th>
               <th className="p-2 border">Room</th>
               <th className="p-2 border">Service Type</th>
               <th className="p-2 border">Rating</th>
@@ -50,7 +49,6 @@ const AdminFeedbackWidget = () => {
             {feedbacks.map((f) => (
               <tr key={f.id}>
                 <td className="p-2 border">{f.guest_name || "N/A"}</td>
-                <td className="p-2 border capitalize">{f.housekeeper_name || "N/A"}</td>
                 <td className="p-2 border">{f.room_number || "—"}</td>
                 <td className="p-2 border capitalize">{f.service_type || "—"}</td>
                 <td className="p-2 border text-center">{f.rating} ⭐</td>
@@ -67,4 +65,4 @@ const AdminFeedbackWidget = () => {
   );
 };
 
-export default AdminFeedbackWidget;
+export default HousekeeperFeedbackWidget;

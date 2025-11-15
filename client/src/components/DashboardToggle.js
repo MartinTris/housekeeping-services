@@ -1,4 +1,3 @@
-// src/components/DashboardToggle.jsx
 import React from "react";
 
 const DashboardToggle = ({ view, setView }) => {

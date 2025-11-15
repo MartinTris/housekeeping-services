@@ -10,10 +10,9 @@ const BorrowItems = () => {
   const [showModal, setShowModal] = useState(false);
   const [userFacility, setUserFacility] = useState("");
 
-  // ✅ Fetch facility directly from backend
   const fetchUserFacility = async () => {
     try {
-      const res = await fetch("http://localhost:5000/dashboard/me", {
+      const res = await fetch("http://localhost:5000/users/me", {
         headers: { token: localStorage.token },
       });
       if (!res.ok) throw new Error("Failed to fetch user info");
@@ -24,7 +23,6 @@ const BorrowItems = () => {
     }
   };
 
-  // Decode initial facility (for immediate display) and then sync with backend
   useEffect(() => {
     const token = localStorage.token;
     if (token) {
@@ -34,7 +32,6 @@ const BorrowItems = () => {
     fetchUserFacility();
   }, []);
 
-  // ✅ Listen for updates triggered by ManageGuests
   useEffect(() => {
     const handler = () => {
       console.log("Facility updated → refetching user info...");

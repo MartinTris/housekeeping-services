@@ -6,11 +6,12 @@ const Menu = ({ setAuth, role }) => {
 
   const adminItems = [
     { name: "Dashboard", path: "/admin" },
+    { name: "My Profile", path: "/admin/profile" },
     { name: "Add/Remove Guest", path: "/admin/guests" },
     { name: "Add/Remove Housekeeper", path: "/admin/housekeepers" },
     { name: "Service Requests", path: "/admin/requests" },
     { name: "Item List", path: "/admin/item-list" },
-    { name: "Feedback", path: "/admin/feedback" },
+    { name: "Service Types", path: "/admin/service-types" },
     { name: "Reports", path: "/admin/reports" },
   ];
 
@@ -23,8 +24,8 @@ const Menu = ({ setAuth, role }) => {
 
   const housekeeperItems = [
     { name: "Dashboard", path: "/housekeeper" },
+    { name: "My Profile", path: "/housekeeper/profile" },
     { name: "Tasks", path: "/housekeeper/tasks" },
-    { name: "Service Feedback", path: "/housekeeper/feedback" },
   ];
 
   let items = [];

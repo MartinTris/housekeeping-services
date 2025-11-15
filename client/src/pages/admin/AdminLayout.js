@@ -26,19 +26,16 @@ const AdminLayout = ({ setAuth, role }) => {
       <Menu setAuth={setAuth} role={role} />
 
       <div className="flex-1 ml-64 flex flex-col">
-        {/* Header Bar — identical to GuestLayout */}
         <header className="flex justify-between items-center px-8 py-4 bg-white border-b shadow-sm">
           <h1 className="text-2xl font-poppins font-semibold text-green-900">
             DLSU-D Housekeeping Admin
           </h1>
 
-          {/* Notification Bell aligned to top-right */}
           <div className="flex items-center space-x-4">
             {userId && <NotificationBell userId={userId} />}
           </div>
         </header>
 
-        {/* Main content */}
         <main className="flex-1 p-8 bg-gray-50 overflow-y-auto">
           <Outlet />
         </main>

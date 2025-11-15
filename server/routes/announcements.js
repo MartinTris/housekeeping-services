@@ -1,16 +1,14 @@
 const express = require("express");
 const pool = require("../db");
-const authorization = require("../middleware/authorization");
+const { authorization } = require("../middleware/authorization");
 
 const router = express.Router();
 
-// 📢 Post a new announcement
 router.post("/", authorization, async (req, res) => {
   try {
     const {
       title,
       message,
-      target_students,
       target_guests,
       target_housekeepers,
       facility,
@@ -21,13 +19,12 @@ router.post("/", authorization, async (req, res) => {
 
     const newAnnouncement = await pool.query(
       `INSERT INTO announcements 
-       (title, message, target_students, target_guests, target_housekeepers, posted_by, facility) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (title, message, target_guests, target_housekeepers, posted_by, facility) 
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
         title || "Announcement",
         message,
-        toBool(target_students),
         toBool(target_guests),
         toBool(target_housekeepers),
         user_id,
@@ -42,18 +39,16 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// 📄 Get all announcements (filtered by role + facility, includes admin_name)
+// Get announcements based on user role and facility
 router.get("/", authorization, async (req, res) => {
   try {
     const userRole = req.user.role;
     const userFacility = req.user.facility;
 
-    // if user has no facility assigned, return empty array (you already handle UI)
     if (!userFacility || userFacility.trim() === "") {
       return res.json([]);
     }
 
-    // base query (select admin_name by concatenating first_name + last_name, fallback to email)
     let query = `
       SELECT a.*,
              COALESCE(
@@ -68,20 +63,7 @@ router.get("/", authorization, async (req, res) => {
     `;
     let params = [userFacility];
 
-    if (userRole === "student") {
-      query = `
-        SELECT a.*,
-               COALESCE(
-                 NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
-                 u.email,
-                 'Unknown Admin'
-               ) AS admin_name
-        FROM announcements a
-        LEFT JOIN users u ON a.posted_by = u.id
-        WHERE a.target_students = true AND a.facility = $1
-        ORDER BY a.created_at DESC
-      `;
-    } else if (userRole === "guest") {
+    if (userRole === "guest") {
       query = `
         SELECT a.*,
                COALESCE(
@@ -117,14 +99,12 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// ✏️ Update (edit) an announcement
 router.put("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, message } = req.body;
     const userId = req.user.id;
 
-    // Ensure admin only edits their own posts
     const updated = await pool.query(
       `UPDATE announcements
        SET title = $1, message = $2
@@ -144,7 +124,6 @@ router.put("/:id", authorization, async (req, res) => {
   }
 });
 
-// 🗑️ Delete an announcement
 router.delete("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -168,7 +147,7 @@ router.delete("/:id", authorization, async (req, res) => {
   }
 });
 
-// 👤 Get announcements posted by the logged-in admin
+// Admin announcements
 router.get("/admin", authorization, async (req, res) => {
   try {
     const adminId = req.user.id;

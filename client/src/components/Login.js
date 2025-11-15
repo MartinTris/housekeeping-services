@@ -2,10 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Login = ({ setAuth, setUser }) => {
-  const [role, setRole] = useState("student");
+  const [role, setRole] = useState("guest");
   const [inputs, setInputs] = useState({
     email: "",
-    student_number: "",
     password: "",
   });
 
@@ -15,7 +14,7 @@ const Login = ({ setAuth, setUser }) => {
 
   const navigate = useNavigate();
 
-  const { email, student_number, password } = inputs;
+  const { email, password } = inputs;
 
   const onChange = (e) => {
     setInputs({ ...inputs, [e.target.name]: e.target.value });
@@ -41,10 +40,28 @@ const Login = ({ setAuth, setUser }) => {
       if (parseRes.token) {
         localStorage.setItem("token", parseRes.token);
         localStorage.setItem("role", parseRes.role);
+        localStorage.setItem("first_login", parseRes.first_login);
+
+        // CHECK FIRST LOGIN BEFORE SETTING AUTH
+        if (
+          (parseRes.role === "admin" ||
+            parseRes.role === "housekeeper" ||
+            parseRes.role === "superadmin") &&
+          parseRes.first_login
+        ) {
+          // Set auth and user BEFORE navigating
+          setAuth(true);
+          setUser({ role: parseRes.role });
+          setShowModal(false);
+          navigate("/force-change-password");
+          return;
+        }
+
+        // Only set auth after checking first_login
         setAuth(true);
         setUser({ role: parseRes.role });
 
-        if (parseRes.role === "admin") navigate("/admin");
+        if (parseRes.role === "admin" || parseRes.role === "superadmin") navigate("/admin");
         else if (parseRes.role === "housekeeper") navigate("/housekeeper");
         else navigate("/guest");
 
@@ -100,9 +117,13 @@ const Login = ({ setAuth, setUser }) => {
           <div className="w-1/2">
             <h2 className="text-2xl font-bold mb-2">Hotel Rafael</h2>
             <p className="text-gray-700">
-              Random placeholder text for Hotel Rafael. Lorem ipsum dolor sit
-              amet, consectetur adipiscing elit. Duis commodo felis vel arcu
-              egestas, sit amet feugiat lorem euismod.
+              Formerly known as Hotel Nicole, Hotel Rafael is patterned after
+              classic buildings in Vigan, Ilocos Norte. It offers a blend of
+              traditional charm and modern amenities, providing guests with a
+              comfortable and memorable stay. Hotel Rafael has hosted various
+              guests all over the world, making it a notable destination in
+              Dasmariñas, Cavite both for accommodation and a learning
+              environment for students.
             </p>
           </div>
         </div>
@@ -113,8 +134,11 @@ const Login = ({ setAuth, setUser }) => {
               Retreat and Conference Center
             </h2>
             <p className="text-gray-700">
-              Random placeholder text for RCC. Curabitur eu felis eu lectus
-              cursus volutpat. Praesent at dui sit amet nulla faucibus suscipit.
+              The Retreat and Conference Center (RCC) is a venue designed for
+              prayer, spiritual renewal, conferences and business meetings. It
+              provides a serene and peaceful environment ideal for spiritual
+              activities and reflection. The RCC also offers accommodation
+              facilities for overnight stays.
             </p>
           </div>
           <img
@@ -132,60 +156,19 @@ const Login = ({ setAuth, setUser }) => {
               Login
             </h2>
 
-            <div className="flex justify-center gap-6 mb-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="role"
-                  value="student"
-                  checked={role === "student"}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="accent-green-700"
-                />
-                Student
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="role"
-                  value="guest"
-                  checked={role === "guest"}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="accent-green-700"
-                />
-                Guest
-              </label>
-            </div>
-
             <form
-              onSubmit={(e) =>
-                handleLogin(e, role, { email, student_number, password })
-              }
+              onSubmit={(e) => handleLogin(e, role, { email, password })}
               className="flex flex-col gap-4"
             >
-              {role === "guest" && (
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={onChange}
-                  required
-                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-                />
-              )}
-
-              {role === "student" && (
-                <input
-                  type="text"
-                  name="student_number"
-                  placeholder="Student Number"
-                  value={student_number}
-                  onChange={onChange}
-                  required
-                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
-                />
-              )}
+              <input
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={email}
+                onChange={onChange}
+                required
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+              />
 
               <input
                 type="password"

@@ -1,6 +1,113 @@
 import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
-import ConfirmModal from "../../components/ConfirmModal";
+
+const ScheduleModal = ({ show, onClose, housekeeper, schedule, onSave }) => {
+  const [localSchedule, setLocalSchedule] = useState({
+    shift_time_in: "08:00",
+    shift_time_out: "17:00",
+    day_offs: [],
+  });
+
+  useEffect(() => {
+    if (schedule) {
+      setLocalSchedule(schedule);
+    }
+  }, [schedule]);
+
+  if (!show) return null;
+
+  const handleSave = () => {
+    onSave(localSchedule);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <h3 className="text-xl font-bold text-green-900 mb-4">
+          Edit Schedule for {housekeeper?.name}
+        </h3>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">
+            Shift Time In:
+          </label>
+          <input
+            type="time"
+            className="border rounded-lg px-3 py-2 w-full"
+            value={localSchedule.shift_time_in || ""}
+            onChange={(e) =>
+              setLocalSchedule({ ...localSchedule, shift_time_in: e.target.value })
+            }
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">
+            Shift Time Out:
+          </label>
+          <input
+            type="time"
+            className="border rounded-lg px-3 py-2 w-full"
+            value={localSchedule.shift_time_out || ""}
+            onChange={(e) =>
+              setLocalSchedule({ ...localSchedule, shift_time_out: e.target.value })
+            }
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2">Day Off(s):</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday",
+            ].map((day) => (
+              <label
+                key={day}
+                className="flex items-center gap-1 border rounded px-3 py-2 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={localSchedule.day_offs?.includes(day) || false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setLocalSchedule({
+                      ...localSchedule,
+                      day_offs: checked
+                        ? [...(localSchedule.day_offs || []), day]
+                        : localSchedule.day_offs.filter((d) => d !== day),
+                    });
+                  }}
+                />
+                <span className="text-sm">{day}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+          >
+            Save Schedule
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AddHousekeeper = () => {
   const [inputs, setInputs] = useState({
@@ -12,8 +119,8 @@ const AddHousekeeper = () => {
   const [housekeepers, setHousekeepers] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [facility, setFacility] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedHousekeeper, setSelectedHousekeeper] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -31,24 +138,8 @@ const AddHousekeeper = () => {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await response.json();
-      console.log(data);
       const hkList = Array.isArray(data) ? data : [];
-
       setHousekeepers(hkList);
-      setSchedules((prev) => {
-        const updated = [...prev];
-        hkList.forEach((hk) => {
-          if (!updated.find((s) => s.housekeeper_id === hk.id)) {
-            updated.push({
-              housekeeper_id: hk.id,
-              shift_time_in: "08:00",
-              shift_time_out: "17:00",
-              day_offs: [],
-            });
-          }
-        });
-        return updated;
-      });
     } catch (err) {
       console.error(err.message);
     }
@@ -73,8 +164,7 @@ const AddHousekeeper = () => {
     setInputs({ ...inputs, [e.target.name]: e.target.value });
   };
 
-  const onSubmitForm = async (e) => {
-    e.preventDefault();
+  const handleAddHousekeeper = async () => {
     try {
       const response = await fetch("http://localhost:5000/housekeepers", {
         method: "POST",
@@ -96,6 +186,7 @@ const AddHousekeeper = () => {
 
         setHousekeepers((prev) => [...prev, newHk]);
 
+        // Create default schedule for new housekeeper
         setSchedules((prev) => [
           ...prev,
           {
@@ -112,28 +203,6 @@ const AddHousekeeper = () => {
       console.error(err.message);
     }
   };
-
-  const confirmRemove = (id) => {
-    setSelectedId(id);
-    setShowModal(true);
-  };
-
-  // const removeHousekeeper = async () => {
-  //   try {
-  //     await fetch(`http://localhost:5000/housekeepers/${selectedId}`, {
-  //       method: "DELETE",
-  //       headers: { token: localStorage.getItem("token") },
-  //     });
-  //     setHousekeepers((prev) => prev.filter((hk) => hk.id !== selectedId));
-  //     setSchedules((prev) =>
-  //       prev.filter((s) => s.housekeeper_id !== selectedId)
-  //     );
-  //     setShowModal(false);
-  //     setSelectedId(null);
-  //   } catch (err) {
-  //     console.error(err.message);
-  //   }
-  // };
 
   const toggleStatus = async (id) => {
     try {
@@ -156,31 +225,54 @@ const AddHousekeeper = () => {
     }
   };
 
-  const handleSaveSchedule = async (hk) => {
-    const current = schedules.find((s) => s.housekeeper_id === hk.id) || {};
+  const openScheduleModal = (hk) => {
+    setSelectedHousekeeper(hk);
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveSchedule = async (updatedSchedule) => {
+    if (!selectedHousekeeper) return;
+
     const payload = {
-      shift_time_in: current.shift_time_in || "08:00",
-      shift_time_out: current.shift_time_out || "17:00",
-      day_offs: current.day_offs || [],
+      shift_time_in: updatedSchedule.shift_time_in || "08:00",
+      shift_time_out: updatedSchedule.shift_time_out || "17:00",
+      day_offs: updatedSchedule.day_offs || [],
     };
 
-    const res = await fetch(
-      `http://localhost:5000/housekeepers/${hk.id}/schedule`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: localStorage.getItem("token"),
-        },
-        body: JSON.stringify(payload),
+    try {
+      const res = await fetch(
+        `http://localhost:5000/housekeepers/${selectedHousekeeper.id}/schedule`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: localStorage.getItem("token"),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (res.ok) {
+        alert("Schedule saved successfully!");
+        await getSchedules();
+        setShowScheduleModal(false);
+        setSelectedHousekeeper(null);
+      } else {
+        alert("Failed to save schedule.");
+      }
+    } catch (err) {
+      console.error(err.message);
+      alert("Error saving schedule.");
+    }
+  };
+
+  const getScheduleForHousekeeper = (hkId) => {
+    return (
+      schedules.find((s) => s.housekeeper_id === hkId) || {
+        shift_time_in: "08:00",
+        shift_time_out: "17:00",
+        day_offs: [],
       }
     );
-    if (res.ok) {
-      alert("Schedule saved!");
-      getSchedules();
-    } else {
-      alert("Failed to save schedule.");
-    }
   };
 
   return (
@@ -190,10 +282,7 @@ const AddHousekeeper = () => {
       </h2>
 
       {/* Add Form */}
-      <form
-        onSubmit={onSubmitForm}
-        className="flex flex-col gap-4 max-w-md mx-auto mb-10"
-      >
+      <div className="flex flex-col gap-4 max-w-md mx-auto mb-10">
         <input
           type="text"
           name="first_name"
@@ -201,7 +290,6 @@ const AddHousekeeper = () => {
           onChange={onChange}
           placeholder="First Name"
           className="border rounded-lg px-3 py-2"
-          required
         />
         <input
           type="text"
@@ -210,7 +298,6 @@ const AddHousekeeper = () => {
           onChange={onChange}
           placeholder="Last Name"
           className="border rounded-lg px-3 py-2"
-          required
         />
         <input
           type="email"
@@ -219,7 +306,6 @@ const AddHousekeeper = () => {
           onChange={onChange}
           placeholder="Email"
           className="border rounded-lg px-3 py-2"
-          required
         />
         <input
           type="password"
@@ -228,19 +314,14 @@ const AddHousekeeper = () => {
           onChange={onChange}
           placeholder="Password"
           className="border rounded-lg px-3 py-2"
-          required
         />
         <button
-          type="submit"
+          onClick={handleAddHousekeeper}
           className="bg-green-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700"
         >
           Add Housekeeper
         </button>
-      </form>
-
-      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
-        Current Housekeepers
-      </h3>
+      </div>
 
       <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
         Active Housekeepers
@@ -261,12 +342,20 @@ const AddHousekeeper = () => {
                 <td className="border px-4 py-2">{hk.name}</td>
                 <td className="border px-4 py-2">{hk.email}</td>
                 <td className="border px-4 py-2">
-                  <button
-                    onClick={() => toggleStatus(hk.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
-                  >
-                    Disable
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openScheduleModal(hk)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-500"
+                    >
+                      Edit Schedule
+                    </button>
+                    <button
+                      onClick={() => toggleStatus(hk.id)}
+                      className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
+                    >
+                      Disable
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -318,153 +407,19 @@ const AddHousekeeper = () => {
         </tbody>
       </table>
 
-      {/* <table className="table-auto w-full border-collapse border border-gray-300 text-left">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border px-4 py-2">Name</th>
-            <th className="border px-4 py-2">Email</th>
-            <th className="border px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {housekeepers.map((hk) => (
-            <tr key={hk.id}>
-              <td className="border px-4 py-2">{hk.name}</td>
-              <td className="border px-4 py-2">{hk.email}</td>
-              <td className="border px-4 py-2">
-                <button
-                  onClick={() => confirmRemove(hk.id)}
-                  className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
-                >
-                  Remove
-                </button>
-              </td>
-            </tr>
-          ))}
-          {housekeepers.length === 0 && (
-            <tr>
-              <td colSpan="3" className="text-center py-4 text-gray-500">
-                No housekeepers for {facility}.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table> */}
-
-      <div className="mt-10">
-        <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
-          Set Housekeeper Schedule
-        </h3>
-
-        {housekeepers.map((hk) => {
-          const hkSchedule = schedules.find(
-            (s) => s.housekeeper_id === hk.id
-          ) || {
-            shift_time_in: "08:00",
-            shift_time_out: "17:00",
-            day_offs: [],
-          };
-
-          return (
-            <div
-              key={hk.id}
-              className="border rounded-lg p-4 mb-4 bg-gray-50 shadow-sm"
-            >
-              <h4 className="font-semibold mb-3">{hk.name}</h4>
-
-              <div className="flex flex-col sm:flex-row gap-2 items-center mb-3">
-                <label className="flex flex-col">
-                  Time In:
-                  <input
-                    type="time"
-                    className="border p-2 rounded"
-                    value={hkSchedule.shift_time_in || ""}
-                    onChange={(e) =>
-                      setSchedules((prev) =>
-                        prev.map((s) =>
-                          s.housekeeper_id === hk.id
-                            ? { ...s, shift_time_in: e.target.value }
-                            : s
-                        )
-                      )
-                    }
-                  />
-                </label>
-
-                <label className="flex flex-col">
-                  Time Out:
-                  <input
-                    type="time"
-                    className="border p-2 rounded"
-                    value={hkSchedule.shift_time_out || ""}
-                    onChange={(e) =>
-                      setSchedules((prev) =>
-                        prev.map((s) =>
-                          s.housekeeper_id === hk.id
-                            ? { ...s, shift_time_out: e.target.value }
-                            : s
-                        )
-                      )
-                    }
-                  />
-                </label>
-              </div>
-
-              <label>Day off(s):</label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {[
-                  "Monday",
-                  "Tuesday",
-                  "Wednesday",
-                  "Thursday",
-                  "Friday",
-                  "Saturday",
-                  "Sunday",
-                ].map((day) => (
-                  <label
-                    key={day}
-                    className="flex items-center gap-1 border rounded px-2 py-1 bg-white"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={hkSchedule.day_offs.includes(day)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setSchedules((prev) =>
-                          prev.map((s) =>
-                            s.housekeeper_id === hk.id
-                              ? {
-                                  ...s,
-                                  day_offs: checked
-                                    ? [...(s.day_offs || []), day]
-                                    : s.day_offs.filter((d) => d !== day),
-                                }
-                              : s
-                          )
-                        );
-                      }}
-                    />
-                    {day}
-                  </label>
-                ))}
-              </div>
-
-              <button
-                onClick={() => handleSaveSchedule(hk)}
-                className="bg-green-700 text-white px-4 py-1 rounded hover:bg-green-600"
-              >
-                Save Schedule
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      <ConfirmModal
-        show={showModal}
-        onClose={() => setShowModal(false)}
-        onConfirm={toggleStatus}
-        message="Are you sure you want to remove this housekeeper?"
+      <ScheduleModal
+        show={showScheduleModal}
+        onClose={() => {
+          setShowScheduleModal(false);
+          setSelectedHousekeeper(null);
+        }}
+        housekeeper={selectedHousekeeper}
+        schedule={
+          selectedHousekeeper
+            ? getScheduleForHousekeeper(selectedHousekeeper.id)
+            : null
+        }
+        onSave={handleSaveSchedule}
       />
     </div>
   );
