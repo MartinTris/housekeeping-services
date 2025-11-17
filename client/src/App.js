@@ -11,6 +11,9 @@ import {
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "./context/NotificationContext";
 
+// Superadmin pages
+import ManageAdmins from "./pages/superadmin/ManageAdmins";
+
 // Admin pages
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -44,54 +47,73 @@ import ForceChangePassword from "./components/ForceChangePassword";
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
 
   const setAuth = (boolean) => {
     setIsAuthenticated(boolean);
   };
 
-  async function isAuth() {
+  async function checkAuth() {
     try {
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("role");
+
+      console.log("Checking auth - Token exists:", !!token, "Role:", role);
+
+      if (!token) {
+        setIsAuthenticated(false);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch("http://localhost:5000/auth/is-verify", {
         method: "GET",
-        headers: { token: localStorage.token },
+        headers: { token: token },
       });
 
       const parseRes = await response.json();
-      parseRes === true ? setIsAuthenticated(true) : setIsAuthenticated(false);
+
+      if (parseRes === true) {
+        // Decode token to get user info
+        try {
+          const decoded = jwtDecode(token);
+          console.log("Decoded token:", decoded);
+
+          setUser({
+            id: decoded.id,
+            role: decoded.role, // Use role from token, not localStorage
+            facility: decoded.facility,
+            email: decoded.email,
+          });
+          setIsAuthenticated(true);
+        } catch (err) {
+          console.error("Error decoding token:", err);
+          setIsAuthenticated(false);
+          setUser(null);
+          localStorage.clear();
+        }
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
+        localStorage.clear();
+      }
+
+      setLoading(false);
     } catch (err) {
-      console.error(err.message);
+      console.error("Auth check error:", err.message);
+      setIsAuthenticated(false);
+      setUser(null);
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    // ✅ Skip auth check on /login, /register, and /force-change-password
-    if (
-      location.pathname !== "/login" &&
-      location.pathname !== "/register" &&
-      location.pathname !== "/force-change-password"
-    ) {
-      isAuth();
-    }
+    checkAuth();
+  }, []);
 
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUser({
-          id: decoded.id,
-          name: decoded.name,
-          role: decoded.role,
-          facility: decoded.facility,
-        });
-      } catch (err) {
-        console.error("Invalid token", err.message);
-        localStorage.removeItem("token");
-      }
-    }
-  }, [location.pathname]);
-
-  // ✅ Listen for user facility updates across the app
+  // Listen for user facility updates
   useEffect(() => {
     const handleFacilityUpdate = () => {
       const token = localStorage.getItem("token");
@@ -101,7 +123,7 @@ function App() {
         const decoded = jwtDecode(token);
         setUser((prev) => ({
           ...prev,
-          facility: decoded.facility, // Refresh facility from updated token
+          facility: decoded.facility,
         }));
       } catch (err) {
         console.error("Error decoding token on facility update:", err);
@@ -113,128 +135,132 @@ function App() {
       window.removeEventListener("userFacilityUpdated", handleFacilityUpdate);
   }, []);
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  console.log("App state:", { isAuthenticated, user });
+
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
-      {user ? (
-        <NotificationProvider>
-          <Routes>
-            {/* ================= ADMIN ROUTES ================= */}
-            <Route
-              path="/admin"
-              element={
-                isAuthenticated ? (
-                  <AdminLayout setAuth={setAuth} role={user.role} />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            >
-              <Route index element={<AdminDashboard setAuth={setAuth} />} />
-              <Route path="housekeepers" element={<AddHousekeeper />} />
-              <Route path="profile" element={<AdminProfile />} />
-              <Route path="guests" element={<ManageGuests />} />
-              <Route path="/admin/requests" element={<ServiceRequests />} />
-              <Route path="item-list" element={<ItemList />} />
-              <Route path="/admin/pending-payments" element={<PendingPayments />} />
-              <Route path="/admin/service-types" element={<ServiceTypes />} />
-              <Route path="/admin/reports" element={<Reports />} />
-            </Route>
+      <Routes>
+        {/* ================= LOGIN ================= */}
+        <Route
+          path="/login"
+          element={
+            !isAuthenticated ? (
+              <Login setAuth={setAuth} setUser={setUser} />
+            ) : localStorage.getItem("first_login") === "true" ? (
+              <Navigate to="/force-change-password" />
+            ) : user?.role === "admin" || user?.role === "superadmin" ? (
+              <Navigate to="/admin" />
+            ) : user?.role === "housekeeper" ? (
+              <Navigate to="/housekeeper" />
+            ) : user?.role === "guest" ? (
+              <Navigate to="/guest" />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-            {/* ================= GUEST ROUTE ================= */}
-            <Route
-              path="/guest"
-              element={
-                isAuthenticated ? (
-                  <GuestLayout setAuth={setAuth} role={user.role} />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            >
-              <Route index element={<GuestDashboard setAuth={setAuth} />} />
-              <Route path="profile" element={<UserProfile />} />
-              <Route path="borrow-items" element={<BorrowItems />} />
-              <Route path="/guest/system-feedback" element={<SystemFeedback />} />
-            </Route>
+        {/* ================= REGISTER ================= */}
+        <Route
+          path="/register"
+          element={
+            !isAuthenticated ? (
+              <Register setAuth={setAuth} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-            {/* ================= HOUSEKEEPER ROUTE ================= */}
-            <Route
-              path="/housekeeper"
-              element={
-                isAuthenticated ? (
-                  <HousekeeperLayout setAuth={setAuth} role={user.role} />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            >
-              <Route
-                index
-                element={<HousekeeperDashboard setAuth={setAuth} />}
-              />
-              <Route path="profile" element={<HousekeeperProfile />} />
-              <Route path="tasks" element={<HousekeeperTasks />} />
-            </Route>
+        {/* ================= FORCE PASSWORD CHANGE ================= */}
+        <Route
+          path="/force-change-password"
+          element={
+            isAuthenticated ? (
+              <ForceChangePassword setAuth={setAuth} />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
 
-            {/* ================= AUTH ROUTES ================= */}
-            <Route
-              path="/login"
-              element={
-                !isAuthenticated ? (
-                  <Login setAuth={setAuth} setUser={setUser} />
-                ) : (
-                  // Check if user needs to change password first
-                  localStorage.getItem("first_login") === "true" ? (
-                    <Navigate to="/force-change-password" />
-                  ) : user?.role === "admin" ? (
-                    <Navigate to="/admin" />
-                  ) : user?.role === "housekeeper" ? (
-                    <Navigate to="/housekeeper" />
-                  ) : (
-                    <Navigate to="/guest" />
-                  )
-                )
-              }
-            />
-            
-            {/* ================= FORCE PASSWORD CHANGE ROUTE ================= */}
-            <Route
-              path="/force-change-password"
-              element={
-                isAuthenticated ? (
-                  <ForceChangePassword />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
-            
-            <Route
-              path="/register"
-              element={
-                !isAuthenticated ? (
-                  <Register setAuth={setAuth} />
-                ) : (
-                  <Navigate to="/login" />
-                )
-              }
-            />
+        {/* ================= ADMIN ROUTES ================= */}
+        <Route
+          path="/admin/*"
+          element={
+            isAuthenticated &&
+            (user?.role === "admin" || user?.role === "superadmin") ? (
+              <NotificationProvider>
+                <AdminLayout setAuth={setAuth} role={user.role} />
+              </NotificationProvider>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        >
+          <Route index element={<AdminDashboard setAuth={setAuth} />} />
+          <Route path="housekeepers" element={<AddHousekeeper />} />
+          <Route path="profile" element={<AdminProfile />} />
+          <Route path="guests" element={<ManageGuests />} />
+          <Route path="requests" element={<ServiceRequests />} />
+          <Route path="item-list" element={<ItemList />} />
+          <Route path="pending-payments" element={<PendingPayments />} />
+          <Route path="service-types" element={<ServiceTypes />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="manage-admins" element={<ManageAdmins />} />
+        </Route>
 
-            {/* ================= DEFAULT ROUTE ================= */}
-            <Route path="/" element={<Navigate to="/login" />} />
-          </Routes>
-        </NotificationProvider>
-      ) : (
-        <Routes>
-          <Route
-            path="/login"
-            element={<Login setAuth={setAuth} setUser={setUser} />}
-          />
-          <Route path="/register" element={<Register setAuth={setAuth} />} />
-          <Route path="*" element={<Navigate to="/login" />} />
-        </Routes>
-      )}
+        {/* ================= GUEST ROUTES ================= */}
+        <Route
+          path="/guest/*"
+          element={
+            isAuthenticated && user?.role === "guest" ? (
+              <NotificationProvider>
+                <GuestLayout setAuth={setAuth} role={user.role} />
+              </NotificationProvider>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        >
+          <Route index element={<GuestDashboard setAuth={setAuth} />} />
+          <Route path="profile" element={<UserProfile />} />
+          <Route path="borrow-items" element={<BorrowItems />} />
+          <Route path="system-feedback" element={<SystemFeedback />} />
+        </Route>
+
+        {/* ================= HOUSEKEEPER ROUTES ================= */}
+        <Route
+          path="/housekeeper/*"
+          element={
+            isAuthenticated && user?.role === "housekeeper" ? (
+              <NotificationProvider>
+                <HousekeeperLayout setAuth={setAuth} role={user.role} />
+              </NotificationProvider>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        >
+          <Route index element={<HousekeeperDashboard setAuth={setAuth} />} />
+          <Route path="profile" element={<HousekeeperProfile />} />
+          <Route path="tasks" element={<HousekeeperTasks />} />
+        </Route>
+
+        {/* ================= DEFAULT ROUTE ================= */}
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
     </>
   );
 }

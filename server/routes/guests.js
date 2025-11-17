@@ -4,23 +4,36 @@ const { authorization } = require("../middleware/authorization");
 
 router.get("/rooms", authorization, async (req, res) => {
   try {
-    const user = await pool.query("SELECT facility FROM users WHERE id = $1", [
-      req.user.id,
-    ]);
+    const { facility, role } = req.user;
 
-    if (user.rows.length === 0) return res.status(401).json("User not found");
+    if (!facility) return res.status(401).json("Facility not assigned");
 
-    const facility = user.rows[0].facility;
+    let query;
+    let params;
 
-    const rooms = await pool.query(
-      `SELECT r.*, 
-              CONCAT(u.first_name, ' ', u.last_name) AS guest_name
-       FROM rooms r
-       LEFT JOIN users u ON r.occupied_by = u.id
-       WHERE r.facility = $1
-       ORDER BY r.room_number`,
-      [facility]
-    );
+    if (role === 'superadmin') {
+      query = `
+        SELECT r.*, 
+               CONCAT(u.first_name, ' ', u.last_name) AS guest_name
+        FROM rooms r
+        LEFT JOIN users u ON r.occupied_by = u.id
+        WHERE r.facility IN ('RCC', 'Hotel Rafael')
+        ORDER BY r.facility, r.room_number
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT r.*, 
+               CONCAT(u.first_name, ' ', u.last_name) AS guest_name
+        FROM rooms r
+        LEFT JOIN users u ON r.occupied_by = u.id
+        WHERE r.facility = $1
+        ORDER BY r.room_number
+      `;
+      params = [facility];
+    }
+
+    const rooms = await pool.query(query, params);
 
     res.json(rooms.rows);
   } catch (err) {

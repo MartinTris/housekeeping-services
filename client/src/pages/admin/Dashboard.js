@@ -5,15 +5,28 @@ import AdminFeedbackWidget from "../../components/AdminFeedbackWidget.js";
 import HousekeepingTrends from "../../components/HousekeepingTrends.js";
 import HousekeeperRatingsList from "../../components/HousekeeperRatingsList.js";
 import AdminServiceRequest from "../../components/AdminServiceRequest.js";
+import DashboardToggle from "../../components/DashboardToggle.js";
+import Announcements from "../../components/Announcements.js";
 
 const AdminDashboard = () => {
+  const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [facility, setFacility] = useState("");
+  const [role, setRole] = useState("");
+  const [actualFacility, setActualFacility] = useState("");
+  const [selectedFacilitiesForAnnouncement, setSelectedFacilitiesForAnnouncement] = useState([]);
+  const [targetAdmins, setTargetAdmins] = useState(false);
 
   const [housekeeperCount, setHousekeeperCount] = useState(0);
   const [totalGuests, setTotalGuests] = useState(0);
   const [totalRequests, setTotalRequests] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
+
+  // Superadmin facility breakdown stats
+  const [stats, setStats] = useState({
+    rcc: { housekeepers: 0, guests: 0, requests: 0 },
+    hotelRafael: { housekeepers: 0, guests: 0, requests: 0 },
+  });
 
   const [showModal, setShowModal] = useState(false);
   const [message, setMessage] = useState("");
@@ -21,13 +34,16 @@ const AdminDashboard = () => {
   const [targetGuests, setTargetGuests] = useState(false);
   const [targetHousekeepers, setTargetHousekeepers] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
-
   const [myAnnouncements, setMyAnnouncements] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editMessage, setEditMessage] = useState("");
 
   const [adminFeedback, setAdminFeedback] = useState([]);
+
+  // Get all data needed
+  const [housekeepers, setHousekeepers] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
   async function getName() {
     try {
@@ -38,6 +54,8 @@ const AdminDashboard = () => {
       const parseRes = await response.json();
       setName(parseRes.name);
       setFacility(parseRes.facility);
+      setActualFacility(parseRes.actualFacility || parseRes.facility);
+      setRole(parseRes.role);
     } catch (err) {
       console.error(err.message);
     }
@@ -45,14 +63,27 @@ const AdminDashboard = () => {
 
   async function getHousekeeperCount() {
     try {
-      const response = await fetch("http://localhost:5000/housekeepers", {
-        method: "GET",
+      const res = await fetch("http://localhost:5000/housekeepers", {
         headers: { token: localStorage.token },
       });
-      const parseRes = await response.json();
-      setHousekeeperCount(parseRes.length);
+      const data = await res.json();
+
+      setHousekeepers(data);
+      setHousekeeperCount(data.length);
+
+      if (role === "superadmin") {
+        const rccCount = data.filter((h) => h.facility === "RCC").length;
+        const hrCount = data.filter(
+          (h) => h.facility === "Hotel Rafael"
+        ).length;
+        setStats((prev) => ({
+          ...prev,
+          rcc: { ...prev.rcc, housekeepers: rccCount },
+          hotelRafael: { ...prev.hotelRafael, housekeepers: hrCount },
+        }));
+      }
     } catch (err) {
-      console.error(err.message);
+      console.error("Error fetching housekeepers:", err.message);
     }
   }
 
@@ -62,10 +93,30 @@ const AdminDashboard = () => {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
-      const occupied = data.filter((r) => r.occupied_by !== null);
-      setTotalGuests(occupied.length);
+
+      setRooms(data);
+
+      const activeBookings = data.filter(
+        (room) => room.booking && room.booking.is_active
+      );
+
+      setTotalGuests(activeBookings.length);
+
+      if (role === "superadmin") {
+        const rccGuests = activeBookings.filter(
+          (r) => r.facility === "RCC"
+        ).length;
+        const hrGuests = activeBookings.filter(
+          (r) => r.facility === "Hotel Rafael"
+        ).length;
+        setStats((prev) => ({
+          ...prev,
+          rcc: { ...prev.rcc, guests: rccGuests },
+          hotelRafael: { ...prev.hotelRafael, guests: hrGuests },
+        }));
+      }
     } catch (err) {
-      console.error("Error fetching total guests:", err.message);
+      console.error("Error fetching guest count:", err.message);
     }
   }
 
@@ -80,6 +131,17 @@ const AdminDashboard = () => {
       const data = await res.json();
       if (res.ok) {
         setTotalRequests(data.count);
+
+        if (role === "superadmin" && data.breakdown) {
+          setStats((prev) => ({
+            ...prev,
+            rcc: { ...prev.rcc, requests: data.breakdown.rcc || 0 },
+            hotelRafael: {
+              ...prev.hotelRafael,
+              requests: data.breakdown.hotelRafael || 0,
+            },
+          }));
+        }
       } else {
         console.error("Error fetching total requests:", data.error);
       }
@@ -118,7 +180,7 @@ const AdminDashboard = () => {
       fetchTotalRequests();
       getAverageRating();
     }
-  }, [facility]);
+  }, [facility, role]);
 
   useEffect(() => {
     fetchMyAnnouncements();
@@ -148,12 +210,25 @@ const AdminDashboard = () => {
     setSelectAll(newValue);
     setTargetGuests(newValue);
     setTargetHousekeepers(newValue);
+    if (role === "superadmin") {
+      setTargetAdmins(newValue);
+    }
+  };
+
+  const handleFacilityChange = (facility) => {
+    setSelectedFacilitiesForAnnouncement((prev) => {
+      if (prev.includes(facility)) {
+        return prev.filter((f) => f !== facility);
+      } else {
+        return [...prev, facility];
+      }
+    });
   };
 
   const handlePostAnnouncement = async (e) => {
     e.preventDefault();
 
-    if (!targetGuests && !targetHousekeepers) {
+    if (!targetGuests && !targetHousekeepers && !targetAdmins) {
       alert("Please select at least one recipient group.");
       return;
     }
@@ -161,6 +236,18 @@ const AdminDashboard = () => {
     if (!message.trim()) {
       alert("Please enter an announcement message.");
       return;
+    }
+
+    let announcementFacilities;
+
+    if (role === "superadmin") {
+      if (selectedFacilitiesForAnnouncement.length === 0) {
+        alert("Please select at least one facility for this announcement.");
+        return;
+      }
+      announcementFacilities = selectedFacilitiesForAnnouncement;
+    } else {
+      announcementFacilities = [actualFacility];
     }
 
     try {
@@ -175,7 +262,8 @@ const AdminDashboard = () => {
           message,
           target_guests: targetGuests,
           target_housekeepers: targetHousekeepers,
-          facility,
+          target_admins: targetAdmins,
+          facilities: announcementFacilities,
         }),
       });
 
@@ -187,8 +275,11 @@ const AdminDashboard = () => {
         setMessage("");
         setTargetGuests(false);
         setTargetHousekeepers(false);
+        setTargetAdmins(false);
         setSelectAll(false);
+        setSelectedFacilitiesForAnnouncement([]);
         setShowModal(false);
+        fetchMyAnnouncements();
       } else {
         alert(data.error || "Failed to post announcement.");
       }
@@ -209,10 +300,6 @@ const AdminDashboard = () => {
       console.error("Error fetching admin announcements:", err.message);
     }
   }
-
-  useEffect(() => {
-    fetchMyAnnouncements();
-  }, []);
 
   async function handleDelete(id) {
     if (!window.confirm("Are you sure you want to delete this announcement?"))
@@ -262,13 +349,29 @@ const AdminDashboard = () => {
     }
   }
 
+  // If viewing announcements, show the announcements view
+  if (view === "announcements") {
+    return (
+      <div className="flex w-full min-h-screen font-sans">
+        <main className="flex-1 p-8">
+          <DashboardToggle view={view} setView={setView} />
+          <Announcements />
+        </main>
+      </div>
+    );
+  }
+
+  // Otherwise show the dashboard view
   return (
     <div className="flex w-full min-h-screen font-sans">
       <main className="flex-1 p-8">
+        <DashboardToggle view={view} setView={setView} />
         <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
           Welcome, {name}
         </h2>
-        <p className="text-gray-500 mb-6">{facility}</p>
+        <p className="font-poppins text-base text-gray-600 mb-6">
+          {role === "superadmin" ? "All Facilities" : facility}
+        </p>
 
         <button
           onClick={() => setShowModal(true)}
@@ -276,7 +379,8 @@ const AdminDashboard = () => {
         >
           Post an Announcement
         </button>
-        <AdminServiceRequest />
+        {/* Only show service request for regular admin, not superadmin */}
+        {role === "admin" && <AdminServiceRequest />}
 
         <div className="grid grid-cols-1 lg:grid-cols-[3fr,1fr] gap-8">
           <div>
@@ -305,190 +409,324 @@ const AdminDashboard = () => {
               />
             </div>
 
+            {/* Superadmin Facility Breakdown */}
+            {role === "superadmin" && (
+              <div className="bg-white p-6 rounded-lg shadow mt-8">
+                <h3 className="text-xl font-bold mb-4 text-green-900">
+                  Facility Breakdown
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                    <h4 className="font-semibold text-green-700 text-lg mb-3">
+                      RCC
+                    </h4>
+                    <p className="text-gray-700">
+                      Housekeepers:{" "}
+                      <span className="font-semibold">
+                        {stats.rcc.housekeepers}
+                      </span>
+                    </p>
+                    <p className="text-gray-700">
+                      Active Guests:{" "}
+                      <span className="font-semibold">{stats.rcc.guests}</span>
+                    </p>
+                    <p className="text-gray-700">
+                      Requests:{" "}
+                      <span className="font-semibold">
+                        {stats.rcc.requests}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                    <h4 className="font-semibold text-blue-700 text-lg mb-3">
+                      Hotel Rafael
+                    </h4>
+                    <p className="text-gray-700">
+                      Housekeepers:{" "}
+                      <span className="font-semibold">
+                        {stats.hotelRafael.housekeepers}
+                      </span>
+                    </p>
+                    <p className="text-gray-700">
+                      Active Guests:{" "}
+                      <span className="font-semibold">
+                        {stats.hotelRafael.guests}
+                      </span>
+                    </p>
+                    <p className="text-gray-700">
+                      Requests:{" "}
+                      <span className="font-semibold">
+                        {stats.hotelRafael.requests}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <aside className="mt-8">
               <BorrowedItemsList />
             </aside>
             <AdminFeedbackWidget feedback={adminFeedback} />
           </div>
-          <HousekeeperRatingsList />
-          {/* Announcements Sidebar */}
-          <aside className="sticky top-20 self-start w-full lg:w-90 bg-white/90 backdrop-blur-md border border-green-100 rounded-3xl p-6 shadow-lg h-[40vh] overflow-y-auto transition-all duration-300">
-            <h3 className="text-xl font-semibold text-green-900 mb-5 flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5 text-green-700"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 8v4l3 3m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Your Announcements
-            </h3>
 
-            {myAnnouncements.length === 0 ? (
-              <p className="text-gray-400 text-sm italic">
-                No announcements yet.
-              </p>
-            ) : (
-              myAnnouncements.map((a) => (
-                <div
-                  key={a.id}
-                  className="border border-green-100 rounded-2xl p-4 mb-4 bg-green-50/40 hover:bg-green-50/70 shadow-sm hover:shadow-md transition-all duration-300"
+          {/* Right Sidebar */}
+          <div className="space-y-6">
+            <HousekeeperRatingsList />
+
+            {/* Announcements Sidebar */}
+            <aside className="sticky top-20 self-start w-full bg-white/90 backdrop-blur-md border border-green-100 rounded-3xl p-6 shadow-lg max-h-[40vh] overflow-y-auto transition-all duration-300">
+              <h3 className="text-xl font-semibold text-green-900 mb-5 flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5 text-green-700"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
                 >
-                  {editingId === a.id ? (
-                    <form onSubmit={handleEditSave} className="space-y-3">
-                      <input
-                        type="text"
-                        className="w-full border border-green-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/70"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                      />
-                      <textarea
-                        rows="3"
-                        className="w-full border border-green-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/70"
-                        value={editMessage}
-                        onChange={(e) => setEditMessage(e.target.value)}
-                      ></textarea>
-                      <div className="flex justify-end gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(null)}
-                          className="text-gray-500 text-sm hover:text-gray-700 transition"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="text-green-700 font-semibold text-sm hover:text-green-900 transition"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <h4 className="font-semibold text-green-900 text-base">
-                        {a.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-                        {a.message}
-                      </p>
-                      <div className="flex justify-end gap-4 mt-3">
-                        <button
-                          onClick={() => {
-                            setEditingId(a.id);
-                            setEditTitle(a.title);
-                            setEditMessage(a.message);
-                          }}
-                          className="text-blue-600 text-sm font-medium hover:text-blue-800 transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(a.id)}
-                          className="text-red-500 text-sm font-medium hover:text-red-700 transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))
-            )}
-          </aside>
-        </div>
-      </main>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-[700px] max-w-[90%]">
-            <h3 className="text-2xl font-semibold text-gray-900 mb-6">
-              Post New Announcement
-            </h3>
-
-            <form onSubmit={handlePostAnnouncement} className="space-y-6">
-              <div className="flex flex-wrap gap-4 items-center">
-                <button
-                  type="button"
-                  onClick={handleSelectAll}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
-                >
-                  {selectAll ? "Deselect All" : "Select All"}
-                </button>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={targetGuests}
-                    onChange={(e) => setTargetGuests(e.target.checked)}
-                    className="accent-green-500"
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 8v4l3 3m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
-                  <span className="font-medium text-gray-700">For Guests</span>
-                </label>
+                </svg>
+                Your Announcements
+              </h3>
 
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={targetHousekeepers}
-                    onChange={(e) => setTargetHousekeepers(e.target.checked)}
-                    className="accent-green-500"
-                  />
-                  <span className="font-medium text-gray-700">
-                    For Housekeepers
-                  </span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter announcement title..."
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
-                  required
-                />
-              </div>
-
-              <div>
-                <textarea
-                  rows="5"
-                  placeholder="Write your announcement here..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
-                ></textarea>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-5 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
-                >
-                  Post
-                </button>
-              </div>
-            </form>
+              {myAnnouncements.length === 0 ? (
+                <p className="text-gray-400 text-sm italic">
+                  No announcements yet.
+                </p>
+              ) : (
+                myAnnouncements.map((a) => (
+                  <div
+                    key={a.id}
+                    className="border border-green-100 rounded-2xl p-4 mb-4 bg-green-50/40 hover:bg-green-50/70 shadow-sm hover:shadow-md transition-all duration-300"
+                  >
+                    {editingId === a.id ? (
+                      <form onSubmit={handleEditSave} className="space-y-3">
+                        <input
+                          type="text"
+                          className="w-full border border-green-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/70"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                        />
+                        <textarea
+                          rows="3"
+                          className="w-full border border-green-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/70"
+                          value={editMessage}
+                          onChange={(e) => setEditMessage(e.target.value)}
+                        ></textarea>
+                        <div className="flex justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="text-gray-500 text-sm hover:text-gray-700 transition"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            className="text-green-700 font-semibold text-sm hover:text-green-900 transition"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <h4 className="font-semibold text-green-900 text-base">
+                          {a.title}
+                        </h4>
+                        <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                          {a.message}
+                        </p>
+                        {role === "superadmin" && a.facility && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Facility:{" "}
+                            <span
+                              className={`font-semibold ${
+                                a.facility === "RCC"
+                                  ? "text-green-600"
+                                  : "text-blue-600"
+                              }`}
+                            >
+                              {a.facility}
+                            </span>
+                          </p>
+                        )}
+                        <div className="flex justify-end gap-4 mt-3">
+                          <button
+                            onClick={() => {
+                              setEditingId(a.id);
+                              setEditTitle(a.title);
+                              setEditMessage(a.message);
+                            }}
+                            className="text-blue-600 text-sm font-medium hover:text-blue-800 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(a.id)}
+                            className="text-red-500 text-sm font-medium hover:text-red-700 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </aside>
           </div>
         </div>
-      )}
+
+        {/* Post Announcement Modal */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl w-[700px] max-w-[90%]">
+              <h3 className="text-2xl font-semibold text-gray-900 mb-6">
+                Post New Announcement
+              </h3>
+
+              <form onSubmit={handlePostAnnouncement} className="space-y-6">
+                {/* FACILITY SELECTOR FOR SUPERADMIN */}
+                {role === "superadmin" && (
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">
+                      Select Facilities
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedFacilitiesForAnnouncement.includes(
+                            "RCC"
+                          )}
+                          onChange={() => handleFacilityChange("RCC")}
+                          className="accent-green-500"
+                        />
+                        <span className="font-medium text-gray-700">RCC</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedFacilitiesForAnnouncement.includes(
+                            "Hotel Rafael"
+                          )}
+                          onChange={() => handleFacilityChange("Hotel Rafael")}
+                          className="accent-green-500"
+                        />
+                        <span className="font-medium text-gray-700">
+                          Hotel Rafael
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-4 items-center">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
+                  >
+                    {selectAll ? "Deselect All" : "Select All"}
+                  </button>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={targetGuests}
+                      onChange={(e) => setTargetGuests(e.target.checked)}
+                      className="accent-green-500"
+                    />
+                    <span className="font-medium text-gray-700">
+                      For Guests
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={targetHousekeepers}
+                      onChange={(e) => setTargetHousekeepers(e.target.checked)}
+                      className="accent-green-500"
+                    />
+                    <span className="font-medium text-gray-700">
+                      For Housekeepers
+                    </span>
+                  </label>
+
+                  {/* ONLY SHOW "For Admins" IF SUPERADMIN */}
+                  {role === "superadmin" && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={targetAdmins}
+                        onChange={(e) => setTargetAdmins(e.target.checked)}
+                        className="accent-green-500"
+                      />
+                      <span className="font-medium text-gray-700">
+                        For Admins
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter announcement title..."
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    rows="5"
+                    placeholder="Write your announcement here..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
+                    required
+                  ></textarea>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      setSelectedFacilitiesForAnnouncement([]);
+                    }}
+                    className="px-5 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
+                  >
+                    Post
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 };

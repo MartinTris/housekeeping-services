@@ -46,7 +46,6 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// FIXED: Added JOIN with service_types
 router.get("/recent", authorization, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -81,11 +80,104 @@ router.get("/recent", authorization, async (req, res) => {
   }
 });
 
-// FIXED: Added JOINs with service_types for both service_history and housekeeping_requests
+// Service feedback endpoint
 router.get("/admin", authorization, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    const { role, facility } = req.user;
+
+    if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Access denied" });
+    }
+
+    let sql;
+    let params;
+
+    if (role === 'superadmin') {
+      // Superadmin sees ALL service feedback from ALL facilities
+      sql = `
+        SELECT
+          f.id,
+          f.rating,
+          f.comment,
+          f.created_at,
+          f.type,
+          COALESCE(
+            NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
+            u.email,
+            'Guest'
+          ) AS guest_name,
+          r.room_number,
+          COALESCE(r.facility, u.facility, 'Unknown') AS facility,
+          COALESCE(st_sh.name, st_hr.name, 'N/A') AS service_type,
+          COALESCE(
+            hk_sh.first_name || ' ' || hk_sh.last_name,
+            hk_hr.first_name || ' ' || hk_hr.last_name,
+            'N/A'
+          ) AS housekeeper_name
+        FROM feedback f
+        LEFT JOIN users u ON u.id = f.user_id
+        LEFT JOIN service_history sh ON sh.id = f.request_id AND f.type = 'service'
+        LEFT JOIN service_types st_sh ON sh.service_type_id = st_sh.id
+        LEFT JOIN users hk_sh ON sh.housekeeper_id = hk_sh.id
+        LEFT JOIN housekeeping_requests hr ON hr.id = f.request_id AND sh.id IS NULL AND f.type = 'service'
+        LEFT JOIN service_types st_hr ON hr.service_type_id = st_hr.id
+        LEFT JOIN users hk_hr ON hr.assigned_to = hk_hr.id
+        LEFT JOIN rooms r ON r.id = COALESCE(sh.room_id, hr.room_id)
+        WHERE f.type = 'service'
+        ORDER BY COALESCE(r.facility, u.facility), f.created_at DESC
+      `;
+      params = [];
+    } else {
+      // Regular admin sees only their facility
+      sql = `
+        SELECT
+          f.id,
+          f.rating,
+          f.comment,
+          f.created_at,
+          COALESCE(
+            NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
+            u.email,
+            'Guest'
+          ) AS guest_name,
+          r.room_number,
+          COALESCE(st_sh.name, st_hr.name, 'N/A') AS service_type,
+          COALESCE(
+            hk_sh.first_name || ' ' || hk_sh.last_name,
+            hk_hr.first_name || ' ' || hk_hr.last_name,
+            'N/A'
+          ) AS housekeeper_name
+        FROM feedback f
+        LEFT JOIN users u ON u.id = f.user_id
+        LEFT JOIN service_history sh ON sh.id = f.request_id
+        LEFT JOIN service_types st_sh ON sh.service_type_id = st_sh.id
+        LEFT JOIN users hk_sh ON sh.housekeeper_id = hk_sh.id
+        LEFT JOIN housekeeping_requests hr ON hr.id = f.request_id AND sh.id IS NULL
+        LEFT JOIN service_types st_hr ON hr.service_type_id = st_hr.id
+        LEFT JOIN users hk_hr ON hr.assigned_to = hk_hr.id
+        LEFT JOIN rooms r ON r.id = COALESCE(sh.room_id, hr.room_id)
+        WHERE f.type = 'service'
+        AND LOWER(r.facility) = $1
+        ORDER BY f.created_at DESC
+      `;
+      params = [facility.toLowerCase()];
+    }
+
+    const result = await pool.query(sql, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching admin feedback:", err);
+    res.status(500).json({ error: "Server error fetching feedback" });
+  }
+});
+
+// System feedback endpoint (superadmin only)
+router.get("/admin/system", authorization, async (req, res) => {
+  try {
+    const { role } = req.user;
+
+    if (role !== "superadmin") {
+      return res.status(403).json({ error: "Superadmin access required" });
     }
 
     const sql = `
@@ -94,58 +186,26 @@ router.get("/admin", authorization, async (req, res) => {
         f.rating,
         f.comment,
         f.created_at,
-        -- Guest name
         COALESCE(
           NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
           u.email,
           'Guest'
         ) AS guest_name,
-        -- Housekeeper assigned (from service_history or housekeeping_requests)
-        COALESCE(
-          hk_sh.first_name || ' ' || hk_sh.last_name,
-          hk_hr.first_name || ' ' || hk_hr.last_name,
-          'N/A'
-        ) AS housekeeper_name,
-        COALESCE(r.room_number, 'N/A') AS room_number,
-        COALESCE(st_sh.name, st_hr.name, 'N/A') AS service_type
+        COALESCE(u.facility, 'Unknown') AS facility
       FROM feedback f
       LEFT JOIN users u ON u.id = f.user_id
-      -- Join service_history to get housekeeper
-      LEFT JOIN service_history sh ON sh.id = f.request_id
-      LEFT JOIN users hk_sh ON hk_sh.id = sh.housekeeper_id
-      LEFT JOIN service_types st_sh ON sh.service_type_id = st_sh.id
-      -- Join housekeeping_requests if service_history is null
-      LEFT JOIN housekeeping_requests hr ON hr.id = f.request_id AND sh.id IS NULL
-      LEFT JOIN users hk_hr ON hk_hr.id = hr.assigned_to
-      LEFT JOIN service_types st_hr ON hr.service_type_id = st_hr.id
-      LEFT JOIN rooms r ON r.id = COALESCE(sh.room_id, hr.room_id)
-      WHERE f.type = 'service'
-      AND LOWER(COALESCE(sh.facility, r.facility, u.facility, '')) = $1
+      WHERE f.type = 'system'
       ORDER BY f.created_at DESC
     `;
 
-    const result = await pool.query(sql, [req.user.facility.toLowerCase()]);
-
-    let rows = result.rows;
-    if (req.user.facility) {
-      const matched = rows.filter(
-        (row) =>
-          row.facility &&
-          row.facility.toString().toLowerCase() ===
-            req.user.facility.toString().toLowerCase()
-      );
-
-      if (matched.length > 0) rows = matched;
-    }
-
-    res.json(rows);
+    const result = await pool.query(sql);
+    res.json(result.rows);
   } catch (err) {
-    console.error("Error fetching admin feedback:", err);
-    res.status(500).json({ error: "Server error fetching feedback" });
+    console.error("Error fetching system feedback:", err);
+    res.status(500).json({ error: "Server error fetching system feedback" });
   }
 });
 
-// FIXED: Added JOINs with service_types
 router.get("/housekeeper", authorization, async (req, res) => {
   try {
     if (req.user.role !== "housekeeper") {
@@ -217,28 +277,57 @@ router.get("/housekeeper/average", authorization, async (req, res) => {
 // Get average rating per housekeeper
 router.get("/admin/housekeeper-ratings", authorization, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    const { role, facility } = req.user;
+
+    // Allow both admin and superadmin
+    if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const sql = `
-      SELECT 
-        hk.id AS housekeeper_id,
-        hk.first_name || ' ' || hk.last_name AS housekeeper_name,
-        COALESCE(ROUND(AVG(f.rating)::numeric, 2), 0) AS average_rating,
-        COUNT(f.id) AS total_feedbacks
-      FROM feedback f
-      LEFT JOIN service_history sh ON sh.id = f.request_id
-      LEFT JOIN housekeeping_requests hr ON hr.id = f.request_id AND sh.id IS NULL
-      LEFT JOIN users hk ON hk.id = COALESCE(sh.housekeeper_id, hr.assigned_to)
-      WHERE f.type = 'service'
-        AND hk.role = 'housekeeper'
-        AND LOWER(COALESCE(sh.facility, hk.facility, '')) = $1
-      GROUP BY hk.id, hk.first_name, hk.last_name
-      ORDER BY average_rating DESC, total_feedbacks DESC
-    `;
+    let sql;
+    let params;
 
-    const result = await pool.query(sql, [req.user.facility.toLowerCase()]);
+    if (role === 'superadmin') {
+      // Superadmin sees all housekeepers from both facilities
+      sql = `
+        SELECT 
+          hk.id AS housekeeper_id,
+          hk.first_name || ' ' || hk.last_name AS housekeeper_name,
+          COALESCE(hk.facility, 'Unknown') AS facility,
+          COALESCE(ROUND(AVG(f.rating)::numeric, 2), 0) AS average_rating,
+          COUNT(f.id) AS total_feedbacks
+        FROM users hk
+        LEFT JOIN service_history sh ON sh.housekeeper_id = hk.id
+        LEFT JOIN housekeeping_requests hr ON hr.assigned_to = hk.id
+        LEFT JOIN feedback f ON (f.request_id = sh.id OR f.request_id = hr.id) AND f.type = 'service'
+        WHERE hk.role = 'housekeeper'
+        GROUP BY hk.id, hk.first_name, hk.last_name, hk.facility
+        HAVING COUNT(f.id) > 0
+        ORDER BY hk.facility, average_rating DESC, total_feedbacks DESC
+      `;
+      params = [];
+    } else {
+      // Regular admin sees only their facility
+      sql = `
+        SELECT 
+          hk.id AS housekeeper_id,
+          hk.first_name || ' ' || hk.last_name AS housekeeper_name,
+          COALESCE(ROUND(AVG(f.rating)::numeric, 2), 0) AS average_rating,
+          COUNT(f.id) AS total_feedbacks
+        FROM feedback f
+        LEFT JOIN service_history sh ON sh.id = f.request_id
+        LEFT JOIN housekeeping_requests hr ON hr.id = f.request_id AND sh.id IS NULL
+        LEFT JOIN users hk ON hk.id = COALESCE(sh.housekeeper_id, hr.assigned_to)
+        WHERE f.type = 'service'
+          AND hk.role = 'housekeeper'
+          AND LOWER(COALESCE(sh.facility, hk.facility, '')) = $1
+        GROUP BY hk.id, hk.first_name, hk.last_name
+        ORDER BY average_rating DESC, total_feedbacks DESC
+      `;
+      params = [facility.toLowerCase()];
+    }
+
+    const result = await pool.query(sql, params);
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching housekeeper ratings:", err);

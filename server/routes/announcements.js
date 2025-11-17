@@ -4,6 +4,7 @@ const { authorization } = require("../middleware/authorization");
 
 const router = express.Router();
 
+// POST - Create announcement (can target multiple facilities)
 router.post("/", authorization, async (req, res) => {
   try {
     const {
@@ -11,59 +12,72 @@ router.post("/", authorization, async (req, res) => {
       message,
       target_guests,
       target_housekeepers,
-      facility,
+      target_admins, // NEW
+      facilities, // Array of facilities
     } = req.body;
 
-    const user_id = req.user.id;
+    const { id: user_id, role, facility: userFacility } = req.user;
     const toBool = (val) => val === true || val === "true";
 
-    const newAnnouncement = await pool.query(
-      `INSERT INTO announcements 
-       (title, message, target_guests, target_housekeepers, posted_by, facility) 
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [
-        title || "Announcement",
-        message,
-        toBool(target_guests),
-        toBool(target_housekeepers),
-        user_id,
-        facility,
-      ]
+    // Determine which facilities to post to
+    let targetFacilities;
+    if (role === 'superadmin' && facilities && Array.isArray(facilities) && facilities.length > 0) {
+      targetFacilities = facilities;
+    } else {
+      targetFacilities = [userFacility];
+    }
+
+    console.log("Creating announcement(s) for facilities:", targetFacilities);
+
+    // Create an announcement for each selected facility
+    const insertPromises = targetFacilities.map(facility =>
+      pool.query(
+        `INSERT INTO announcements 
+         (title, message, target_guests, target_housekeepers, target_admins, posted_by, facility) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          title || "Announcement",
+          message,
+          toBool(target_guests),
+          toBool(target_housekeepers),
+          toBool(target_admins),
+          user_id,
+          facility,
+        ]
+      )
     );
 
-    res.json(newAnnouncement.rows[0]);
+    const results = await Promise.all(insertPromises);
+    const createdAnnouncements = results.map(r => r.rows[0]);
+
+    res.json({
+      success: true,
+      count: createdAnnouncements.length,
+      announcements: createdAnnouncements
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Server error posting announcement" });
   }
 });
 
-// Get announcements based on user role and facility
+// GET - Get announcements based on user role and facility
 router.get("/", authorization, async (req, res) => {
   try {
-    const userRole = req.user.role;
-    const userFacility = req.user.facility;
+    const { role: userRole, facility: userFacility } = req.user;
+
+    console.log("Fetching announcements for:", { userRole, userFacility });
 
     if (!userFacility || userFacility.trim() === "") {
       return res.json([]);
     }
 
-    let query = `
-      SELECT a.*,
-             COALESCE(
-               NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
-               u.email,
-               'Unknown Admin'
-             ) AS admin_name
-      FROM announcements a
-      LEFT JOIN users u ON a.posted_by = u.id
-      WHERE a.facility = $1
-      ORDER BY a.created_at DESC
-    `;
-    let params = [userFacility];
+    let query;
+    let params;
 
-    if (userRole === "guest") {
+    if (userRole === 'superadmin') {
+      // Superadmin sees ALL announcements from both facilities (regardless of target)
       query = `
         SELECT a.*,
                COALESCE(
@@ -73,9 +87,41 @@ router.get("/", authorization, async (req, res) => {
                ) AS admin_name
         FROM announcements a
         LEFT JOIN users u ON a.posted_by = u.id
-        WHERE a.target_guests = true AND a.facility = $1
+        WHERE LOWER(a.facility) IN (LOWER('RCC'), LOWER('Hotel Rafael'))
+        ORDER BY a.facility, a.created_at DESC
+      `;
+      params = [];
+    } else if (userRole === "admin") {
+      // Regular admin sees announcements for their facility where target_admins = true
+      query = `
+        SELECT a.*,
+               COALESCE(
+                 NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
+                 u.email,
+                 'Unknown Admin'
+               ) AS admin_name
+        FROM announcements a
+        LEFT JOIN users u ON a.posted_by = u.id
+        WHERE LOWER(a.facility) = LOWER($1)
+          AND a.target_admins = TRUE
         ORDER BY a.created_at DESC
       `;
+      params = [userFacility];
+    } else if (userRole === "guest") {
+      query = `
+        SELECT a.*,
+               COALESCE(
+                 NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
+                 u.email,
+                 'Unknown Admin'
+               ) AS admin_name
+        FROM announcements a
+        LEFT JOIN users u ON a.posted_by = u.id
+        WHERE LOWER(a.facility) = LOWER($1)
+          AND a.target_guests = TRUE
+        ORDER BY a.created_at DESC
+      `;
+      params = [userFacility];
     } else if (userRole === "housekeeper") {
       query = `
         SELECT a.*,
@@ -86,12 +132,19 @@ router.get("/", authorization, async (req, res) => {
                ) AS admin_name
         FROM announcements a
         LEFT JOIN users u ON a.posted_by = u.id
-        WHERE a.target_housekeepers = true AND a.facility = $1
+        WHERE LOWER(a.facility) = LOWER($1)
+          AND a.target_housekeepers = TRUE
         ORDER BY a.created_at DESC
       `;
+      params = [userFacility];
+    } else {
+      return res.json([]);
     }
 
     const results = await pool.query(query, params);
+    
+    console.log(`Found ${results.rows.length} announcements for ${userRole} at ${userFacility}`);
+    
     res.json(results.rows);
   } catch (err) {
     console.error("Error fetching announcements:", err.message);
@@ -99,6 +152,7 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
+// PUT - Update announcement
 router.put("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -124,17 +178,25 @@ router.put("/:id", authorization, async (req, res) => {
   }
 });
 
+// DELETE - Delete announcement
 router.delete("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const { role, id: userId } = req.user;
 
-    const deleted = await pool.query(
-      `DELETE FROM announcements
-       WHERE id = $1 AND posted_by = $2
-       RETURNING *`,
-      [id, userId]
-    );
+    // Superadmin can delete any announcement, others can only delete their own
+    let deleteQuery;
+    let deleteParams;
+
+    if (role === 'superadmin') {
+      deleteQuery = `DELETE FROM announcements WHERE id = $1 RETURNING *`;
+      deleteParams = [id];
+    } else {
+      deleteQuery = `DELETE FROM announcements WHERE id = $1 AND posted_by = $2 RETURNING *`;
+      deleteParams = [id, userId];
+    }
+
+    const deleted = await pool.query(deleteQuery, deleteParams);
 
     if (deleted.rows.length === 0) {
       return res.status(403).json({ error: "Unauthorized or announcement not found" });
@@ -147,28 +209,58 @@ router.delete("/:id", authorization, async (req, res) => {
   }
 });
 
-// Admin announcements
+// GET /admin - Admin's own announcements
 router.get("/admin", authorization, async (req, res) => {
   try {
-    const adminId = req.user.id;
+    const { role: userRole, facility: userFacility, id: userId } = req.user;
 
-    const results = await pool.query(
-      `
-      SELECT a.*,
-             COALESCE(
-               NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
-               u.email,
-               'Unknown Admin'
-             ) AS admin_name
-      FROM announcements a
-      LEFT JOIN users u ON a.posted_by = u.id
-      WHERE a.posted_by = $1
-      ORDER BY a.created_at DESC
-      `,
-      [adminId]
-    );
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ error: "Access denied. Admins only." });
+    }
 
-    res.json(results.rows);
+    if (!userFacility || userFacility.trim() === "") {
+      return res.json([]);
+    }
+
+    let query;
+    let params;
+
+    if (userRole === 'superadmin') {
+      // Superadmin sees all announcements they posted across all facilities
+      query = `
+        SELECT a.*,
+               COALESCE(
+                 NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
+                 u.email,
+                 'Unknown Admin'
+               ) AS admin_name
+        FROM announcements a
+        LEFT JOIN users u ON a.posted_by = u.id
+        WHERE a.posted_by = $1
+        ORDER BY a.facility, a.created_at DESC
+      `;
+      params = [userId];
+    } else {
+      // Regular admin sees only their own facility's announcements that they posted
+      query = `
+        SELECT a.*,
+               COALESCE(
+                 NULLIF(CONCAT_WS(' ', u.first_name, u.last_name), ''),
+                 u.email,
+                 'Unknown Admin'
+               ) AS admin_name
+        FROM announcements a
+        LEFT JOIN users u ON a.posted_by = u.id
+        WHERE LOWER(a.facility) = LOWER($1) AND a.posted_by = $2
+        ORDER BY a.created_at DESC
+      `;
+      params = [userFacility, userId];
+    }
+
+    const result = await pool.query(query, params);
+
+    res.json(result.rows);
+    
   } catch (err) {
     console.error("Error fetching admin announcements:", err.message);
     res.status(500).json({ error: "Error fetching admin announcements" });

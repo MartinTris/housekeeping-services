@@ -300,3 +300,7 @@ CHECK (
   (role IN ('admin', 'housekeeper', 'superadmin') AND facility IN ('RCC', 'Hotel Rafael')) OR
   (role = 'guest' AND (facility IS NULL OR facility IN ('RCC', 'Hotel Rafael')))
 );
+
+--add target_admins column to announcements table
+ALTER TABLE announcements 
+ADD COLUMN IF NOT EXISTS target_admins BOOLEAN DEFAULT FALSE;

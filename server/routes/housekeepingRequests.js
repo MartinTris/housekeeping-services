@@ -12,7 +12,7 @@ router.post("/", authorization, async (req, res) => {
 
     const todayDate = new Date().toISOString().split("T")[0];
 
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
       const requestCountRes = await pool.query(
         `
     SELECT COUNT(*) AS count FROM (
@@ -80,11 +80,11 @@ router.post("/", authorization, async (req, res) => {
     const facilityKey = facility.trim().toLowerCase();
 
     const typeRes = await pool.query(
-      "SELECT id, duration FROM service_types WHERE name = $1",
-      [service_type]
+      "SELECT id, duration FROM service_types WHERE name = $1 AND LOWER(facility) = LOWER($2)",
+      [service_type, facility]
     );
     if (typeRes.rows.length === 0) {
-      return res.status(400).json({ error: "Invalid service type." });
+      return res.status(400).json({ error: "Invalid service type for your facility." });
     }
     const serviceTypeId = typeRes.rows[0].id;
     const durationMinutes = typeRes.rows[0].duration;
@@ -116,7 +116,7 @@ router.post("/", authorization, async (req, res) => {
 
     let roomId, room_number;
 
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userRole === 'superadmin') {
       const adminRoomRes = await pool.query(
         `SELECT id, room_number FROM rooms 
          WHERE LOWER(room_number) = 'admin office' 
@@ -261,10 +261,10 @@ router.post("/", authorization, async (req, res) => {
         [userId, roomId, preferred_date, normalizedTime, serviceTypeId]
       );
 
-      // Only notify admin if requester is not admin
-      if (userRole !== 'admin') {
+      // Only notify admin if requester is not admin/superadmin
+      if (userRole !== 'admin' && userRole !== 'superadmin') {
         const adminRes = await pool.query(
-          `SELECT id FROM users WHERE role = 'admin' AND LOWER(facility) = LOWER($1) LIMIT 1`,
+          `SELECT id FROM users WHERE role IN ('admin', 'superadmin') AND LOWER(facility) = LOWER($1) LIMIT 1`,
           [facilityKey]
         );
 
@@ -334,10 +334,10 @@ router.post("/", authorization, async (req, res) => {
       ]
     );
 
-    // Only notify admin if requester is not admin
-    if (userRole !== 'admin') {
+    // Only notify admin if requester is not admin/superadmin
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
       const adminRes = await pool.query(
-        `SELECT id FROM users WHERE role = 'admin' AND LOWER(facility) = LOWER($1) LIMIT 1`,
+        `SELECT id FROM users WHERE role IN ('admin', 'superadmin') AND LOWER(facility) = LOWER($1) LIMIT 1`,
         [facilityKey]
       );
 
@@ -406,35 +406,56 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
+// GET all requests - SUPERADMIN SUPPORT
 router.get("/", authorization, async (req, res) => {
   try {
-    const adminId = req.user.id;
+    const { id: adminId, role, facility } = req.user;
 
-    const admin = await pool.query(
-      "SELECT facility FROM users WHERE id = $1::uuid",
-      [adminId]
-    );
-
-    if (admin.rows.length === 0 || !admin.rows[0].facility) {
-      return res.status(403).json({ error: "Admin facility not found." });
+    if (role !== 'admin' && role !== 'superadmin') {
+      return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
-    const facility = admin.rows[0].facility;
+    let query;
+    let params;
 
-    const requests = await pool.query(
-      `
-      SELECT hr.*, 
-             (u.first_name || ' ' || u.last_name) AS guest_name, 
-             r.room_number
-      FROM housekeeping_requests hr
-      JOIN users u ON hr.user_id = u.id
-      JOIN rooms r ON hr.room_id = r.id
-      WHERE r.facility = $1
-      AND hr.archived = FALSE
-      ORDER BY hr.created_at DESC
-      `,
-      [facility]
-    );
+    if (role === 'superadmin') {
+      query = `
+        SELECT hr.*, 
+               (u.first_name || ' ' || u.last_name) AS guest_name, 
+               r.room_number,
+               r.facility,
+               st.name AS service_type_name,
+               (hk.first_name || ' ' || hk.last_name) AS housekeeper_name
+        FROM housekeeping_requests hr
+        JOIN users u ON hr.user_id = u.id
+        JOIN rooms r ON hr.room_id = r.id
+        LEFT JOIN service_types st ON hr.service_type_id = st.id
+        LEFT JOIN users hk ON hr.assigned_to = hk.id
+        WHERE r.facility IN ('RCC', 'Hotel Rafael')
+        AND hr.archived = FALSE
+        ORDER BY r.facility, hr.created_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT hr.*, 
+               (u.first_name || ' ' || u.last_name) AS guest_name, 
+               r.room_number,
+               st.name AS service_type_name,
+               (hk.first_name || ' ' || hk.last_name) AS housekeeper_name
+        FROM housekeeping_requests hr
+        JOIN users u ON hr.user_id = u.id
+        JOIN rooms r ON hr.room_id = r.id
+        LEFT JOIN service_types st ON hr.service_type_id = st.id
+        LEFT JOIN users hk ON hr.assigned_to = hk.id
+        WHERE r.facility = $1
+        AND hr.archived = FALSE
+        ORDER BY hr.created_at DESC
+      `;
+      params = [facility];
+    }
+
+    const requests = await pool.query(query, params);
 
     res.json(requests.rows);
   } catch (err) {
@@ -443,37 +464,68 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-//assign housekeeper
+// Assign housekeeper - SUPERADMIN SUPPORT
 router.put("/:id/assign", authorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { housekeeperId } = req.body;
-    const adminId = req.user.id;
+    const { id: adminId, role, facility } = req.user;
 
-    const admin = await pool.query(
-      "SELECT facility FROM users WHERE id = $1::uuid",
-      [adminId]
-    );
-
-    if (admin.rows.length === 0 || !admin.rows[0].facility) {
-      return res.status(403).json({ error: "Admin facility not found." });
+    if (role !== 'admin' && role !== 'superadmin') {
+      return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
-    const facility = admin.rows[0].facility;
-
-    const hkCheck = await pool.query(
-      `SELECT (first_name || ' ' || last_name) AS name, is_active 
-      FROM users 
-       WHERE id = $1::uuid 
-         AND role = 'housekeeper' 
-         AND facility = $2`,
-      [housekeeperId, facility]
+    // Get the request to find its facility
+    const requestCheck = await pool.query(
+      `SELECT r.facility 
+       FROM housekeeping_requests hr
+       JOIN rooms r ON hr.room_id = r.id
+       WHERE hr.id = $1`,
+      [id]
     );
+
+    if (requestCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Request not found." });
+    }
+
+    const requestFacility = requestCheck.rows[0].facility;
+
+    // For superadmin, check housekeeper is in the same facility as the request
+    // For regular admin, check both facility and that it matches their facility
+    let hkCheckQuery;
+    let hkCheckParams;
+
+    if (role === 'superadmin') {
+      hkCheckQuery = `
+        SELECT (first_name || ' ' || last_name) AS name, is_active, facility
+        FROM users 
+        WHERE id = $1::uuid 
+          AND role = 'housekeeper' 
+          AND LOWER(facility) = LOWER($2)
+      `;
+      hkCheckParams = [housekeeperId, requestFacility];
+    } else {
+      // Regular admin must assign within their own facility
+      if (requestFacility.toLowerCase() !== facility.toLowerCase()) {
+        return res.status(403).json({ error: "Cannot assign requests from other facilities." });
+      }
+      
+      hkCheckQuery = `
+        SELECT (first_name || ' ' || last_name) AS name, is_active 
+        FROM users 
+        WHERE id = $1::uuid 
+          AND role = 'housekeeper' 
+          AND LOWER(facility) = LOWER($2)
+      `;
+      hkCheckParams = [housekeeperId, facility];
+    }
+
+    const hkCheck = await pool.query(hkCheckQuery, hkCheckParams);
 
     if (hkCheck.rows.length === 0) {
       return res
         .status(400)
-        .json({ error: "Housekeeper not found in your facility." });
+        .json({ error: "Housekeeper not found in the request's facility." });
     }
 
     if (!hkCheck.rows[0].is_active) {
@@ -495,7 +547,7 @@ router.put("/:id/assign", authorization, async (req, res) => {
 
     const reqData = reqRes.rows[0];
 
-    // Updated to use service_type_id instead of service_type
+    // Insert into service_history
     await pool.query(
       `
       INSERT INTO service_history (
@@ -509,8 +561,8 @@ router.put("/:id/assign", authorization, async (req, res) => {
         reqData.user_id,
         housekeeperId,
         reqData.room_id,
-        facility,
-        reqData.service_type_id, // Changed from reqData.service_type
+        requestFacility,
+        reqData.service_type_id,
         reqData.preferred_date,
         reqData.preferred_time,
       ]
@@ -550,7 +602,7 @@ router.put("/:id/assign", authorization, async (req, res) => {
   }
 });
 
-//check housekeeper availability
+// Check housekeeper availability
 router.get("/availability", authorization, async (req, res) => {
   try {
     const { serviceType, serviceTypeId } = req.query;
@@ -566,7 +618,7 @@ router.get("/availability", authorization, async (req, res) => {
     // Try to find by ID first (preferred method)
     if (serviceTypeId) {
       const serviceTypeRes = await pool.query(
-        "SELECT id, duration, name FROM service_types WHERE id = $1 AND facility = $2",
+        "SELECT id, duration, name FROM service_types WHERE id = $1 AND LOWER(facility) = LOWER($2)",
         [serviceTypeId, facility]
       );
 
@@ -597,7 +649,7 @@ router.get("/availability", authorization, async (req, res) => {
       console.error('Service type not found:', { serviceType, serviceTypeId });
       
       const availableTypes = await pool.query(
-        "SELECT id, name FROM service_types WHERE facility = $1",
+        "SELECT id, name FROM service_types WHERE LOWER(facility) = LOWER($1)",
         [facility]
       );
       
@@ -705,7 +757,7 @@ router.get("/availability", authorization, async (req, res) => {
   }
 });
 
-//fetch user requests today count
+// Fetch user requests today count
 router.get("/user/today", authorization, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -735,7 +787,7 @@ router.get("/user/today", authorization, async (req, res) => {
   }
 });
 
-//fetch user requests all time count
+// Fetch user requests all time count
 router.get("/user/total", authorization, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -764,23 +816,37 @@ router.get("/user/total", authorization, async (req, res) => {
   }
 });
 
+// SUPERADMIN SUPPORT - Get admin total requests
 router.get("/admin/total", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
 
-    if (role !== "admin") {
+    if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
-    const result = await pool.query(
-      `
-      SELECT COUNT(*) AS count
-      FROM service_history
-      WHERE facility = $1
-        AND status = 'completed'
-      `,
-      [facility]
-    );
+    let query;
+    let params;
+
+    if (role === 'superadmin') {
+      query = `
+        SELECT COUNT(*) AS count
+        FROM service_history
+        WHERE facility IN ('RCC', 'Hotel Rafael')
+          AND status = 'completed'
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT COUNT(*) AS count
+        FROM service_history
+        WHERE facility = $1
+          AND status = 'completed'
+      `;
+      params = [facility];
+    }
+
+    const result = await pool.query(query, params);
 
     res.json({ count: parseInt(result.rows[0].count, 10) });
   } catch (err) {
@@ -795,7 +861,7 @@ router.get("/housekeeper/total-done", authorization, async (req, res) => {
   try {
     const housekeeperId = req.user.id;
 
-    if (req.user.role !== "housekeeper" && req.user.role !== "admin") {
+    if (req.user.role !== "housekeeper" && req.user.role !== "admin" && req.user.role !== "superadmin") {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -820,7 +886,7 @@ router.get("/service-types", authorization, async (req, res) => {
     const { facility } = req.user;
 
     const types = await pool.query(
-      "SELECT id, name, duration FROM service_types WHERE facility = $1 ORDER BY name ASC",
+      "SELECT id, name, duration FROM service_types WHERE LOWER(facility) = LOWER($1) ORDER BY name ASC",
       [facility]
     );
     res.json(types.rows);

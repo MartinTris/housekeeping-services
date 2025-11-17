@@ -19,6 +19,7 @@ const Login = ({ setAuth, setUser }) => {
   const onChange = (e) => {
     setInputs({ ...inputs, [e.target.name]: e.target.value });
   };
+  
   const onPopupChange = (e) => {
     setPopupInputs({ ...popupInputs, [e.target.name]: e.target.value });
   };
@@ -35,42 +36,63 @@ const Login = ({ setAuth, setUser }) => {
       });
 
       const parseRes = await response.json();
-      console.log(parseRes);
+      
+      // Debug logs
+      console.log("Login Response:", parseRes);
+      console.log("Role from server:", parseRes.role);
 
       if (parseRes.token) {
         localStorage.setItem("token", parseRes.token);
         localStorage.setItem("role", parseRes.role);
         localStorage.setItem("first_login", parseRes.first_login);
 
-        // CHECK FIRST LOGIN BEFORE SETTING AUTH
+        // Debug: Check what was stored
+        console.log("Stored in localStorage:", {
+          token: localStorage.getItem("token"),
+          role: localStorage.getItem("role"),
+          first_login: localStorage.getItem("first_login")
+        });
+
+        // Set auth and user state
+        setAuth(true);
+        setUser({ role: parseRes.role });
+
+        // Close modals
+        setShowModal(false);
+        setPopupRole(null);
+        setPopupInputs({ email: "", password: "" });
+
+        // CHECK FIRST LOGIN
         if (
           (parseRes.role === "admin" ||
             parseRes.role === "housekeeper" ||
             parseRes.role === "superadmin") &&
-          parseRes.first_login
+          parseRes.first_login === true
         ) {
-          // Set auth and user BEFORE navigating
-          setAuth(true);
-          setUser({ role: parseRes.role });
-          setShowModal(false);
           navigate("/force-change-password");
           return;
         }
 
-        // Only set auth after checking first_login
-        setAuth(true);
-        setUser({ role: parseRes.role });
-
-        if (parseRes.role === "admin" || parseRes.role === "superadmin") navigate("/admin");
-        else if (parseRes.role === "housekeeper") navigate("/housekeeper");
-        else navigate("/guest");
-
-        setShowModal(false);
+        // ROUTE BASED ON ROLE
+        if (parseRes.role === "admin" || parseRes.role === "superadmin") {
+          console.log("Navigating to /admin");
+          navigate("/admin");
+        } else if (parseRes.role === "housekeeper") {
+          console.log("Navigating to /housekeeper");
+          navigate("/housekeeper");
+        } else if (parseRes.role === "guest") {
+          console.log("Navigating to /guest");
+          navigate("/guest");
+        } else {
+          console.error("Unknown role:", parseRes.role);
+          alert("Unknown user role");
+        }
       } else {
         alert(parseRes.message || "Login failed");
       }
     } catch (err) {
-      console.error(err.message);
+      console.error("Login error:", err.message);
+      alert("Login failed. Please try again.");
     }
   };
 
@@ -149,15 +171,16 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       </main>
 
+      {/* Main Login Modal (Guest) */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
             <h2 className="text-2xl font-poppins font-bold text-green-900 mb-6 text-center">
-              Login
+              Guest Login
             </h2>
 
             <form
-              onSubmit={(e) => handleLogin(e, role, { email, password })}
+              onSubmit={(e) => handleLogin(e, "guest", { email, password })}
               className="flex flex-col gap-4"
             >
               <input
@@ -200,13 +223,19 @@ const Login = ({ setAuth, setUser }) => {
 
             <div className="mt-6 text-center">
               <button
-                onClick={() => setPopupRole("admin")}
+                onClick={() => {
+                  setShowModal(false);
+                  setPopupRole("admin");
+                }}
                 className="text-sm text-blue-600 hover:underline mx-2"
               >
                 Admin Login
               </button>
               <button
-                onClick={() => setPopupRole("housekeeper")}
+                onClick={() => {
+                  setShowModal(false);
+                  setPopupRole("housekeeper");
+                }}
                 className="text-sm text-blue-600 hover:underline mx-2"
               >
                 Housekeeper Login
@@ -225,8 +254,9 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       )}
 
+      {/* Admin/Housekeeper Login Modal */}
       {popupRole && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h3 className="text-xl font-bold mb-4 text-center">
               {popupRole.charAt(0).toUpperCase() + popupRole.slice(1)} Login

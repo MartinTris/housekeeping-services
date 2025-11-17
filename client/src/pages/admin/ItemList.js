@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Trash2, Pencil } from "lucide-react";
+import { jwtDecode } from "jwt-decode";
 
 const ItemList = () => {
   const [items, setItems] = useState([]);
@@ -10,6 +11,19 @@ const ItemList = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [newItem, setNewItem] = useState({ name: "", quantity: "", price: "" });
   const [editData, setEditData] = useState({ quantity: "", price: "" });
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserRole(decoded.role);
+      } catch (err) {
+        console.error("Error decoding token:", err);
+      }
+    }
+  }, []);
 
   const fetchItems = async () => {
     try {
@@ -87,7 +101,6 @@ const ItemList = () => {
     }
   };
 
-  // ✅ Edit handler
   const handleEditItem = (item) => {
     setSelectedItem(item);
     setEditData({ quantity: item.quantity, price: item.price });
@@ -129,7 +142,7 @@ const ItemList = () => {
 
   return (
     <div className="p-6 relative min-h-screen">
-      <h2 className="text-green-900 text-2xl font-bold mb-4 font-poppins">
+      <h2 className="text-green-900 text-2xl font-bold mb-4 font">
         Borrowable Items
       </h2>
 
@@ -141,47 +154,65 @@ const ItemList = () => {
         <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
           <thead>
             <tr className="bg-gray-100 text-left">
+              {userRole === "superadmin" && <th className="p-2 border">Facility</th>}
               <th className="p-2 border">Item Name</th>
               <th className="p-2 border">Quantity</th>
               <th className="p-2 border">Price</th>
-              <th className="p-2 border text-center w-24">Actions</th>
+              {userRole === "admin" && <th className="p-2 border text-center w-24">Actions</th>}
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
+                {userRole === "superadmin" && (
+                  <td className="p-2 border">
+                    <span
+                      className={`font-semibold ${
+                        item.facility === "RCC"
+                          ? "text-green-600"
+                          : "text-blue-600"
+                      }`}
+                    >
+                      {item.facility}
+                    </span>
+                  </td>
+                )}
                 <td className="p-2 border">{item.name}</td>
                 <td className="p-2 border">{item.quantity}</td>
                 <td className="p-2 border">₱{item.price}</td>
-                <td className="p-2 border text-center space-x-3">
-                  <button
-                    onClick={() => handleEditItem(item)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </td>
+                {userRole === "admin" && (
+                  <td className="p-2 border text-center space-x-3">
+                    <button
+                      onClick={() => handleEditItem(item)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       )}
 
-      {/* Add Button */}
-      <div className="flex justify-start mt-4">
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex flex-col items-center text-green-600 hover:text-green-700"
-        >
-          <span className="text-sm font-medium">Add an item</span>
-        </button>
-      </div>
+      {/* Add Button - Only for admin */}
+      {userRole === "admin" && (
+        <div className="flex justify-start mt-4">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex flex-col items-center text-green-600 hover:text-green-700"
+          >
+            <span className="text-sm font-medium">Add an item</span>
+          </button>
+        </div>
+      )}
 
       {/* Add Modal */}
       {showModal && (

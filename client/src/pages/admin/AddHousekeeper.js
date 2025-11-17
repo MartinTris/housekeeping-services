@@ -115,18 +115,22 @@ const AddHousekeeper = () => {
     last_name: "",
     email: "",
     password: "",
+    facility: "", // For superadmin
   });
   const [housekeepers, setHousekeepers] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [facility, setFacility] = useState(null);
+  const [role, setRole] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedHousekeeper, setSelectedHousekeeper] = useState(null);
+  const [facilityFilter, setFacilityFilter] = useState("all");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       const decoded = jwtDecode(token);
       setFacility(decoded.facility);
+      setRole(decoded.role);
     }
     getHousekeepers();
     getSchedules();
@@ -166,14 +170,27 @@ const AddHousekeeper = () => {
 
   const handleAddHousekeeper = async () => {
     try {
+      const payload = {
+        first_name: inputs.first_name,
+        last_name: inputs.last_name,
+        email: inputs.email,
+        password: inputs.password,
+      };
+
+      // Only add facility if superadmin
+      if (role === 'superadmin' && inputs.facility) {
+        payload.facility = inputs.facility;
+      }
+
       const response = await fetch("http://localhost:5000/housekeepers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           token: localStorage.getItem("token"),
         },
-        body: JSON.stringify(inputs),
+        body: JSON.stringify(payload),
       });
+
       if (response.ok) {
         const newHk = await response.json();
 
@@ -182,6 +199,7 @@ const AddHousekeeper = () => {
           last_name: "",
           email: "",
           password: "",
+          facility: "",
         });
 
         setHousekeepers((prev) => [...prev, newHk]);
@@ -196,11 +214,15 @@ const AddHousekeeper = () => {
             day_offs: [],
           },
         ]);
+
+        alert("Housekeeper added successfully!");
       } else {
-        alert("User already exists.");
+        const errorData = await response.json();
+        alert(errorData.message || "Failed to add housekeeper.");
       }
     } catch (err) {
       console.error(err.message);
+      alert("Error adding housekeeper.");
     }
   };
 
@@ -275,10 +297,16 @@ const AddHousekeeper = () => {
     );
   };
 
+  // Filter housekeepers by facility for superadmin
+  const filteredHousekeepers = housekeepers.filter((hk) => {
+    if (role !== "superadmin" || facilityFilter === "all") return true;
+    return hk.facility === facilityFilter;
+  });
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-poppins font-bold text-green-900 mb-6">
-        Add / Remove Housekeeper ({facility})
+        Add / Remove Housekeeper {role !== "superadmin" && `(${facility})`}
       </h2>
 
       {/* Add Form */}
@@ -315,6 +343,22 @@ const AddHousekeeper = () => {
           placeholder="Password"
           className="border rounded-lg px-3 py-2"
         />
+
+        {/* Facility selector for superadmin */}
+        {role === "superadmin" && (
+          <select
+            name="facility"
+            value={inputs.facility}
+            onChange={onChange}
+            className="border rounded-lg px-3 py-2"
+            required
+          >
+            <option value="">Select Facility</option>
+            <option value="RCC">RCC</option>
+            <option value="Hotel Rafael">Hotel Rafael</option>
+          </select>
+        )}
+
         <button
           onClick={handleAddHousekeeper}
           className="bg-green-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700"
@@ -323,22 +367,52 @@ const AddHousekeeper = () => {
         </button>
       </div>
 
+      {/* Facility Filter for Superadmin */}
+      {role === "superadmin" && (
+        <div className="mb-6 flex justify-center gap-4">
+          <label className="font-medium">Filter by Facility:</label>
+          <select
+            value={facilityFilter}
+            onChange={(e) => setFacilityFilter(e.target.value)}
+            className="border rounded-lg px-3 py-1"
+          >
+            <option value="all">All Facilities</option>
+            <option value="RCC">RCC</option>
+            <option value="Hotel Rafael">Hotel Rafael</option>
+          </select>
+        </div>
+      )}
+
       <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
         Active Housekeepers
       </h3>
       <table className="table-auto w-full border-collapse border border-gray-300 text-left mb-8">
         <thead>
           <tr className="bg-gray-100">
+            {role === "superadmin" && <th className="border px-4 py-2">Facility</th>}
             <th className="border px-4 py-2">Name</th>
             <th className="border px-4 py-2">Email</th>
             <th className="border px-4 py-2">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {housekeepers
+          {filteredHousekeepers
             .filter((hk) => hk.is_active)
             .map((hk) => (
               <tr key={hk.id}>
+                {role === "superadmin" && (
+                  <td className="border px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                        hk.facility === "RCC"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {hk.facility}
+                    </span>
+                  </td>
+                )}
                 <td className="border px-4 py-2">{hk.name}</td>
                 <td className="border px-4 py-2">{hk.email}</td>
                 <td className="border px-4 py-2">
@@ -359,9 +433,9 @@ const AddHousekeeper = () => {
                 </td>
               </tr>
             ))}
-          {housekeepers.filter((hk) => hk.is_active).length === 0 && (
+          {filteredHousekeepers.filter((hk) => hk.is_active).length === 0 && (
             <tr>
-              <td colSpan="3" className="text-center py-4 text-gray-500">
+              <td colSpan={role === "superadmin" ? "4" : "3"} className="text-center py-4 text-gray-500">
                 No active housekeepers.
               </td>
             </tr>
@@ -375,16 +449,30 @@ const AddHousekeeper = () => {
       <table className="table-auto w-full border-collapse border border-gray-300 text-left">
         <thead>
           <tr className="bg-gray-100">
+            {role === "superadmin" && <th className="border px-4 py-2">Facility</th>}
             <th className="border px-4 py-2">Name</th>
             <th className="border px-4 py-2">Email</th>
             <th className="border px-4 py-2">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {housekeepers
+          {filteredHousekeepers
             .filter((hk) => !hk.is_active)
             .map((hk) => (
               <tr key={hk.id}>
+                {role === "superadmin" && (
+                  <td className="border px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                        hk.facility === "RCC"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {hk.facility}
+                    </span>
+                  </td>
+                )}
                 <td className="border px-4 py-2">{hk.name}</td>
                 <td className="border px-4 py-2">{hk.email}</td>
                 <td className="border px-4 py-2">
@@ -397,9 +485,9 @@ const AddHousekeeper = () => {
                 </td>
               </tr>
             ))}
-          {housekeepers.filter((hk) => !hk.is_active).length === 0 && (
+          {filteredHousekeepers.filter((hk) => !hk.is_active).length === 0 && (
             <tr>
-              <td colSpan="3" className="text-center py-4 text-gray-500">
+              <td colSpan={role === "superadmin" ? "4" : "3"} className="text-center py-4 text-gray-500">
                 No disabled housekeepers.
               </td>
             </tr>

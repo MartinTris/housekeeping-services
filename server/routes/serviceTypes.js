@@ -5,13 +5,28 @@ const { authorization } = require("../middleware/authorization");
 
 router.get("/", authorization, async (req, res) => {
   try {
-    const { facility } = req.user;
+    const { facility, role } = req.user;
 
-    const result = await pool.query(
-      "SELECT * FROM service_types WHERE facility = $1 ORDER BY created_at DESC",
-      [facility]
-    );
+    let query;
+    let params;
 
+    if (role === "superadmin") {
+      query = `
+        SELECT * FROM service_types 
+        WHERE facility IN ('RCC', 'Hotel Rafael') 
+        ORDER BY facility, created_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT * FROM service_types 
+        WHERE facility = $1 
+        ORDER BY created_at DESC
+      `;
+      params = [facility];
+    }
+
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -19,22 +34,31 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// Admin creates service type
+// Admin/Superadmin creates service type
 router.post("/", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
-    if (role !== "admin")
+    if (role !== "admin" && role !== "superadmin")
       return res.status(403).json({ error: "Unauthorized" });
 
-    const { name, duration } = req.body;
+    const { name, duration, facility: targetFacility } = req.body;
+
+    // For superadmin, use the selected facility from the form
+    // For admin, use their own facility
+    const serviceTypeFacility = role === 'superadmin' && targetFacility 
+      ? targetFacility 
+      : facility;
+
+    // Validate facility for superadmin
+    if (role === 'superadmin' && !targetFacility) {
+      return res.status(400).json({ error: "Facility selection is required for superadmin" });
+    }
 
     const result = await pool.query(
-      `
-      INSERT INTO service_types (facility, name, duration)
-      VALUES ($1, $2, $3)
-      RETURNING *
-      `,
-      [facility, name, duration]
+      `INSERT INTO service_types (facility, name, duration)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [serviceTypeFacility, name, duration]
     );
 
     res.json(result.rows[0]);
@@ -44,12 +68,12 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// Admin edits service type
+// Admin edits service type (Superadmin cannot edit)
 router.put("/:id", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
     if (role !== "admin")
-      return res.status(403).json({ error: "Unauthorized" });
+      return res.status(403).json({ error: "Unauthorized. Only facility admins can edit service types." });
 
     const { id } = req.params;
     const { name, duration } = req.body;
@@ -65,7 +89,7 @@ router.put("/:id", authorization, async (req, res) => {
     );
 
     if (result.rows.length === 0)
-      return res.status(404).json({ error: "Service type not found" });
+      return res.status(404).json({ error: "Service type not found or unauthorized" });
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -74,12 +98,12 @@ router.put("/:id", authorization, async (req, res) => {
   }
 });
 
-// Admin deletes service type
+// Admin deletes service type (Superadmin cannot delete)
 router.delete("/:id", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
     if (role !== "admin")
-      return res.status(403).json({ error: "Unauthorized" });
+      return res.status(403).json({ error: "Unauthorized. Only facility admins can delete service types." });
 
     const { id } = req.params;
 
@@ -93,7 +117,7 @@ router.delete("/:id", authorization, async (req, res) => {
     );
 
     if (result.rows.length === 0)
-      return res.status(404).json({ error: "Service type not found" });
+      return res.status(404).json({ error: "Service type not found or unauthorized" });
 
     res.json({ message: "Service type deleted" });
   } catch (err) {

@@ -42,24 +42,32 @@ router.post("/", authorization, async (req, res) => {
 
 router.get("/", authorization, async (req, res) => {
   try {
-    const userRes = await pool.query(
-      "SELECT facility FROM users WHERE id = $1",
-      [req.user.id]
-    );
-
-    if (userRes.rows.length === 0)
-      return res.status(404).json({ error: "User not found" });
-
-    const facility = userRes.rows[0].facility;
+    const { facility, role } = req.user;
 
     if (!facility) {
       return res.json([]);
     }
 
-    const result = await pool.query(
-      `SELECT * FROM borrowable_items WHERE facility = $1 ORDER BY created_at DESC`,
-      [facility]
-    );
+    let query;
+    let params;
+
+    if (role === 'superadmin') {
+      query = `
+        SELECT * FROM borrowable_items 
+        WHERE facility IN ('RCC', 'Hotel Rafael') 
+        ORDER BY facility, created_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT * FROM borrowable_items 
+        WHERE facility = $1 
+        ORDER BY created_at DESC
+      `;
+      params = [facility];
+    }
+
+    const result = await pool.query(query, params);
 
     res.json(result.rows);
   } catch (err) {
@@ -346,34 +354,43 @@ router.post("/borrow", authorization, async (req, res) => {
 
 router.get("/borrowed", authorization, async (req, res) => {
   try {
-    const { id: user_id, role } = req.user;
+    const { id: user_id, role, facility } = req.user;
 
-    if (role === "admin") {
-      const facilityRes = await pool.query(
-        "SELECT facility FROM users WHERE id = $1",
-        [user_id]
-      );
+    if (role === "admin" || role === "superadmin") {
+      let query;
+      let params;
 
-      if (facilityRes.rows.length === 0)
-        return res.status(404).json({ error: "User not found" });
+      if (role === 'superadmin') {
+        query = `
+          SELECT 
+            b.id, b.item_name, b.quantity, b.charge_amount, b.created_at, b.is_paid,
+            b.delivery_status,
+            u.first_name, u.last_name, u.facility
+          FROM borrowed_items b
+          JOIN users u ON b.user_id = u.id
+          WHERE u.facility IN ('RCC', 'Hotel Rafael')
+          AND b.delivery_status = 'delivered'
+          AND b.is_paid = FALSE
+          ORDER BY u.facility, b.created_at DESC
+        `;
+        params = [];
+      } else {
+        query = `
+          SELECT 
+            b.id, b.item_name, b.quantity, b.charge_amount, b.created_at, b.is_paid,
+            b.delivery_status,
+            u.first_name, u.last_name
+          FROM borrowed_items b
+          JOIN users u ON b.user_id = u.id
+          WHERE u.facility = $1
+          AND b.delivery_status = 'delivered'
+          AND b.is_paid = FALSE
+          ORDER BY b.created_at DESC
+        `;
+        params = [facility];
+      }
 
-      const facility = facilityRes.rows[0].facility;
-
-      const result = await pool.query(
-        `
-        SELECT 
-          b.id, b.item_name, b.quantity, b.charge_amount, b.created_at, b.is_paid,
-          b.delivery_status,
-          u.first_name, u.last_name
-        FROM borrowed_items b
-        JOIN users u ON b.user_id = u.id
-        WHERE u.facility = $1
-        AND b.delivery_status = 'delivered'
-        AND b.is_paid = FALSE
-        ORDER BY b.created_at DESC
-        `,
-        [facility]
-      );
+      const result = await pool.query(query, params);
 
       return res.json(result.rows || []);
     } else if (role === "guest") {
@@ -400,39 +417,55 @@ router.get("/borrowed", authorization, async (req, res) => {
 
 router.get("/pending", authorization, async (req, res) => {
   try {
-    const { role, id: admin_id } = req.user;
+    const { role, facility } = req.user;
 
-    if (role !== "admin") {
+    if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Unauthorized access." });
     }
 
-    const facilityRes = await pool.query(
-      "SELECT facility FROM users WHERE id = $1",
-      [admin_id]
-    );
-    if (facilityRes.rows.length === 0) {
-      return res.status(404).json({ error: "Admin not found." });
+    let query;
+    let params;
+
+    if (role === 'superadmin') {
+      query = `
+        SELECT 
+          b.id, 
+          b.user_id, 
+          b.item_name, 
+          b.quantity, 
+          b.charge_amount, 
+          b.created_at, 
+          b.is_paid,
+          u.first_name || ' ' || u.last_name AS borrower_name,
+          u.facility
+        FROM borrowed_items b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.is_paid = false
+        AND u.facility IN ('RCC', 'Hotel Rafael')
+        ORDER BY u.facility, b.created_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT 
+          b.id, 
+          b.user_id, 
+          b.item_name, 
+          b.quantity, 
+          b.charge_amount, 
+          b.created_at, 
+          b.is_paid,
+          u.first_name || ' ' || u.last_name AS borrower_name
+        FROM borrowed_items b
+        JOIN users u ON b.user_id = u.id
+        WHERE b.is_paid = false
+        AND u.facility = $1
+        ORDER BY b.created_at DESC
+      `;
+      params = [facility];
     }
 
-    const facility = facilityRes.rows[0].facility;
-
-    const result = await pool.query(
-      `SELECT 
-         b.id, 
-         b.user_id, 
-         b.item_name, 
-         b.quantity, 
-         b.charge_amount, 
-         b.created_at, 
-         b.is_paid,
-         u.first_name || ' ' || u.last_name AS borrower_name
-       FROM borrowed_items b
-       JOIN users u ON b.user_id = u.id
-       WHERE b.is_paid = false
-       AND u.facility = $1
-       ORDER BY b.created_at DESC`,
-      [facility]
-    );
+    const result = await pool.query(query, params);
 
     res.json(result.rows);
   } catch (err) {

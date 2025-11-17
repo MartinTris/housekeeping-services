@@ -14,6 +14,7 @@ const AdminLayout = ({ setAuth, role }) => {
         });
         const data = await res.json();
         setUserId(data.id);
+
       } catch (err) {
         console.error("Failed to load user:", err.message);
       }
@@ -28,7 +29,7 @@ const AdminLayout = ({ setAuth, role }) => {
       <div className="flex-1 ml-64 flex flex-col">
         <header className="flex justify-between items-center px-8 py-4 bg-white border-b shadow-sm">
           <h1 className="text-2xl font-poppins font-semibold text-green-900">
-            DLSU-D Housekeeping Admin
+            DLSU-D Housekeeping {role === "superadmin" ? "Superadmin" : "Admin"}
           </h1>
 
           <div className="flex items-center space-x-4">

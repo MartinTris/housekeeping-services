@@ -8,7 +8,19 @@ const Menu = ({ setAuth, role }) => {
     { name: "Dashboard", path: "/admin" },
     { name: "My Profile", path: "/admin/profile" },
     { name: "Add/Remove Guest", path: "/admin/guests" },
-    { name: "Add/Remove Housekeeper", path: "/admin/housekeepers" },
+    { name: "Manage Housekeepers", path: "/admin/housekeepers" },
+    { name: "Service Requests", path: "/admin/requests" },
+    { name: "Item List", path: "/admin/item-list" },
+    { name: "Service Types", path: "/admin/service-types" },
+    { name: "Reports", path: "/admin/reports" },
+  ];
+
+  const superadminItems = [
+    { name: "Dashboard", path: "/admin" },
+    { name: "My Profile", path: "/admin/profile" },    
+    { name: "Add/Remove Guest", path: "/admin/guests" },
+    { name: "Manage Admins", path: "/admin/manage-admins" },
+    { name: "Manage Housekeepers", path: "/admin/housekeepers" },
     { name: "Service Requests", path: "/admin/requests" },
     { name: "Item List", path: "/admin/item-list" },
     { name: "Service Types", path: "/admin/service-types" },
@@ -31,15 +43,23 @@ const Menu = ({ setAuth, role }) => {
   let items = [];
   let panelTitle = "";
 
-  if (role === "admin") {
+  if (role === "superadmin") {
+    items = superadminItems;
+    panelTitle = "Superadmin Panel";
+  } else if (role === "admin") {
     items = adminItems;
     panelTitle = "Admin Panel";
   } else if (role === "housekeeper") {
     items = housekeeperItems;
     panelTitle = "Housekeeper Panel";
-  } else {
+  } else if (role === "guest") {
     items = guestItems;
     panelTitle = "Guest Panel";
+  } else {
+    // Fallback if role is undefined or unknown
+    console.error("Unknown role in Menu:", role);
+    items = guestItems;
+    panelTitle = "Panel";
   }
 
   const isActive = (path) => {
@@ -78,6 +98,9 @@ const Menu = ({ setAuth, role }) => {
           }
 
           localStorage.removeItem("token");
+          localStorage.removeItem("role");
+          localStorage.removeItem("first_login");
+          
           if (typeof setAuth === "function") setAuth(false);
           window.location.href = "/login";
         }}

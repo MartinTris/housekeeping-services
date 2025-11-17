@@ -25,6 +25,7 @@ router.get("/", authorization, async (req, res) => {
       name: fullName,
       role: user.role,
       facility: displayFacility,
+      actualFacility: user.facility,
     });
 
   } catch (err) {

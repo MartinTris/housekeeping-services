@@ -11,6 +11,12 @@ const ManageGuests = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [timeOut, setTimeOut] = useState("");
+  const [role, setRole] = useState("");
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [facilityFilter, setFacilityFilter] = useState("all");
 
   // Admin modals
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
@@ -21,6 +27,12 @@ const ManageGuests = () => {
   // Rename state
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editedRoomName, setEditedRoomName] = useState("");
+
+  // Get user role
+  useEffect(() => {
+    const userRole = localStorage.getItem("role");
+    setRole(userRole);
+  }, []);
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -87,6 +99,18 @@ const ManageGuests = () => {
   }, [searchQuery]);
 
   const openAssignModal = (room) => {
+    // Superadmin cannot assign guests
+    if (role === "superadmin") {
+      alert("Superadmins can only view rooms. Guest assignment is restricted to facility admins.");
+      return;
+    }
+
+    // Check if Admin Office
+    if (room.room_number === "Admin Office") {
+      alert("Cannot assign guests to Admin Office. This room is reserved for admin service requests.");
+      return;
+    }
+
     if (room?.booking && room.booking.is_active) {
       alert("Cannot assign — room is currently occupied.");
       return;
@@ -138,7 +162,6 @@ const ManageGuests = () => {
 
       setShowModal(false);
       await fetchRooms();
-      // ✅ Fire event after the backend update + UI refresh
       setTimeout(() => {
         window.dispatchEvent(new Event("userFacilityUpdated"));
       }, 300);
@@ -179,6 +202,12 @@ const ManageGuests = () => {
   }, []);
 
   const handleRemove = async (room) => {
+    // Superadmin cannot remove guests
+    if (role === "superadmin") {
+      alert("Superadmins can only view rooms. Guest checkout is restricted to facility admins.");
+      return;
+    }
+
     if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
 
     try {
@@ -288,39 +317,113 @@ const ManageGuests = () => {
     }
   };
 
+  // Filter rooms
+  const filteredRooms = rooms.filter((room) => {
+    const matchesSearch = room.room_number
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "occupied"
+        ? room.booking?.is_active
+        : !room.booking?.is_active);
+    const matchesFacility =
+      role !== "superadmin" ||
+      facilityFilter === "all" ||
+      room.facility === facilityFilter;
+
+    return matchesSearch && matchesStatus && matchesFacility;
+  });
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-poppins font-bold text-green-900 mb-6">
         Manage Guests
+        {role === "superadmin" && (
+          <span className="text-base font-normal text-gray-600 ml-2">
+            (View-Only Mode)
+          </span>
+        )}
       </h2>
+
+      {/* Filters */}
+      <div className="mb-6 flex flex-wrap gap-4">
+        <input
+          type="text"
+          placeholder="Search room number..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="border rounded px-4 py-2 w-64"
+        />
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border rounded px-4 py-2"
+        >
+          <option value="all">All Rooms</option>
+          <option value="occupied">Occupied Only</option>
+          <option value="vacant">Vacant Only</option>
+        </select>
+
+        {role === "superadmin" && (
+          <select
+            value={facilityFilter}
+            onChange={(e) => setFacilityFilter(e.target.value)}
+            className="border rounded px-4 py-2"
+          >
+            <option value="all">All Facilities</option>
+            <option value="RCC">RCC</option>
+            <option value="Hotel Rafael">Hotel Rafael</option>
+          </select>
+        )}
+      </div>
 
       {loading ? (
         <p>Loading rooms…</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {rooms.map((room) => {
+          {filteredRooms.map((room) => {
             const isActive = room.booking?.is_active;
+            const isAdminOffice = room.room_number === "Admin Office";
 
             return (
               <div
                 key={room.id}
                 className="relative border rounded-lg p-4 shadow bg-white text-center"
               >
-                {/* Delete icon */}
-                <button
-                  onClick={() => {
-                    setRoomToDelete(room);
-                    setShowDeleteModal(true);
-                  }}
-                  className="absolute top-2 right-2 text-gray-500 hover:text-red-600"
-                  title="Delete room"
-                >
-                  <Trash2 size={18} />
-                </button>
+                {/* Facility badge for superadmin */}
+                {role === "superadmin" && room.facility && (
+                  <div className="absolute top-2 left-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
+                        room.facility === "RCC"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {room.facility}
+                    </span>
+                  </div>
+                )}
 
-                {/* Room name + edit */}
-                {editingRoomId === room.id ? (
-                  <div className="flex items-center justify-center gap-2 mb-2">
+                {/* Delete icon - only for regular admin, not for Admin Office */}
+                {role === "admin" && !isAdminOffice && (
+                  <button
+                    onClick={() => {
+                      setRoomToDelete(room);
+                      setShowDeleteModal(true);
+                    }}
+                    className="absolute top-2 right-2 text-gray-500 hover:text-red-600"
+                    title="Delete room"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+
+                {/* Room name + edit (not for Admin Office) */}
+                {editingRoomId === room.id && !isAdminOffice ? (
+                  <div className="flex items-center justify-center gap-2 mb-2 mt-6">
                     <input
                       type="text"
                       className="border p-1 rounded text-center w-28"
@@ -345,17 +448,23 @@ const ManageGuests = () => {
                   </div>
                 ) : (
                   <h3
-                    className="font-bold text-lg flex items-center justify-center gap-2 cursor-pointer"
+                    className={`font-bold text-lg flex items-center justify-center gap-2 ${
+                      !isAdminOffice && role === "admin" ? "cursor-pointer" : ""
+                    } ${role === "superadmin" ? "mt-6" : ""}`}
                     onClick={() => {
-                      setEditingRoomId(room.id);
-                      setEditedRoomName(room.room_number);
+                      if (!isAdminOffice && role === "admin") {
+                        setEditingRoomId(room.id);
+                        setEditedRoomName(room.room_number);
+                      }
                     }}
                   >
                     {room.room_number}
-                    <Edit3
-                      size={15}
-                      className="text-gray-400 hover:text-gray-700"
-                    />
+                    {!isAdminOffice && role === "admin" && (
+                      <Edit3
+                        size={15}
+                        className="text-gray-400 hover:text-gray-700"
+                      />
+                    )}
                   </h3>
                 )}
 
@@ -375,34 +484,56 @@ const ManageGuests = () => {
                       >
                         View
                       </button>
-                      <button
-                        className="px-3 py-1 bg-red-600 text-white rounded"
-                        onClick={() => handleRemove(room)}
-                      >
-                        Remove Guest
-                      </button>
+                      {role === "admin" && (
+                        <button
+                          className="px-3 py-1 bg-red-600 text-white rounded"
+                          onClick={() => handleRemove(room)}
+                        >
+                          Remove Guest
+                        </button>
+                      )}
                     </div>
                   </>
                 ) : (
-                  <button
-                    className="mt-2 px-4 py-2 bg-green-600 text-white rounded"
-                    onClick={() => openAssignModal(room)}
-                  >
-                    Assign Guest
-                  </button>
+                  <>
+                    {role === "admin" && !isAdminOffice && (
+                      <button
+                        className="mt-2 px-4 py-2 bg-green-600 text-white rounded"
+                        onClick={() => openAssignModal(room)}
+                      >
+                        Assign Guest
+                      </button>
+                    )}
+                    {isAdminOffice && (
+                      <p className="mt-2 text-sm text-gray-500 italic">
+                        Reserved for admin services
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             );
           })}
 
-          {/* Add Room Button */}
-          <button
-            onClick={() => setShowAddRoomModal(true)}
-            className="border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-6 text-gray-500 hover:bg-gray-100"
-          >
-            <span className="text-3xl font-bold">+</span>
-            <span className="text-sm mt-1">Add a Room</span>
-          </button>
+          {/* Add Room Button - only for regular admin */}
+          {role === "admin" && (
+            <button
+              onClick={() => setShowAddRoomModal(true)}
+              className="border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-6 text-gray-500 hover:bg-gray-100"
+            >
+              <span className="text-3xl font-bold">+</span>
+              <span className="text-sm mt-1">Add a Room</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Summary */}
+      {!loading && (
+        <div className="mt-6 text-gray-600">
+          <p>
+            Showing {filteredRooms.length} of {rooms.length} rooms
+          </p>
         </div>
       )}
 

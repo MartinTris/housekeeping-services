@@ -1,16 +1,31 @@
 import { useState, useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
 
 const ServiceTypes = () => {
   const [serviceTypes, setServiceTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [userRole, setUserRole] = useState("");
 
   const [form, setForm] = useState({
     name: "",
-    duration: ""
+    duration: "",
+    facility: "" // For superadmin
   });
 
   const [editData, setEditData] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserRole(decoded.role);
+      } catch (err) {
+        console.error("Error decoding token:", err);
+      }
+    }
+  }, []);
 
   const fetchServiceTypes = async () => {
     try {
@@ -36,6 +51,12 @@ const ServiceTypes = () => {
   const handleAdd = async (e) => {
     e.preventDefault();
 
+    // Validate facility selection for superadmin
+    if (userRole === "superadmin" && !form.facility) {
+      alert("Please select a facility.");
+      return;
+    }
+
     try {
       const res = await fetch("http://localhost:5000/service-types", {
         method: "POST",
@@ -50,7 +71,7 @@ const ServiceTypes = () => {
 
       if (res.ok) {
         setServiceTypes([data, ...serviceTypes]);
-        setForm({ name: "", duration: "" });
+        setForm({ name: "", duration: "", facility: "" });
       } else {
         alert(data.error || "Failed to add service type.");
       }
@@ -117,6 +138,11 @@ const ServiceTypes = () => {
     <div className="p-8">
       <h1 className="text-3xl font-bold text-green-800 mb-6">
         Manage Service Types
+        {userRole === "superadmin" && (
+          <span className="text-lg font-normal text-gray-600 ml-2">
+            (All Facilities)
+          </span>
+        )}
       </h1>
 
       {/* Add new service type form */}
@@ -125,6 +151,25 @@ const ServiceTypes = () => {
         className="bg-white p-6 rounded-xl shadow-lg mb-8 max-w-xl"
       >
         <h2 className="text-xl font-semibold mb-4">Add New Service Type</h2>
+
+        {/* Facility Selector for Superadmin */}
+        {userRole === "superadmin" && (
+          <div className="mb-4">
+            <label className="block font-medium mb-1">Facility *</label>
+            <select
+              className="w-full p-2 border rounded-lg"
+              value={form.facility}
+              onChange={(e) =>
+                setForm({ ...form, facility: e.target.value })
+              }
+              required
+            >
+              <option value="">Select a facility...</option>
+              <option value="RCC">RCC</option>
+              <option value="Hotel Rafael">Hotel Rafael</option>
+            </select>
+          </div>
+        )}
 
         <div className="mb-4">
           <label className="block font-medium mb-1">Name</label>
@@ -166,6 +211,17 @@ const ServiceTypes = () => {
             className="bg-white rounded-xl shadow-md p-5 flex justify-between items-center"
           >
             <div>
+              {userRole === "superadmin" && type.facility && (
+                <span
+                  className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 ${
+                    type.facility === "RCC"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-blue-100 text-blue-700"
+                  }`}
+                >
+                  {type.facility}
+                </span>
+              )}
               <h3 className="text-lg font-bold text-green-900">{type.name}</h3>
               <p className="text-gray-700">
                 Duration: {type.duration} minutes
@@ -175,26 +231,29 @@ const ServiceTypes = () => {
               </p>
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => setEditData(type)}
-                className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(type.id)}
-                className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
+            {/* Only show edit/delete for regular admin */}
+            {userRole === "admin" && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditData(type)}
+                  className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(type.id)}
+                  className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Edit Modal */}
-      {editData && (
+      {/* Edit Modal - Only for admin */}
+      {editData && userRole === "admin" && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
 

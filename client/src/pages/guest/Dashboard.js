@@ -267,7 +267,6 @@ const GuestDashboard = () => {
     return () => window.removeEventListener("userFacilityUpdated", handler);
   }, []);
 
-  // Only fetch when we have all required data
   useEffect(() => {
     if (serviceType && preferredDate) {
       generateTimeSlots();
@@ -289,21 +288,27 @@ const GuestDashboard = () => {
           Request a service
         </button>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-          <Information
-            infoName="Total Service Requests"
-            value={totalRequests}
-          />
-          <Information
-            infoName="Remaining Requests (per day)"
-            value={Math.max(dailyLimit - todayRequests, 0)}
-          />
-        </div>
-        <div className="mt-10">
-          <h3 className="text-xl font-semibold mb-4">My Borrowed Items</h3>
-          <BorrowedItemsList />
-        </div>
-        <FeedbackWidget />
+        {view === "dashboard" && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+              <Information
+                infoName="Total Service Requests"
+                value={totalRequests}
+              />
+              <Information
+                infoName="Remaining Requests (per day)"
+                value={Math.max(dailyLimit - todayRequests, 0)}
+              />
+            </div>
+            <div className="mt-10">
+              <h3 className="text-xl font-semibold mb-4">My Borrowed Items</h3>
+              <BorrowedItemsList />
+            </div>
+            <FeedbackWidget />
+          </>
+        )}
+
+        {view === "announcements" && <Announcements />}
       </main>
 
       {showModal && (

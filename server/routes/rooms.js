@@ -6,39 +6,62 @@ const { getIo } = require("../realtime");
 // Get rooms
 router.get("/", authorization, async (req, res) => {
   try {
-    const adminId = req.user.id;
-    const admin = await pool.query("SELECT facility FROM users WHERE id = $1", [adminId]);
+    const { role, facility } = req.user;
 
-    if (!admin.rows.length) {
-      return res.status(404).json({ message: "Admin not found" });
+    let query;
+    let params;
+
+    if (role === 'superadmin') {
+      query = `
+        SELECT 
+          r.id, 
+          r.facility, 
+          r.room_number, 
+          b.id AS booking_id, 
+          b.time_in, 
+          b.time_out, 
+          u.id AS guest_id, 
+          CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
+          (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
+        FROM rooms r
+        LEFT JOIN LATERAL (
+          SELECT * FROM room_bookings rb
+          WHERE rb.room_id = r.id
+          ORDER BY rb.time_in DESC
+          LIMIT 1
+        ) b ON true
+        LEFT JOIN users u ON b.guest_id = u.id
+        WHERE r.facility IN ('RCC', 'Hotel Rafael')
+        ORDER BY r.facility, r.room_number;
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT 
+          r.id, 
+          r.facility, 
+          r.room_number, 
+          b.id AS booking_id, 
+          b.time_in, 
+          b.time_out, 
+          u.id AS guest_id, 
+          CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
+          (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
+        FROM rooms r
+        LEFT JOIN LATERAL (
+          SELECT * FROM room_bookings rb
+          WHERE rb.room_id = r.id
+          ORDER BY rb.time_in DESC
+          LIMIT 1
+        ) b ON true
+        LEFT JOIN users u ON b.guest_id = u.id
+        WHERE r.facility = $1
+        ORDER BY r.room_number;
+      `;
+      params = [facility];
     }
 
-    const facility = admin.rows[0].facility;
-
-    const query = `
-      SELECT 
-        r.id, 
-        r.facility, 
-        r.room_number, 
-        b.id AS booking_id, 
-        b.time_in, 
-        b.time_out, 
-        u.id AS guest_id, 
-        CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
-        (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
-      FROM rooms r
-      LEFT JOIN LATERAL (
-        SELECT * FROM room_bookings rb
-        WHERE rb.room_id = r.id
-        ORDER BY rb.time_in DESC
-        LIMIT 1
-      ) b ON true
-      LEFT JOIN users u ON b.guest_id = u.id
-      WHERE r.facility = $1
-      ORDER BY r.room_number;
-    `;
-
-    const result = await pool.query(query, [facility]);
+    const result = await pool.query(query, params);
 
     const rooms = result.rows.map((room) => ({
       id: room.id,
@@ -238,21 +261,20 @@ router.put("/:id/update-timeout", authorization, async (req, res) => {
 // add a new room
 router.post("/", authorization, async (req, res) => {
   try {
-    const adminId = req.user.id;
-    const { room_number } = req.body;
+    const { facility, role } = req.user;
+    const { room_number, facility: targetFacility } = req.body;
+
+    const roomFacility = role === 'superadmin' && targetFacility 
+      ? targetFacility 
+      : facility;
 
     if (!room_number || room_number.trim() === "") {
       return res.status(400).json({ error: "Room number is required." });
     }
 
-    const admin = await pool.query("SELECT facility FROM users WHERE id = $1", [adminId]);
-    if (!admin.rows.length) return res.status(404).json({ error: "Admin not found." });
-
-    const facility = admin.rows[0].facility;
-
     const exists = await pool.query(
       "SELECT 1 FROM rooms WHERE facility = $1 AND room_number = $2",
-      [facility, room_number.trim()]
+      [roomFacility, room_number.trim()]
     );
 
     if (exists.rows.length > 0) {

@@ -5,6 +5,7 @@ const Reports = () => {
   const [reportType, setReportType] = useState("housekeeping");
   const [reports, setReports] = useState([]);
   const [facility, setFacility] = useState("");
+  const [role, setRole] = useState("");
   const [housekeepers, setHousekeepers] = useState([]);
   const [selectedHousekeeper, setSelectedHousekeeper] = useState("");
   const [serviceTypes, setServiceTypes] = useState([]);
@@ -12,12 +13,22 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const printRef = useRef(null);
+  const [facilityFilter, setFacilityFilter] = useState("all");
+
+  // Get user role
+  useEffect(() => {
+    const userRole = localStorage.getItem("role");
+    setRole(userRole);
+  }, []);
 
   const fetchHousekeepers = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/admin/reports/housekeepers", {
-        headers: { token: localStorage.token },
-      });
+      const res = await fetch(
+        "http://localhost:5000/api/admin/reports/housekeepers",
+        {
+          headers: { token: localStorage.token },
+        }
+      );
       const data = await res.json();
       setHousekeepers(data);
     } catch (err) {
@@ -43,7 +54,7 @@ const Reports = () => {
       setError("");
 
       let url = "";
-      
+
       if (reportType === "housekeeping") {
         url = `http://localhost:5000/api/admin/reports?days=${days}&type=${reportType}`;
         if (selectedHousekeeper) {
@@ -99,7 +110,9 @@ const Reports = () => {
       if (endHours > 12) endHours -= 12;
       if (endHours === 0) endHours = 12;
 
-      return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")} ${endPeriod}`;
+      return `${String(endHours).padStart(2, "0")}:${String(
+        endMinutes
+      ).padStart(2, "0")} ${endPeriod}`;
     } catch (err) {
       console.error("Error calculating end time:", err);
       return startTime;
@@ -121,8 +134,14 @@ const Reports = () => {
     fetchReports();
   }, [days, selectedHousekeeper, selectedServiceType, reportType]);
 
+  // Filter reports by facility for superadmin
+  const displayedReports = reports.filter((report) => {
+    if (role !== "superadmin" || facilityFilter === "all") return true;
+    return report.facility === facilityFilter;
+  });
+
   const handlePrint = () => {
-    if (!reports.length) {
+    if (!displayedReports.length) {
       alert("No report data to print.");
       return;
     }
@@ -132,7 +151,9 @@ const Reports = () => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>${reportType === "housekeeping" ? "Housekeeping" : "Borrowed Items"} Report</title>
+          <title>${
+            reportType === "housekeeping" ? "Housekeeping" : "Borrowed Items"
+          } Report</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -172,14 +193,19 @@ const Reports = () => {
           </style>
         </head>
         <body>
-          <h1>${reportType === "housekeeping" ? "Housekeeping Report" : "Borrowed Items Report"}</h1>
+          <h1>${
+            reportType === "housekeeping"
+              ? "Housekeeping Report"
+              : "Borrowed Items Report"
+          }</h1>
           <div class="meta">
             <p><strong>Facility:</strong> ${facility}</p>
             <p><strong>Date Range:</strong> Last ${days} day(s)</p>
             ${
               reportType === "housekeeping" && selectedHousekeeper
                 ? `<p><strong>Housekeeper:</strong> ${
-                    housekeepers.find((h) => h.id === selectedHousekeeper)?.name || ""
+                    housekeepers.find((h) => h.id === selectedHousekeeper)
+                      ?.name || ""
                   }</p>`
                 : ""
             }
@@ -188,6 +214,7 @@ const Reports = () => {
                 ? `<p><strong>Service Type:</strong> ${selectedServiceType}</p>`
                 : ""
             }
+            ${role === 'superadmin' && facilityFilter !== 'all' ? `<p><strong>Filtered by:</strong> ${facilityFilter}</p>` : ''}
             <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
           </div>
           ${printContent}
@@ -203,7 +230,9 @@ const Reports = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-2 text-green-700">
-        {reportType === "housekeeping" ? "Housekeeping Reports" : "Borrowed Items Reports"}
+        {reportType === "housekeeping"
+          ? "Housekeeping Reports"
+          : "Borrowed Items Reports"}
       </h1>
 
       {facility && (
@@ -244,6 +273,22 @@ const Reports = () => {
           </select>
         </div>
 
+        {/* Facility Filter (only for superadmin) */}
+        {role === "superadmin" && (
+          <div>
+            <label className="mr-2 font-medium">Facility:</label>
+            <select
+              value={facilityFilter}
+              onChange={(e) => setFacilityFilter(e.target.value)}
+              className="border rounded px-3 py-1"
+            >
+              <option value="all">All Facilities</option>
+              <option value="RCC">RCC</option>
+              <option value="Hotel Rafael">Hotel Rafael</option>
+            </select>
+          </div>
+        )}
+
         {/* Service Type Filter (only for housekeeping) */}
         {reportType === "housekeeping" && (
           <div>
@@ -275,7 +320,7 @@ const Reports = () => {
               <option value="">All Housekeepers</option>
               {housekeepers.map((hk) => (
                 <option key={hk.id} value={hk.id}>
-                  {hk.name}
+                  {hk.name} {role === 'superadmin' && hk.facility && `(${hk.facility})`}
                 </option>
               ))}
             </select>
@@ -288,8 +333,10 @@ const Reports = () => {
           <p>Loading reports...</p>
         ) : error ? (
           <p className="text-red-500">{error}</p>
-        ) : reports.length === 0 ? (
-          <p className="text-gray-500">No records found for the selected filters.</p>
+        ) : displayedReports.length === 0 ? (
+          <p className="text-gray-500">
+            No records found for the selected filters.
+          </p>
         ) : (
           <>
             {reportType === "housekeeping" && (
@@ -297,6 +344,7 @@ const Reports = () => {
                 <table className="min-w-full border border-gray-200">
                   <thead className="bg-green-100 text-green-900">
                     <tr>
+                      {role === "superadmin" && <th className="p-3 text-left border-b">Facility</th>}
                       <th className="p-3 text-left border-b">Guest Name</th>
                       <th className="p-3 text-left border-b">Service Type</th>
                       <th className="p-3 text-left border-b">Housekeeper</th>
@@ -307,21 +355,44 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {reports.map((r, i) => {
+                    {displayedReports.map((r, i) => {
                       const duration = getServiceDuration(r.service_type);
                       const endTime = calculateEndTime(r.time, duration);
-                      
+
                       return (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="p-3 border-b">{r.guest_name || "N/A"}</td>
-                          <td className="p-3 border-b capitalize">{r.service_type}</td>
-                          <td className="p-3 border-b">{r.housekeeper_name || "Unassigned"}</td>
-                          <td className="p-3 border-b">{r.room_number || "N/A"}</td>
+                          {role === "superadmin" && (
+                            <td className="p-3 border-b">
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-semibold ${
+                                  r.facility === "RCC"
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-blue-100 text-blue-800"
+                                }`}
+                              >
+                                {r.facility}
+                              </span>
+                            </td>
+                          )}
+                          <td className="p-3 border-b">
+                            {r.guest_name || "N/A"}
+                          </td>
+                          <td className="p-3 border-b capitalize">
+                            {r.service_type}
+                          </td>
+                          <td className="p-3 border-b">
+                            {r.housekeeper_name || "Unassigned"}
+                          </td>
+                          <td className="p-3 border-b">
+                            {r.room_number || "N/A"}
+                          </td>
                           <td className="p-3 border-b">{r.date}</td>
                           <td className="p-3 border-b">
                             {r.time} - {endTime}
                           </td>
-                          <td className="p-3 border-b capitalize">{r.status}</td>
+                          <td className="p-3 border-b capitalize">
+                            {r.status}
+                          </td>
                         </tr>
                       );
                     })}
@@ -335,6 +406,7 @@ const Reports = () => {
                 <table className="min-w-full border border-gray-200">
                   <thead className="bg-green-100 text-green-900">
                     <tr>
+                      {role === "superadmin" && <th className="p-3 text-left border-b">Facility</th>}
                       <th className="p-3 text-left border-b">Guest Name</th>
                       <th className="p-3 text-left border-b">Item Name</th>
                       <th className="p-3 text-left border-b">Quantity</th>
@@ -343,13 +415,32 @@ const Reports = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {reports.map((r, i) => (
+                    {displayedReports.map((r, i) => (
                       <tr key={i} className="hover:bg-gray-50">
-                        <td className="p-3 border-b">{r.guest_name || "N/A"}</td>
+                        {role === "superadmin" && (
+                          <td className="p-3 border-b">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-semibold ${
+                                r.facility === "RCC"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {r.facility}
+                            </span>
+                          </td>
+                        )}
+                        <td className="p-3 border-b">
+                          {r.guest_name || "N/A"}
+                        </td>
                         <td className="p-3 border-b">{r.item_name}</td>
                         <td className="p-3 border-b">{r.quantity}</td>
-                        <td className="p-3 border-b">{r.total_amount ? `₱${r.total_amount}` : "—"}</td>
-                        <td className="p-3 border-b">{r.borrowed_date || "—"}</td>
+                        <td className="p-3 border-b">
+                          {r.total_amount ? `₱${r.total_amount}` : "—"}
+                        </td>
+                        <td className="p-3 border-b">
+                          {r.borrowed_date || "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -360,8 +451,11 @@ const Reports = () => {
         )}
       </div>
 
-      {!loading && reports.length > 0 && (
-        <div className="mt-6 text-right">
+      {!loading && displayedReports.length > 0 && (
+        <div className="mt-6 flex justify-between items-center">
+          <p className="text-gray-600">
+            Showing {displayedReports.length} of {reports.length} records
+          </p>
           <button
             onClick={handlePrint}
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
