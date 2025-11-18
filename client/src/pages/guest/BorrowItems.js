@@ -13,7 +13,7 @@ const BorrowItems = () => {
   const fetchUserFacility = async () => {
     try {
       const res = await fetch("http://localhost:5000/users/me", {
-        headers: { token: localStorage.token },
+        headers: { token: localStorage.getItem("token") },
       });
       if (!res.ok) throw new Error("Failed to fetch user info");
       const user = await res.json();
@@ -33,18 +33,41 @@ const BorrowItems = () => {
   }, []);
 
   useEffect(() => {
-    const handler = () => {
-      console.log("Facility updated → refetching user info...");
-      fetchUserFacility();
-    };
-    window.addEventListener("userFacilityUpdated", handler);
-    return () => window.removeEventListener("userFacilityUpdated", handler);
-  }, []);
+  const handler = async () => {
+    console.log("Facility updated event received in BorrowItems");
+    
+    // Small delay to ensure token is written
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Refetch user facility from server with current token
+    try {
+      const res = await fetch("http://localhost:5000/users/me", {
+        headers: { token: localStorage.getItem("token") },
+      });
+      if (!res.ok) throw new Error("Failed to fetch user info");
+      const user = await res.json();
+      console.log("Updated user data:", user);
+      setUserFacility(user.facility || "");
+      
+      // Wait a bit then fetch items
+      setTimeout(() => {
+        if (user.facility) {
+          fetchItems();
+        }
+      }, 300);
+    } catch (err) {
+      console.error("Error in facility update handler:", err);
+    }
+  };
+  
+  window.addEventListener("userFacilityUpdated", handler);
+  return () => window.removeEventListener("userFacilityUpdated", handler);
+}, []);
 
   const fetchItems = async () => {
     try {
       const res = await fetch("http://localhost:5000/items", {
-        headers: { token: localStorage.token },
+        headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to fetch items");
@@ -58,35 +81,35 @@ const BorrowItems = () => {
   };
 
   const handleBorrow = async (e) => {
-    e.preventDefault();
-    if (!borrowQty || borrowQty <= 0) {
-      toast.error("Please enter a valid quantity.");
-      return;
-    }
+  e.preventDefault();
+  if (!borrowQty || borrowQty <= 0) {
+    toast.error("Please enter a valid quantity.");
+    return;
+  }
 
-    try {
-      const res = await fetch("http://localhost:5000/items/borrow", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: localStorage.token,
-        },
-        body: JSON.stringify({
-          item_id: selectedItem.id,
-          quantity: borrowQty,
-        }),
-      });
+  try {
+    const res = await fetch("http://localhost:5000/items/borrow", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token: localStorage.getItem("token"), // Changed
+      },
+      body: JSON.stringify({
+        item_id: selectedItem.id,
+        quantity: borrowQty,
+      }),
+    });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      toast.success("Item borrowed successfully!");
-      setShowModal(false);
-      setBorrowQty("");
-      fetchItems();
-    } catch (err) {
-      toast.error(err.message || "Error borrowing item.");
-    }
-  };
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toast.success("Item borrowed successfully!");
+    setShowModal(false);
+    setBorrowQty("");
+    fetchItems();
+  } catch (err) {
+    toast.error(err.message || "Error borrowing item.");
+  }
+};
 
   useEffect(() => {
     if (userFacility) fetchItems();

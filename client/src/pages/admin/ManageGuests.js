@@ -165,33 +165,50 @@ const ManageGuests = () => {
     const data = await res.json();
     console.log("Assignment response:", data);
 
-    // Get current user from token
+    // Check if the assigned guest is the currently logged-in user
     const token = localStorage.getItem("token");
     if (token) {
-      const currentUser = JSON.parse(atob(token.split('.')[1]));
-      console.log("Current user ID:", currentUser.id);
-      console.log("Assigned guest ID:", selectedGuest.id);
-      console.log("New token received:", data.token);
-      
-      if (currentUser.id === selectedGuest.id && data.token) {
-        console.log("Updating token for current user");
-        localStorage.setItem("token", data.token);
+      try {
+        const currentUser = JSON.parse(atob(token.split('.')[1]));
+        console.log("Current user ID:", currentUser.id);
+        console.log("Assigned guest ID:", selectedGuest.id);
         
-        // Verify the new token
-        const newTokenData = JSON.parse(atob(data.token.split('.')[1]));
-        console.log("New token data:", newTokenData);
-        
-        // Dispatch event to update UI
-        window.dispatchEvent(new Event("userFacilityUpdated"));
-        alert("You have been assigned to a room. Your facility has been updated!");
+        // If assigning to self AND new token is provided, update it and reload
+        if (currentUser.id === selectedGuest.id && data.token) {
+          console.log("Updating token for current user with new facility");
+          localStorage.setItem("token", data.token);
+          
+          alert("Success! You have been assigned to " + selectedRoom.room_number + ". The page will reload to update your session.");
+          
+          // Close modal first
+          setShowModal(false);
+          
+          // Reload the page to ensure all components use the new token
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+          return; // Exit early, don't continue with normal flow
+        } else {
+          alert("Guest assigned successfully to " + selectedRoom.room_number);
+        }
+      } catch (parseError) {
+        console.error("Error parsing token:", parseError);
+        alert("Guest assigned successfully to " + selectedRoom.room_number);
       }
+    } else {
+      alert("Guest assigned successfully to " + selectedRoom.room_number);
     }
 
+    // Close modal and refresh rooms (only if not reloading)
     setShowModal(false);
+    setSelectedGuest(null);
+    setSearchQuery("");
+    setTimeOut("");
     await fetchRooms();
+    
   } catch (err) {
     console.error("Assign network error:", err);
-    alert("Network error. See console.");
+    alert("Network error. Please check your connection.");
   }
 };
 
@@ -226,36 +243,56 @@ const ManageGuests = () => {
   }, []);
 
   const handleRemove = async (room) => {
-    // Superadmin cannot remove guests
-    if (role === "superadmin") {
-      alert("Superadmins can only view rooms. Guest checkout is restricted to facility admins.");
+  if (role === "superadmin") {
+    alert("Superadmins can only view rooms. Guest checkout is restricted to facility admins.");
+    return;
+  }
+
+  if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
+
+  try {
+    const res = await fetch(`http://localhost:5000/rooms/${room.id}/remove`, {
+      method: "PUT",
+      headers: { token: localStorage.token },
+    });
+
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert("Checkout failed: " + (j.error || j.message || res.status));
       return;
     }
 
-    if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
-
-    try {
-      const res = await fetch(`http://localhost:5000/rooms/${room.id}/remove`, {
-        method: "PUT",
-        headers: { token: localStorage.token },
-      });
-
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        alert("Checkout failed: " + (j.error || j.message || res.status));
-        return;
+    const data = await res.json();
+    
+    // Check if checked-out guest is current user
+    const token = localStorage.getItem("token");
+    if (token && data.token) {
+      try {
+        const currentUser = JSON.parse(atob(token.split('.')[1]));
+        if (currentUser.id === room.booking?.guest_id) {
+          console.log("Current user was checked out - updating token and reloading");
+          localStorage.setItem("token", data.token);
+          
+          alert("You have been checked out. The page will reload to update your session.");
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+          return;
+        }
+      } catch (parseError) {
+        console.error("Error parsing token:", parseError);
       }
-
-      await fetchRooms();
-      alert("Guest checked out.");
-      setTimeout(() => {
-        window.dispatchEvent(new Event("userFacilityUpdated"));
-      }, 300);
-    } catch (err) {
-      console.error("Remove error:", err);
-      alert("Network error. See console.");
     }
-  };
+
+    await fetchRooms();
+    alert("Guest checked out successfully.");
+    
+  } catch (err) {
+    console.error("Remove error:", err);
+    alert("Network error. Please check your connection.");
+  }
+};
 
   // ---- ADMIN ROOM FUNCTIONS ----
   const handleAddRoom = async () => {

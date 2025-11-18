@@ -1,0 +1,127 @@
+import { createContext, useContext, useState, useEffect } from "react";
+import { jwtDecode } from "jwt-decode";
+
+const PermissionsContext = createContext();
+
+export const PermissionsProvider = ({ children }) => {
+  const [permissions, setPermissions] = useState([]);
+  const [allAccess, setAllAccess] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState(null);
+  const [userFacility, setUserFacility] = useState(null);
+
+  const fetchPermissions = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const decoded = jwtDecode(token);
+      setUserRole(decoded.role);
+      setUserFacility(decoded.facility);
+
+      console.log("Fetching permissions for role:", decoded.role);
+
+      // Superadmin has access to everything
+      if (decoded.role === "superadmin") {
+        console.log("Superadmin detected - granting all access");
+        setAllAccess(true);
+        setPermissions([]);
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:5000/permissions/my-permissions",
+        {
+          headers: { token },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Fetched permissions data:", data);
+        setAllAccess(data.all_access || false);
+        setPermissions(data.permissions || []);
+      }
+    } catch (err) {
+      console.error("Error fetching permissions:", err);
+      setPermissions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch on mount
+  useEffect(() => {
+    console.log("PermissionsProvider mounted - fetching permissions");
+    fetchPermissions();
+  }, []);
+
+  // Listen for permission refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      console.log("Permission refresh event received - refetching permissions");
+      fetchPermissions();
+    };
+
+    const handleFacilityUpdate = () => {
+      console.log("Facility update event received - refetching permissions");
+      fetchPermissions();
+    };
+
+    window.addEventListener('permissionsNeedRefresh', handleRefresh);
+    window.addEventListener("userFacilityUpdated", handleFacilityUpdate);
+    
+    return () => {
+      window.removeEventListener('permissionsNeedRefresh', handleRefresh);
+      window.removeEventListener("userFacilityUpdated", handleFacilityUpdate);
+    };
+  }, []);
+
+  // Check if a specific page is accessible
+  const hasAccess = (pageKey) => {
+    if (allAccess) {
+      console.log(`Access check for ${pageKey}: granted (all access)`);
+      return true;
+    }
+    const hasPermission = permissions.some((p) => p.page_key === pageKey && p.is_enabled);
+    console.log(`Access check for ${pageKey}:`, hasPermission);
+    return hasPermission;
+  };
+
+  // Get all enabled page keys
+  const enabledPages = permissions
+    .filter((p) => p.is_enabled)
+    .map((p) => p.page_key);
+
+  const value = {
+    permissions,
+    allAccess,
+    loading,
+    userRole,
+    userFacility,
+    hasAccess,
+    enabledPages,
+    refetch: fetchPermissions,
+  };
+
+  return (
+    <PermissionsContext.Provider value={value}>
+      {children}
+    </PermissionsContext.Provider>
+  );
+};
+
+// Custom hook to use permissions
+export const usePermissions = () => {
+  const context = useContext(PermissionsContext);
+  if (!context) {
+    throw new Error('usePermissions must be used within a PermissionsProvider');
+  }
+  return context;
+};
+
+export default PermissionsContext;

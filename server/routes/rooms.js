@@ -229,7 +229,21 @@ router.put("/:id/remove", authorization, async (req, res) => {
     }
 
     const guestId = result.rows[0].guest_id;
-    await pool.query("UPDATE users SET facility = NULL WHERE id = $1", [guestId]);
+    
+    // Update user facility to NULL and get updated user data
+    const updatedUser = await pool.query(
+      "UPDATE users SET facility = NULL WHERE id = $1 RETURNING id, email, role, facility", 
+      [guestId]
+    );
+
+    // Generate new token with facility removed
+    const jwtGenerator = require("../utils/jwtGenerator");
+    const newToken = jwtGenerator({
+      id: updatedUser.rows[0].id,
+      email: updatedUser.rows[0].email,
+      role: updatedUser.rows[0].role,
+      facility: updatedUser.rows[0].facility, // Will be null
+    });
 
     getIo().emit("booking:removed", {
       room_id: id,
@@ -239,6 +253,8 @@ router.put("/:id/remove", authorization, async (req, res) => {
     res.json({
       message: "Guest checked out and moved to booking_history",
       history: result.rows[0],
+      token: newToken,
+      guest_id: guestId
     });
   } catch (err) {
     console.error("Error removing guest:", err.message);

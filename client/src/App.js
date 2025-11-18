@@ -8,11 +8,15 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "./context/NotificationContext";
+import { PermissionsProvider, usePermissions } from "./context/PermissionsContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Superadmin pages
 import ManageAdmins from "./pages/superadmin/ManageAdmins";
+import PageAccessControl from "./pages/superadmin/PageAccessControl";
 
 // Admin pages
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -150,119 +154,122 @@ function App() {
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
-      <Routes>
-        {/* ================= LOGIN ================= */}
-        <Route
-          path="/login"
-          element={
-            !isAuthenticated ? (
-              <Login setAuth={setAuth} setUser={setUser} />
-            ) : localStorage.getItem("first_login") === "true" ? (
-              <Navigate to="/force-change-password" />
-            ) : user?.role === "admin" || user?.role === "superadmin" ? (
-              <Navigate to="/admin" />
-            ) : user?.role === "housekeeper" ? (
-              <Navigate to="/housekeeper" />
-            ) : user?.role === "guest" ? (
-              <Navigate to="/guest" />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+      <PermissionsProvider>
+        <Routes>
+          {/* ================= LOGIN ================= */}
+          <Route
+            path="/login"
+            element={
+              !isAuthenticated ? (
+                <Login setAuth={setAuth} setUser={setUser} />
+              ) : localStorage.getItem("first_login") === "true" ? (
+                <Navigate to="/force-change-password" />
+              ) : user?.role === "admin" || user?.role === "superadmin" ? (
+                <Navigate to="/admin" />
+              ) : user?.role === "housekeeper" ? (
+                <Navigate to="/housekeeper" />
+              ) : user?.role === "guest" ? (
+                <Navigate to="/guest" />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
-        {/* ================= REGISTER ================= */}
-        <Route
-          path="/register"
-          element={
-            !isAuthenticated ? (
-              <Register setAuth={setAuth} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+          {/* ================= REGISTER ================= */}
+          <Route
+            path="/register"
+            element={
+              !isAuthenticated ? (
+                <Register setAuth={setAuth} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
-        {/* ================= FORCE PASSWORD CHANGE ================= */}
-        <Route
-          path="/force-change-password"
-          element={
-            isAuthenticated ? (
-              <ForceChangePassword setAuth={setAuth} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+          {/* ================= FORCE PASSWORD CHANGE ================= */}
+          <Route
+            path="/force-change-password"
+            element={
+              isAuthenticated ? (
+                <ForceChangePassword setAuth={setAuth} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
 
-        {/* ================= ADMIN ROUTES ================= */}
-        <Route
-          path="/admin/*"
-          element={
-            isAuthenticated &&
-            (user?.role === "admin" || user?.role === "superadmin") ? (
-              <NotificationProvider>
-                <AdminLayout setAuth={setAuth} role={user.role} />
-              </NotificationProvider>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        >
-          <Route index element={<AdminDashboard setAuth={setAuth} />} />
-          <Route path="housekeepers" element={<AddHousekeeper />} />
-          <Route path="profile" element={<AdminProfile />} />
-          <Route path="guests" element={<ManageGuests />} />
-          <Route path="requests" element={<ServiceRequests />} />
-          <Route path="item-list" element={<ItemList />} />
-          <Route path="pending-payments" element={<PendingPayments />} />
-          <Route path="service-types" element={<ServiceTypes />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="manage-admins" element={<ManageAdmins />} />
-          <Route path="feedback" element={<FeedbackPage />} />
-        </Route>
+          {/* ================= ADMIN ROUTES ================= */}
+          <Route
+            path="/admin/*"
+            element={
+              isAuthenticated &&
+              (user?.role === "admin" || user?.role === "superadmin") ? (
+                <NotificationProvider>
+                  <AdminLayout setAuth={setAuth} role={user.role} />
+                </NotificationProvider>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          >
+            <Route index element={<ProtectedRoute pageKey="dashboard"><AdminDashboard setAuth={setAuth} /></ProtectedRoute>} />
+            <Route path="housekeepers" element={<ProtectedRoute pageKey="housekeepers"><AddHousekeeper /></ProtectedRoute>} />
+            <Route path="profile" element={<ProtectedRoute pageKey="profile"><AdminProfile /></ProtectedRoute>} />
+            <Route path="guests" element={<ProtectedRoute pageKey="guests"><ManageGuests /></ProtectedRoute>} />
+            <Route path="requests" element={<ProtectedRoute pageKey="requests"><ServiceRequests /></ProtectedRoute>} />
+            <Route path="item-list" element={<ProtectedRoute pageKey="item_list"><ItemList /></ProtectedRoute>} />
+            <Route path="pending-payments" element={<ProtectedRoute pageKey="pending_payments"><PendingPayments /></ProtectedRoute>} />
+            <Route path="service-types" element={<ProtectedRoute pageKey="service_types"><ServiceTypes /></ProtectedRoute>} />
+            <Route path="reports" element={<ProtectedRoute pageKey="reports"><Reports /></ProtectedRoute>} />
+            <Route path="manage-admins" element={<ManageAdmins />} />
+            <Route path="feedback" element={<ProtectedRoute pageKey="system_feedback"><FeedbackPage /></ProtectedRoute>} />
+            <Route path="page-access" element={<PageAccessControl /> } />
+          </Route>
 
-        {/* ================= GUEST ROUTES ================= */}
-        <Route
-          path="/guest/*"
-          element={
-            isAuthenticated && user?.role === "guest" ? (
-              <NotificationProvider>
-                <GuestLayout setAuth={setAuth} role={user.role} />
-              </NotificationProvider>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        >
-          <Route index element={<GuestDashboard setAuth={setAuth} />} />
-          <Route path="profile" element={<UserProfile />} />
-          <Route path="borrow-items" element={<BorrowItems />} />
-          <Route path="system-feedback" element={<SystemFeedback />} />
-        </Route>
+          {/* ================= GUEST ROUTES ================= */}
+          <Route
+            path="/guest/*"
+            element={
+              isAuthenticated && user?.role === "guest" ? (
+                <NotificationProvider>
+                  <GuestLayout setAuth={setAuth} role={user.role} />
+                </NotificationProvider>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          >
+            <Route index element={<ProtectedRoute pageKey="dashboard"><GuestDashboard setAuth={setAuth} /></ProtectedRoute>} />
+            <Route path="profile" element={<ProtectedRoute pageKey="profile"><UserProfile /></ProtectedRoute>} />
+            <Route path="borrow-items" element={<ProtectedRoute pageKey="borrow_items"><BorrowItems /></ProtectedRoute>} />
+            <Route path="system-feedback" element={<ProtectedRoute pageKey="system_feedback"><SystemFeedback /></ProtectedRoute>} />
+          </Route>
 
-        {/* ================= HOUSEKEEPER ROUTES ================= */}
-        <Route
-          path="/housekeeper/*"
-          element={
-            isAuthenticated && user?.role === "housekeeper" ? (
-              <NotificationProvider>
-                <HousekeeperLayout setAuth={setAuth} role={user.role} />
-              </NotificationProvider>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        >
-          <Route index element={<HousekeeperDashboard setAuth={setAuth} />} />
-          <Route path="profile" element={<HousekeeperProfile />} />
-          <Route path="tasks" element={<HousekeeperTasks />} />
-        </Route>
+          {/* ================= HOUSEKEEPER ROUTES ================= */}
+          <Route
+            path="/housekeeper/*"
+            element={
+              isAuthenticated && user?.role === "housekeeper" ? (
+                <NotificationProvider>
+                  <HousekeeperLayout setAuth={setAuth} role={user.role} />
+                </NotificationProvider>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          >
+            <Route index element={<ProtectedRoute pageKey="dashboard"><HousekeeperDashboard setAuth={setAuth} /></ProtectedRoute>} />
+            <Route path="profile" element={<ProtectedRoute pageKey="profile"><HousekeeperProfile /></ProtectedRoute>} />
+            <Route path="tasks" element={<ProtectedRoute pageKey="tasks"><HousekeeperTasks /></ProtectedRoute>} />
+          </Route>
 
-        {/* ================= DEFAULT ROUTE ================= */}
-        <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
+          {/* ================= DEFAULT ROUTE ================= */}
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </PermissionsProvider>
     </>
   );
 }

@@ -36,6 +36,7 @@ app.use("/api/trends", require("./routes/adminTrends"));
 app.use("/api/admin/reports", require("./routes/adminReports"));
 app.use("/service-types", require("./routes/serviceTypes"));
 app.use("/admins", require("./routes/admins"));
+app.use("/permissions", require("./routes/permissions"));
 
 require("./tasks/expireBookings");
 

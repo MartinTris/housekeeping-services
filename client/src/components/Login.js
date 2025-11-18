@@ -28,7 +28,6 @@ const Login = ({ setAuth, setUser }) => {
     e.preventDefault();
     try {
       const body = { ...creds, role: loginRole };
-
       const response = await fetch("http://localhost:5000/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,6 +55,24 @@ const Login = ({ setAuth, setUser }) => {
         // Set auth and user state
         setAuth(true);
         setUser({ role: parseRes.role });
+
+        // **Fetch fresh user data to get facility info**
+        try {
+          const userRes = await fetch("http://localhost:5000/users/me", {
+            headers: { token: parseRes.token },
+          });
+          const userData = await userRes.json();
+          console.log("Fetched user data:", userData);
+          
+          // Update user state with complete data including facility
+          setUser({ role: parseRes.role, facility: userData.facility });
+        } catch (err) {
+          console.error("Error fetching user data:", err);
+        }
+
+        // **CRITICAL: Dispatch event to trigger permission refresh**
+        window.dispatchEvent(new CustomEvent('permissionsNeedRefresh'));
+        console.log("Dispatched permissionsNeedRefresh event");
 
         // Close modals
         setShowModal(false);

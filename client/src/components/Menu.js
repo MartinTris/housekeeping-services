@@ -1,43 +1,72 @@
 import { Link, useLocation } from "react-router-dom";
 import socket from "../socket";
+import { usePermissions } from "../context/PermissionsContext";
 
 const Menu = ({ setAuth, role }) => {
   const location = useLocation();
+  const { hasAccess, allAccess, loading } = usePermissions();
+
+  // Map route paths to permission page_keys
+  const pageKeyMap = {
+    // Admin pages
+    "/admin": "dashboard",
+    "/admin/profile": "profile",
+    "/admin/guests": "guests",
+    "/admin/housekeepers": "housekeepers",
+    "/admin/requests": "requests",
+    "/admin/item-list": "item_list",
+    "/admin/service-types": "service_types",
+    "/admin/reports": "reports",
+    "/admin/manage-admins": "manage_admins", // Superadmin only
+    "/admin/page-access": "page_access", // Superadmin only
+    
+    // Guest pages
+    "/guest": "dashboard",
+    "/guest/profile": "profile",
+    "/guest/borrow-items": "borrow_items",
+    "/guest/system-feedback": "system_feedback",
+    
+    // Housekeeper pages
+    "/housekeeper": "dashboard",
+    "/housekeeper/profile": "profile",
+    "/housekeeper/tasks": "tasks",
+  };
 
   const adminItems = [
-    { name: "Dashboard", path: "/admin" },
-    { name: "My Profile", path: "/admin/profile" },
-    { name: "Add/Remove Guest", path: "/admin/guests" },
-    { name: "Manage Housekeepers", path: "/admin/housekeepers" },
-    { name: "Service Requests", path: "/admin/requests" },
-    { name: "Item List", path: "/admin/item-list" },
-    { name: "Service Types", path: "/admin/service-types" },
-    { name: "Reports", path: "/admin/reports" },
+    { name: "Dashboard", path: "/admin", pageKey: "dashboard" },
+    { name: "My Profile", path: "/admin/profile", pageKey: "profile" },
+    { name: "Add/Remove Guest", path: "/admin/guests", pageKey: "guests" },
+    { name: "Manage Housekeepers", path: "/admin/housekeepers", pageKey: "housekeepers" },
+    { name: "Service Requests", path: "/admin/requests", pageKey: "requests" },
+    { name: "Item List", path: "/admin/item-list", pageKey: "item_list" },
+    { name: "Service Types", path: "/admin/service-types", pageKey: "service_types" },
+    { name: "Reports", path: "/admin/reports", pageKey: "reports" },
   ];
 
   const superadminItems = [
-    { name: "Dashboard", path: "/admin" },
-    { name: "My Profile", path: "/admin/profile" },    
-    { name: "Add/Remove Guest", path: "/admin/guests" },
-    { name: "Manage Admins", path: "/admin/manage-admins" },
-    { name: "Manage Housekeepers", path: "/admin/housekeepers" },
-    { name: "Service Requests", path: "/admin/requests" },
-    { name: "Item List", path: "/admin/item-list" },
-    { name: "Service Types", path: "/admin/service-types" },
-    { name: "Reports", path: "/admin/reports" },
+    { name: "Dashboard", path: "/admin", pageKey: "dashboard" },
+    { name: "My Profile", path: "/admin/profile", pageKey: "profile" },    
+    { name: "Add/Remove Guest", path: "/admin/guests", pageKey: "guests" },
+    { name: "Manage Admins", path: "/admin/manage-admins", pageKey: "manage_admins" },
+    { name: "Manage Housekeepers", path: "/admin/housekeepers", pageKey: "housekeepers" },
+    { name: "Service Requests", path: "/admin/requests", pageKey: "requests" },
+    { name: "Item List", path: "/admin/item-list", pageKey: "item_list" },
+    { name: "Service Types", path: "/admin/service-types", pageKey: "service_types" },
+    { name: "Reports", path: "/admin/reports", pageKey: "reports" },
+    { name: "Page Access Control", path: "/admin/page-access", pageKey: "page_access" },
   ];
 
   const guestItems = [
-    { name: "Dashboard", path: "/guest" },
-    { name: "My Profile", path: "/guest/profile" },
-    { name: "Borrow Items", path: "/guest/borrow-items" },
-    { name: "System Feedback", path: "/guest/system-feedback" },
+    { name: "Dashboard", path: "/guest", pageKey: "dashboard" },
+    { name: "My Profile", path: "/guest/profile", pageKey: "profile" },
+    { name: "Borrow Items", path: "/guest/borrow-items", pageKey: "borrow_items" },
+    { name: "System Feedback", path: "/guest/system-feedback", pageKey: "system_feedback" },
   ];
 
   const housekeeperItems = [
-    { name: "Dashboard", path: "/housekeeper" },
-    { name: "My Profile", path: "/housekeeper/profile" },
-    { name: "Tasks", path: "/housekeeper/tasks" },
+    { name: "Dashboard", path: "/housekeeper", pageKey: "dashboard" },
+    { name: "My Profile", path: "/housekeeper/profile", pageKey: "profile" },
+    { name: "Tasks", path: "/housekeeper/tasks", pageKey: "tasks" },
   ];
 
   let items = [];
@@ -56,11 +85,22 @@ const Menu = ({ setAuth, role }) => {
     items = guestItems;
     panelTitle = "Guest Panel";
   } else {
-    // Fallback if role is undefined or unknown
     console.error("Unknown role in Menu:", role);
     items = guestItems;
     panelTitle = "Panel";
   }
+
+  // Filter items based on permissions
+  const filteredItems = items.filter((item) => {
+    // Superadmin always has access to everything
+    if (allAccess) return true;
+    
+    // Show loading state items without filtering
+    if (loading) return true;
+    
+    // Check permission for this page
+    return hasAccess(item.pageKey);
+  });
 
   const isActive = (path) => {
     if (path === "/admin" || path === "/guest" || path === "/housekeeper") {
@@ -75,19 +115,23 @@ const Menu = ({ setAuth, role }) => {
         {panelTitle}
       </h2>
 
-      {items.map((item) => (
-        <Link
-          key={item.path}
-          to={item.path}
-          className={`px-4 py-2 mb-2 rounded transition ${
-            isActive(item.path)
-              ? "bg-green-100 text-green-800 font-semibold"
-              : "text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          {item.name}
-        </Link>
-      ))}
+      {loading ? (
+        <div className="text-sm text-gray-500 mb-4">Loading menu...</div>
+      ) : (
+        filteredItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`px-4 py-2 mb-2 rounded transition ${
+              isActive(item.path)
+                ? "bg-green-100 text-green-800 font-semibold"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            {item.name}
+          </Link>
+        ))
+      )}
 
       <button
         onClick={() => {

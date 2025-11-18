@@ -27,9 +27,10 @@ const GuestDashboard = () => {
   async function fetchProfile() {
     try {
       const res = await fetch("http://localhost:5000/users/me", {
-        headers: { token: localStorage.token },
+        headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
+      console.log("Fetched profile:", data);
       setProfile(data);
 
       const fullName =
@@ -81,16 +82,18 @@ const GuestDashboard = () => {
   async function fetchServiceTypes() {
     try {
       const res = await fetch("http://localhost:5000/service-types", {
-        headers: { token: localStorage.token },
+        headers: { token: localStorage.getItem("token") },
       });
 
       const data = await res.json();
+      console.log("Fetched service types:", data);
       setServiceTypes(data);
     } catch (err) {
       console.error("Error fetching service types:", err);
     }
   }
 
+  // Initial data fetch on mount
   useEffect(() => {
     fetchProfile();
     fetchTotalRequests();
@@ -100,6 +103,7 @@ const GuestDashboard = () => {
 
   const generateTimeSlots = () => {
     if (!profile?.facility) {
+      console.log("No facility, skipping time slot generation");
       setTimeSlots([]);
       return;
     }
@@ -116,7 +120,7 @@ const GuestDashboard = () => {
       return selected ? selected.duration : 30;
     };
 
-    const intervalMinutes = getServiceDuration(); // This is your slot interval
+    const intervalMinutes = getServiceDuration();
     const now = new Date();
 
     const selectedDate = preferredDate ? new Date(preferredDate) : null;
@@ -158,10 +162,10 @@ const GuestDashboard = () => {
 
       slots.push({ value, label: `${startLabel} - ${endLabel}` });
 
-      // ✅ CHANGED: Move forward by the service duration, not a fixed 30 minutes
       slotStart = new Date(slotStart.getTime() + intervalMinutes * 60000);
     }
 
+    console.log("Generated time slots:", slots.length);
     setTimeSlots(slots);
   };
 
@@ -183,7 +187,7 @@ const GuestDashboard = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          token: localStorage.token,
+          headers: { token: localStorage.getItem("token") },
         },
         body: JSON.stringify({
           preferred_date: preferredDate,
@@ -208,7 +212,6 @@ const GuestDashboard = () => {
   };
 
   async function fetchAvailability() {
-    // Don't fetch if we don't have required data
     if (!profile?.facility || !serviceType) {
       console.log("Skipping availability check:", {
         hasFacility: !!profile?.facility,
@@ -237,19 +240,19 @@ const GuestDashboard = () => {
     }
   }
 
-  // Add this new useEffect to set initial service type when loaded
+  // Set initial service type when loaded
   useEffect(() => {
     if (serviceTypes.length > 0 && !serviceType) {
       setServiceType(serviceTypes[0].name);
     }
   }, [serviceTypes]);
 
+  // Modal open/close handling
   useEffect(() => {
     if (showModal) {
       const today = new Date().toISOString().split("T")[0];
       setPreferredDate(today);
       setPreferredTime("");
-      // Set serviceType if we have service types loaded and it's not set yet
       if (serviceTypes.length > 0 && !serviceType) {
         setServiceType(serviceTypes[0].name);
       }
@@ -261,25 +264,68 @@ const GuestDashboard = () => {
     }
   }, [showModal]);
 
-  useEffect(() => {
-    const handler = () => {
-      fetchProfile();
-      fetchServiceTypes(); // Add this
-      // If modal is open, regenerate time slots
-      if (showModal) {
-        generateTimeSlots();
+  // Listen for facility updates - CRITICAL FOR REAL-TIME UPDATES
+useEffect(() => {
+  const handler = async () => {
+    console.log("🔔 userFacilityUpdated event fired!");
+    
+    // Small delay to ensure token is written to localStorage
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Force refetch profile with NEW token from localStorage
+    try {
+      const res = await fetch("http://localhost:5000/users/me", {
+        headers: { token: localStorage.getItem("token") },
+      });
+      const data = await res.json();
+      console.log("✅ Refetched profile after facility update:", data);
+      setProfile(data);
+      
+      const fullName =
+        data.first_name && data.last_name
+          ? `${data.first_name} ${data.last_name}`
+          : data.name || "";
+      setName(fullName);
+      
+      // If facility exists, refetch service types and requests
+      if (data.facility) {
+        console.log("✅ Facility found, refetching all data...");
+        await fetchServiceTypes();
+        await fetchTotalRequests();
+        await fetchTodayRequests();
+        
+        // Force regenerate time slots after a brief delay
+        setTimeout(() => {
+          if (showModal && serviceType && preferredDate) {
+            generateTimeSlots();
+            fetchAvailability();
+          }
+        }, 300);
       }
-    };
-    window.addEventListener("userFacilityUpdated", handler);
-    return () => window.removeEventListener("userFacilityUpdated", handler);
-  }, [showModal]); // Add showModal as dependency
+    } catch (err) {
+      console.error("❌ Error refetching profile:", err);
+    }
+  };
+  
+  window.addEventListener("userFacilityUpdated", handler);
+  return () => window.removeEventListener("userFacilityUpdated", handler);
+}, [showModal, serviceType, preferredDate]);
 
+  // Fetch service types when facility is detected
   useEffect(() => {
-    if (serviceType && preferredDate) {
+    if (profile?.facility) {
+      console.log("Facility detected in profile:", profile.facility);
+      fetchServiceTypes();
+    }
+  }, [profile?.facility]);
+
+  // Generate time slots and fetch availability when dependencies change
+  useEffect(() => {
+    if (serviceType && preferredDate && profile?.facility) {
       generateTimeSlots();
       fetchAvailability();
     }
-  }, [profile, serviceType, preferredDate, serviceTypes]);
+  }, [profile?.facility, serviceType, preferredDate, serviceTypes]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -288,9 +334,19 @@ const GuestDashboard = () => {
         <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
           Welcome, {name}
         </h2>
+        
+        {!profile?.facility && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <p className="text-yellow-700">
+              ⚠️ You are not assigned to a room yet.
+            </p>
+          </div>
+        )}
+        
         <button
-          className="text-gray-600 mb-6 underline"
+          className="text-gray-600 mb-6 underline disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => setShowModal(true)}
+          disabled={!profile?.facility || !profile?.current_booking?.room_id}
         >
           Request a service
         </button>
@@ -381,7 +437,8 @@ const GuestDashboard = () => {
                         color: availability[s.value] ? "black" : "#9CA3AF",
                       }}
                     >
-                      {s.label} {!availability[s.value] ? " (Unavailable)" : ""}
+                      {s.label}{" "}
+                      {!availability[s.value] ? " (Unavailable)" : ""}
                     </option>
                   ))}
                 </select>
