@@ -13,7 +13,7 @@ const FeedbackPage = () => {
   // Filter states
   const [guestFilter, setGuestFilter] = useState("");
   const [housekeeperFilter, setHousekeeperFilter] = useState("");
-  const [sortOrder, setSortOrder] = useState("desc"); // desc = high to low, asc = low to high
+  const [sortOrder, setSortOrder] = useState("desc");
 
   const fetchUserRole = () => {
     try {
@@ -34,7 +34,7 @@ const FeedbackPage = () => {
         : "http://localhost:5000/feedback/admin";
         
       const res = await fetch(endpoint, {
-        headers: { token: localStorage.token },
+        headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
       if (res.ok) {

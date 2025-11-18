@@ -12,7 +12,7 @@ const FeedbackWidget = () => {
   const fetchRecentCompleted = async () => {
     try {
       const res = await fetch("http://localhost:5000/feedback/recent", {
-        headers: { token: localStorage.token },
+        headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
       if (res.ok) setRecentCompleted(data);
@@ -34,7 +34,7 @@ const FeedbackWidget = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          token: localStorage.token,
+          token: localStorage.getItem("token"),
         },
         body: JSON.stringify({
           rating,

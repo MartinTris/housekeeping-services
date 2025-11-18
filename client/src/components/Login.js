@@ -52,11 +52,10 @@ const Login = ({ setAuth, setUser }) => {
           first_login: localStorage.getItem("first_login")
         });
 
-        // Set auth and user state
+        // Set auth state
         setAuth(true);
-        setUser({ role: parseRes.role });
 
-        // **Fetch fresh user data to get facility info**
+        // **Fetch fresh user data to get complete user info including facility**
         try {
           const userRes = await fetch("http://localhost:5000/users/me", {
             headers: { token: parseRes.token },
@@ -64,10 +63,21 @@ const Login = ({ setAuth, setUser }) => {
           const userData = await userRes.json();
           console.log("Fetched user data:", userData);
           
-          // Update user state with complete data including facility
-          setUser({ role: parseRes.role, facility: userData.facility });
+          // Set user state with complete data
+          setUser({ 
+            id: userData.id || parseRes.id,
+            role: parseRes.role,
+            facility: userData.facility,
+            email: userData.email || parseRes.email
+          });
         } catch (err) {
           console.error("Error fetching user data:", err);
+          // Fallback to basic user data if fetch fails
+          setUser({ 
+            id: parseRes.id,
+            role: parseRes.role,
+            email: parseRes.email
+          });
         }
 
         // **CRITICAL: Dispatch event to trigger permission refresh**

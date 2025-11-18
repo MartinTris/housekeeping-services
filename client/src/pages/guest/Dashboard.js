@@ -187,7 +187,7 @@ const GuestDashboard = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          headers: { token: localStorage.getItem("token") },
+          token: localStorage.getItem("token"),
         },
         body: JSON.stringify({
           preferred_date: preferredDate,
