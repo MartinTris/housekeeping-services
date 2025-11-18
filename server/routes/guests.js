@@ -1,12 +1,15 @@
 const router = require("express").Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
+const jwtGenerator = require("../utils/jwtGenerator"); // Make sure you have this
 
 router.get("/rooms", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
 
-    if (!facility) return res.status(401).json("Facility not assigned");
+    if (!facility && role !== 'superadmin') {
+      return res.status(401).json("Facility not assigned");
+    }
 
     let query;
     let params;
@@ -34,7 +37,6 @@ router.get("/rooms", authorization, async (req, res) => {
     }
 
     const rooms = await pool.query(query, params);
-
     res.json(rooms.rows);
   } catch (err) {
     console.error(err.message);
@@ -71,24 +73,74 @@ router.get("/search", authorization, async (req, res) => {
 });
 
 router.post("/assign/:room_id", authorization, async (req, res) => {
+  const client = await pool.connect();
+  
   try {
     const { room_id } = req.params;
     const { guest_id, time_in, time_out } = req.body;
 
-    await pool.query(
+    await client.query('BEGIN');
+
+    // Get the room's facility
+    const roomResult = await client.query(
+      "SELECT facility FROM rooms WHERE id = $1",
+      [room_id]
+    );
+
+    if (roomResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    const roomFacility = roomResult.rows[0].facility;
+
+    // Update guest's facility
+    await client.query(
+      "UPDATE users SET facility = $1 WHERE id = $2",
+      [roomFacility, guest_id]
+    );
+
+    // Create booking
+    await client.query(
       "INSERT INTO room_bookings (room_id, guest_id, time_in, time_out) VALUES ($1, $2, $3, $4)",
       [room_id, guest_id, time_in, time_out]
     );
 
-    await pool.query("UPDATE rooms SET occupied_by = $1 WHERE id = $2", [
-      guest_id,
-      room_id,
-    ]);
+    // Update room occupation
+    await client.query(
+      "UPDATE rooms SET occupied_by = $1 WHERE id = $2",
+      [guest_id, room_id]
+    );
 
-    res.json({ message: "Guest assigned successfully" });
+    // Get updated user info for JWT
+    const userResult = await client.query(
+      "SELECT id, email, role, facility FROM users WHERE id = $1",
+      [guest_id]
+    );
+
+    await client.query('COMMIT');
+
+    const updatedUser = userResult.rows[0];
+
+    // Generate new token with updated facility
+    const newToken = jwtGenerator({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      facility: updatedUser.facility,
+    });
+
+    res.json({ 
+      message: "Guest assigned successfully",
+      token: newToken,
+      guest_id: guest_id
+    });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err.message);
-    res.status(500).send("Server error");
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
   }
 });
 

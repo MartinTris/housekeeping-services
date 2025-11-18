@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const AdminFeedbackWidget = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
-  const [feedbackType, setFeedbackType] = useState("service"); // "service" or "system"
+  const [feedbackType, setFeedbackType] = useState("service");
+  const navigate = useNavigate();
 
   const fetchUserRole = () => {
     try {
-      // Decode JWT token to get user role
       const token = localStorage.getItem("token");
       if (token) {
         const payload = JSON.parse(atob(token.split('.')[1]));
@@ -30,7 +31,7 @@ const AdminFeedbackWidget = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        setFeedbacks(data);
+        setFeedbacks(data.slice(0, 3)); // Only get 3 most recent
       }
       setLoading(false);
     } catch (err) {
@@ -40,7 +41,7 @@ const AdminFeedbackWidget = () => {
   };
 
   useEffect(() => {
-    fetchUserRole(); // Fetch role on mount
+    fetchUserRole();
   }, []);
 
   useEffect(() => {
@@ -51,98 +52,80 @@ const AdminFeedbackWidget = () => {
 
   const isSuperAdmin = userRole === "superadmin";
 
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-md p-6">
+        <p className="text-gray-600 text-center">Loading feedback...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="mt-10">
+    <div className="bg-white rounded-xl shadow-md p-6 max-w-md">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-poppins text-green-900 font-bold">
-          Guest Feedback
-        </h3>
+        <h2 className="text-xl font-bold text-green-900">
+          Recent Feedback
+        </h2>
         
         {isSuperAdmin && (
-          <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
+          <div className="flex gap-1 bg-gray-100 rounded-md p-0.5">
             <button
               onClick={() => setFeedbackType("service")}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
                 feedbackType === "service"
                   ? "bg-green-600 text-white"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Service Feedback
+              Service
             </button>
             <button
               onClick={() => setFeedbackType("system")}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+              className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
                 feedbackType === "system"
                   ? "bg-green-600 text-white"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              System Feedback
+              System
             </button>
           </div>
         )}
       </div>
 
-      {loading ? (
-        <p className="text-gray-600">Loading feedback...</p>
-      ) : feedbacks.length === 0 ? (
-        <p className="text-gray-600">No feedback available yet.</p>
+      {feedbacks.length === 0 ? (
+        <p className="text-gray-500 text-center text-sm">No feedback available yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border border-gray-300">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-2 border">Guest</th>
-                {isSuperAdmin && <th className="p-2 border">Facility</th>}
-                {feedbackType === "service" && (
-                  <>
-                    <th className="p-2 border">Housekeeper</th>
-                    <th className="p-2 border">Room</th>
-                    <th className="p-2 border">Service Type</th>
-                  </>
-                )}
-                <th className="p-2 border">Rating</th>
-                <th className="p-2 border">Comment</th>
-                <th className="p-2 border">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feedbacks.map((f) => (
-                <tr key={f.id} className="hover:bg-gray-50">
-                  <td className="p-2 border">{f.guest_name || "N/A"}</td>
-                  {isSuperAdmin && (
-                    <td className="p-2 border">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        f.facility === "RCC" 
-                          ? "bg-blue-100 text-blue-800" 
-                          : "bg-purple-100 text-purple-800"
-                      }`}>
-                        {f.facility || "Unknown"}
-                      </span>
-                    </td>
-                  )}
+        <>
+          <ul className="divide-y divide-gray-200">
+            {feedbacks.map((f) => (
+              <li key={f.id} className="flex justify-between items-center py-3">
+                <div className="flex-1 min-w-0 pr-4">
+                  <p className="font-semibold text-gray-800 truncate">
+                    {f.guest_name || "Anonymous"}
+                  </p>
                   {feedbackType === "service" && (
-                    <>
-                      <td className="p-2 border capitalize">
-                        {f.housekeeper_name || "N/A"}
-                      </td>
-                      <td className="p-2 border">{f.room_number || "—"}</td>
-                      <td className="p-2 border capitalize">
-                        {f.service_type || "—"}
-                      </td>
-                    </>
+                    <p className="text-sm text-gray-500 truncate">
+                      {f.housekeeper_name || "N/A"}
+                    </p>
                   )}
-                  <td className="p-2 border text-center">{f.rating} ⭐</td>
-                  <td className="p-2 border">{f.comment || "No comment"}</td>
-                  <td className="p-2 border whitespace-nowrap">
-                    {new Date(f.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-lg font-bold text-yellow-600">
+                    ⭐ {f.rating}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          
+          <button 
+            onClick={() => navigate(`/admin/feedback?type=${feedbackType}`)}
+            className="w-full mt-4 text-center text-sm text-green-600 hover:text-green-700 font-semibold transition-colors"
+          >
+            View More →
+          </button>
+        </>
       )}
     </div>
   );

@@ -134,42 +134,66 @@ const ManageGuests = () => {
   };
 
   const handleAssign = async () => {
-    if (!selectedGuest) return alert("Select a guest first");
+  if (!selectedGuest) return alert("Select a guest first");
 
-    const payload = {
-      guest_id: selectedGuest.id,
-      time_out: toISO(timeOut) || null,
-    };
-
-    try {
-      const res = await fetch(
-        `http://localhost:5000/rooms/${selectedRoom.id}/assign`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            token: localStorage.token,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        alert("Assign failed: " + (j.error || j.message || res.status));
-        return;
-      }
-
-      setShowModal(false);
-      await fetchRooms();
-      setTimeout(() => {
-        window.dispatchEvent(new Event("userFacilityUpdated"));
-      }, 300);
-    } catch (err) {
-      console.error("Assign network error:", err);
-      alert("Network error. See console.");
-    }
+  const payload = {
+    guest_id: selectedGuest.id,
+    time_out: toISO(timeOut) || null,
   };
+
+  console.log("Assigning guest:", selectedGuest.id);
+
+  try {
+    const res = await fetch(
+      `http://localhost:5000/rooms/${selectedRoom.id}/assign`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: localStorage.token,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert("Assign failed: " + (j.error || j.message || res.status));
+      return;
+    }
+
+    const data = await res.json();
+    console.log("Assignment response:", data);
+
+    // Get current user from token
+    const token = localStorage.getItem("token");
+    if (token) {
+      const currentUser = JSON.parse(atob(token.split('.')[1]));
+      console.log("Current user ID:", currentUser.id);
+      console.log("Assigned guest ID:", selectedGuest.id);
+      console.log("New token received:", data.token);
+      
+      if (currentUser.id === selectedGuest.id && data.token) {
+        console.log("Updating token for current user");
+        localStorage.setItem("token", data.token);
+        
+        // Verify the new token
+        const newTokenData = JSON.parse(atob(data.token.split('.')[1]));
+        console.log("New token data:", newTokenData);
+        
+        // Dispatch event to update UI
+        window.dispatchEvent(new Event("userFacilityUpdated"));
+        alert("You have been assigned to a room. Your facility has been updated!");
+      }
+    }
+
+    setShowModal(false);
+    await fetchRooms();
+  } catch (err) {
+    console.error("Assign network error:", err);
+    alert("Network error. See console.");
+  }
+};
 
   // Socket setup
   const socketRef = useRef(null);

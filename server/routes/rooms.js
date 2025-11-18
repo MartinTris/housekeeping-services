@@ -153,21 +153,38 @@ router.post("/:id/assign", authorization, async (req, res) => {
       [id, guest_id, time_out || null]
     );
 
-    await pool.query(
+    // Update user's facility based on room's facility
+    const updatedUser = await pool.query(
       `
       UPDATE users 
       SET facility = (SELECT facility FROM rooms WHERE id = $1) 
       WHERE id = $2
+      RETURNING id, email, role, facility
       `,
       [id, guest_id]
     );
+
+    // Generate new token with updated facility
+    const jwtGenerator = require("../utils/jwtGenerator");
+    const newToken = jwtGenerator({
+      id: updatedUser.rows[0].id,
+      email: updatedUser.rows[0].email,
+      role: updatedUser.rows[0].role,
+      facility: updatedUser.rows[0].facility,
+    });
 
     getIo().emit("booking:assigned", {
       room_id: id,
       booking: newBooking.rows[0],
     });
 
-    res.json({ message: "Guest assigned", booking: newBooking.rows[0] });
+    res.json({ 
+      message: "Guest assigned", 
+      booking: newBooking.rows[0],
+      token: newToken,
+      guest_id: guest_id,
+      facility: updatedUser.rows[0].facility
+    });
   } catch (err) {
     console.error("Error assigning guest:", err.message);
     res.status(500).send("Server error");

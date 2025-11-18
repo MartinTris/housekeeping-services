@@ -304,3 +304,86 @@ CHECK (
 --add target_admins column to announcements table
 ALTER TABLE announcements 
 ADD COLUMN IF NOT EXISTS target_admins BOOLEAN DEFAULT FALSE;
+
+
+-- ==== SUPERADMIN PAGE PERMISSIONS MANAGEMENT ====
+
+--create page_permissions table
+CREATE TABLE page_permissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  facility TEXT CHECK (facility IN ('RCC', 'Hotel Rafael')) NOT NULL,
+  role TEXT CHECK (role IN ('guest', 'housekeeper', 'admin')) NOT NULL,
+  page_key TEXT NOT NULL,
+  page_name TEXT NOT NULL, 
+  is_enabled BOOLEAN DEFAULT TRUE,
+  updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(facility, role, page_key)
+);
+
+-- Create index for faster lookups
+CREATE INDEX idx_page_permissions_lookup ON page_permissions(facility, role, is_enabled);
+
+-- Insert default permissions
+-- Guest pages
+INSERT INTO page_permissions (facility, role, page_key, page_name, is_enabled) VALUES
+-- RCC Guests
+('RCC', 'guest', 'dashboard', 'Dashboard', TRUE),
+('RCC', 'guest', 'profile', 'My Profile', TRUE),
+('RCC', 'guest', 'borrow_items', 'Borrow Items', TRUE),
+('RCC', 'guest', 'system_feedback', 'System Feedback', TRUE),
+
+-- Hotel Rafael Guests
+('Hotel Rafael', 'guest', 'dashboard', 'Dashboard', TRUE),
+('Hotel Rafael', 'guest', 'profile', 'My Profile', TRUE),
+('Hotel Rafael', 'guest', 'borrow_items', 'Borrow Items', TRUE),
+('Hotel Rafael', 'guest', 'system_feedback', 'System Feedback', TRUE);
+
+-- Housekeeper pages
+INSERT INTO page_permissions (facility, role, page_key, page_name, is_enabled) VALUES
+-- RCC Housekeepers
+('RCC', 'housekeeper', 'dashboard', 'Dashboard', TRUE),
+('RCC', 'housekeeper', 'profile', 'My Profile', TRUE),
+('RCC', 'housekeeper', 'tasks', 'Tasks', TRUE),
+
+-- Hotel Rafael Housekeepers
+('Hotel Rafael', 'housekeeper', 'dashboard', 'Dashboard', TRUE),
+('Hotel Rafael', 'housekeeper', 'profile', 'My Profile', TRUE),
+('Hotel Rafael', 'housekeeper', 'tasks', 'Tasks', TRUE);
+
+-- Admin pages
+INSERT INTO page_permissions (facility, role, page_key, page_name, is_enabled) VALUES
+-- RCC Admins
+('RCC', 'admin', 'dashboard', 'Dashboard', TRUE),
+('RCC', 'admin', 'profile', 'My Profile', TRUE),
+('RCC', 'admin', 'guests', 'Add/Remove Guest', TRUE),
+('RCC', 'admin', 'housekeepers', 'Manage Housekeepers', TRUE),
+('RCC', 'admin', 'requests', 'Service Requests', TRUE),
+('RCC', 'admin', 'item_list', 'Item List', TRUE),
+('RCC', 'admin', 'service_types', 'Service Types', TRUE),
+('RCC', 'admin', 'reports', 'Reports', TRUE),
+
+-- Hotel Rafael Admins
+('Hotel Rafael', 'admin', 'dashboard', 'Dashboard', TRUE),
+('Hotel Rafael', 'admin', 'profile', 'My Profile', TRUE),
+('Hotel Rafael', 'admin', 'guests', 'Add/Remove Guest', TRUE),
+('Hotel Rafael', 'admin', 'housekeepers', 'Manage Housekeepers', TRUE),
+('Hotel Rafael', 'admin', 'requests', 'Service Requests', TRUE),
+('Hotel Rafael', 'admin', 'item_list', 'Item List', TRUE),
+('Hotel Rafael', 'admin', 'service_types', 'Service Types', TRUE),
+('Hotel Rafael', 'admin', 'reports', 'Reports', TRUE);
+
+-- Trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_page_permissions_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_page_permissions_timestamp
+BEFORE UPDATE ON page_permissions
+FOR EACH ROW
+EXECUTE FUNCTION update_page_permissions_timestamp();

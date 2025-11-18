@@ -210,9 +210,9 @@ const GuestDashboard = () => {
   async function fetchAvailability() {
     // Don't fetch if we don't have required data
     if (!profile?.facility || !serviceType) {
-      console.log('Skipping availability check:', { 
-        hasFacility: !!profile?.facility, 
-        hasServiceType: !!serviceType 
+      console.log("Skipping availability check:", {
+        hasFacility: !!profile?.facility,
+        hasServiceType: !!serviceType,
       });
       return;
     }
@@ -224,12 +224,12 @@ const GuestDashboard = () => {
           headers: { token: localStorage.token },
         }
       );
-      
+
       if (!res.ok) {
-        console.error('Availability check failed:', res.status);
+        console.error("Availability check failed:", res.status);
         return;
       }
-      
+
       const data = await res.json();
       setAvailability(data || {});
     } catch (err) {
@@ -262,10 +262,17 @@ const GuestDashboard = () => {
   }, [showModal]);
 
   useEffect(() => {
-    const handler = () => fetchProfile();
+    const handler = () => {
+      fetchProfile();
+      fetchServiceTypes(); // Add this
+      // If modal is open, regenerate time slots
+      if (showModal) {
+        generateTimeSlots();
+      }
+    };
     window.addEventListener("userFacilityUpdated", handler);
     return () => window.removeEventListener("userFacilityUpdated", handler);
-  }, []);
+  }, [showModal]); // Add showModal as dependency
 
   useEffect(() => {
     if (serviceType && preferredDate) {

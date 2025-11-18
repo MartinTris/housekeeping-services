@@ -25,6 +25,7 @@ import PendingPayments from "./pages/admin/PendingPayments";
 import Reports from "./pages/admin/Reports";
 import ServiceTypes from "./pages/admin/ServiceTypes";
 import AdminProfile from "./pages/admin/AdminProfile";
+import FeedbackPage from "./components/FeedbackPage";
 
 // Guest pages
 import GuestLayout from "./pages/guest/GuestLayout";
@@ -218,6 +219,7 @@ function App() {
           <Route path="service-types" element={<ServiceTypes />} />
           <Route path="reports" element={<Reports />} />
           <Route path="manage-admins" element={<ManageAdmins />} />
+          <Route path="feedback" element={<FeedbackPage />} />
         </Route>
 
         {/* ================= GUEST ROUTES ================= */}
