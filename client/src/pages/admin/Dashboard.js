@@ -1,5 +1,6 @@
 import Information from "../../components/Information";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import BorrowedItemsList from "../../components/BorrowedItemsList";
 import AdminFeedbackWidget from "../../components/AdminFeedbackWidget.js";
 import HousekeepingTrends from "../../components/HousekeepingTrends.js";
@@ -9,12 +10,16 @@ import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements.js";
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [facility, setFacility] = useState("");
   const [role, setRole] = useState("");
   const [actualFacility, setActualFacility] = useState("");
-  const [selectedFacilitiesForAnnouncement, setSelectedFacilitiesForAnnouncement] = useState([]);
+  const [
+    selectedFacilitiesForAnnouncement,
+    setSelectedFacilitiesForAnnouncement,
+  ] = useState([]);
   const [targetAdmins, setTargetAdmins] = useState(false);
 
   const [housekeeperCount, setHousekeeperCount] = useState(0);
@@ -22,7 +27,6 @@ const AdminDashboard = () => {
   const [totalRequests, setTotalRequests] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
 
-  // Superadmin facility breakdown stats
   const [stats, setStats] = useState({
     rcc: { housekeepers: 0, guests: 0, requests: 0 },
     hotelRafael: { housekeepers: 0, guests: 0, requests: 0 },
@@ -41,9 +45,19 @@ const AdminDashboard = () => {
 
   const [adminFeedback, setAdminFeedback] = useState([]);
 
-  // Get all data needed
   const [housekeepers, setHousekeepers] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Authentication check - runs first
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+    setIsAuthenticated(true);
+  }, [navigate]);
 
   async function getName() {
     try {
@@ -51,6 +65,12 @@ const AdminDashboard = () => {
         method: "GET",
         headers: { token: localStorage.token },
       });
+      
+      if (response.status === 401 || response.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       const parseRes = await response.json();
       setName(parseRes.name);
       setFacility(parseRes.facility);
@@ -66,6 +86,12 @@ const AdminDashboard = () => {
       const res = await fetch("http://localhost:5000/housekeepers", {
         headers: { token: localStorage.token },
       });
+      
+      if (res.status === 401 || res.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       const data = await res.json();
 
       setHousekeepers(data);
@@ -92,6 +118,12 @@ const AdminDashboard = () => {
       const res = await fetch("http://localhost:5000/rooms", {
         headers: { token: localStorage.token },
       });
+      
+      if (res.status === 401 || res.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       const data = await res.json();
 
       setRooms(data);
@@ -128,6 +160,12 @@ const AdminDashboard = () => {
           headers: { token: localStorage.token },
         }
       );
+      
+      if (res.status === 401 || res.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       const data = await res.json();
       if (res.ok) {
         setTotalRequests(data.count);
@@ -155,6 +193,12 @@ const AdminDashboard = () => {
       const res = await fetch("http://localhost:5000/feedback/admin", {
         headers: { token: localStorage.token },
       });
+      
+      if (res.status === 401 || res.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       const data = await res.json();
 
       if (Array.isArray(data) && data.length > 0) {
@@ -170,30 +214,42 @@ const AdminDashboard = () => {
   }
 
   useEffect(() => {
-    getName();
-  }, []);
+    if (isAuthenticated) {
+      getName();
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (facility) {
+    if (facility && isAuthenticated) {
       getHousekeeperCount();
       getTotalGuests();
       fetchTotalRequests();
       getAverageRating();
     }
-  }, [facility, role]);
+  }, [facility, role, isAuthenticated]);
 
   useEffect(() => {
-    fetchMyAnnouncements();
-    const interval = setInterval(fetchMyAnnouncements, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isAuthenticated) {
+      fetchMyAnnouncements();
+      const interval = setInterval(fetchMyAnnouncements, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const fetchAdminFeedback = async () => {
+      if (!isAuthenticated) return;
+      
       try {
         const res = await fetch("http://localhost:5000/feedback/admin", {
           headers: { token: localStorage.token },
         });
+        
+        if (res.status === 401 || res.status === 403) {
+          navigate("/login", { replace: true });
+          return;
+        }
+        
         const data = await res.json();
         console.log("Admin feedback:", data);
         setAdminFeedback(data);
@@ -203,7 +259,7 @@ const AdminDashboard = () => {
     };
 
     fetchAdminFeedback();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleSelectAll = () => {
     const newValue = !selectAll;
@@ -225,7 +281,7 @@ const AdminDashboard = () => {
     });
   };
 
-  const handlePostAnnouncement = async (e) => {
+  const handlePostAnnouncement = (e) => {
     e.preventDefault();
 
     if (!targetGuests && !targetHousekeepers && !targetAdmins) {
@@ -250,43 +306,50 @@ const AdminDashboard = () => {
       announcementFacilities = [actualFacility];
     }
 
-    try {
-      const res = await fetch("http://localhost:5000/announcements", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: localStorage.token,
-        },
-        body: JSON.stringify({
-          title,
-          message,
-          target_guests: targetGuests,
-          target_housekeepers: targetHousekeepers,
-          target_admins: targetAdmins,
-          facilities: announcementFacilities,
-        }),
+    fetch("http://localhost:5000/announcements", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        token: localStorage.token,
+      },
+      body: JSON.stringify({
+        title,
+        message,
+        target_guests: targetGuests,
+        target_housekeepers: targetHousekeepers,
+        target_admins: targetAdmins,
+        facilities: announcementFacilities,
+      }),
+    })
+      .then((res) => {
+        if (res.status === 401 || res.status === 403) {
+          navigate("/login", { replace: true });
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        
+        if (data.error) {
+          alert(data.error || "Failed to post announcement.");
+        } else {
+          alert("Announcement posted successfully!");
+          setTitle("");
+          setMessage("");
+          setTargetGuests(false);
+          setTargetHousekeepers(false);
+          setTargetAdmins(false);
+          setSelectAll(false);
+          setSelectedFacilitiesForAnnouncement([]);
+          setShowModal(false);
+          fetchMyAnnouncements();
+        }
+      })
+      .catch((err) => {
+        console.error("Error posting announcement:", err.message);
+        alert("Server error. Please try again later.");
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("Announcement posted successfully!");
-        setTitle("");
-        setMessage("");
-        setTargetGuests(false);
-        setTargetHousekeepers(false);
-        setTargetAdmins(false);
-        setSelectAll(false);
-        setSelectedFacilitiesForAnnouncement([]);
-        setShowModal(false);
-        fetchMyAnnouncements();
-      } else {
-        alert(data.error || "Failed to post announcement.");
-      }
-    } catch (err) {
-      console.error("Error posting announcement:", err.message);
-      alert("Server error. Please try again later.");
-    }
   };
 
   async function fetchMyAnnouncements() {
@@ -294,10 +357,23 @@ const AdminDashboard = () => {
       const res = await fetch("http://localhost:5000/announcements/admin", {
         headers: { token: localStorage.token },
       });
+      
+      if (res.status === 401 || res.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       const data = await res.json();
-      setMyAnnouncements(data);
+      
+      // Always ensure we set an array
+      if (Array.isArray(data)) {
+        setMyAnnouncements(data);
+      } else {
+        setMyAnnouncements([]);
+      }
     } catch (err) {
       console.error("Error fetching admin announcements:", err.message);
+      setMyAnnouncements([]); // Set to empty array on error
     }
   }
 
@@ -309,6 +385,12 @@ const AdminDashboard = () => {
         method: "DELETE",
         headers: { token: localStorage.token },
       });
+      
+      if (res.status === 401 || res.status === 403) {
+        navigate("/login", { replace: true });
+        return;
+      }
+      
       if (res.ok) {
         setMyAnnouncements(myAnnouncements.filter((a) => a.id !== id));
       } else {
@@ -319,40 +401,50 @@ const AdminDashboard = () => {
     }
   }
 
-  async function handleEditSave(e) {
+  function handleEditSave(e) {
     e.preventDefault();
-    try {
-      const res = await fetch(
-        `http://localhost:5000/announcements/${editingId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            token: localStorage.token,
-          },
-          body: JSON.stringify({ title: editTitle, message: editMessage }),
+    fetch(`http://localhost:5000/announcements/${editingId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        token: localStorage.token,
+      },
+      body: JSON.stringify({ title: editTitle, message: editMessage }),
+    })
+      .then((res) => {
+        if (res.status === 401 || res.status === 403) {
+          navigate("/login", { replace: true });
+          return null;
         }
-      );
-      const data = await res.json();
-      if (res.ok) {
-        setMyAnnouncements(
-          myAnnouncements.map((a) => (a.id === editingId ? data : a))
-        );
-        setEditingId(null);
-        setEditTitle("");
-        setEditMessage("");
-      } else {
-        alert(data.error || "Failed to update announcement");
-      }
-    } catch (err) {
-      console.error("Error updating announcement:", err.message);
-    }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        
+        if (data.error) {
+          alert(data.error || "Failed to update announcement");
+        } else {
+          setMyAnnouncements(
+            myAnnouncements.map((a) => (a.id === editingId ? data : a))
+          );
+          setEditingId(null);
+          setEditTitle("");
+          setEditMessage("");
+        }
+      })
+      .catch((err) => {
+        console.error("Error updating announcement:", err.message);
+      });
   }
 
-  // If viewing announcements, show the announcements view
+  // Don't render until authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
+
   if (view === "announcements") {
     return (
-      <div className="flex w-full min-h-screen font-sans">
+      <div className="flex w-full min-h-screen font-sans bg-gray-50">
         <main className="flex-1 p-8">
           <DashboardToggle view={view} setView={setView} />
           <Announcements />
@@ -361,121 +453,128 @@ const AdminDashboard = () => {
     );
   }
 
-  // Otherwise show the dashboard view
   return (
-    <div className="flex w-full min-h-screen font-sans">
+    <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-8">
         <DashboardToggle view={view} setView={setView} />
-        <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
-          Welcome, {name}
-        </h2>
-        <p className="font-poppins text-base text-gray-600 mb-6">
-          {role === "superadmin" ? "All Facilities" : facility}
-        </p>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="mb-8 px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow-lg hover:scale-105 hover:from-green-600 hover:to-green-700 transition-all duration-300"
-        >
-          Post an Announcement
-        </button>
-        {/* Only show service request for regular admin, not superadmin */}
-        {role === "admin" && <AdminServiceRequest />}
+        <div className="flex gap-6">
+          {/* Left Side - Welcome Box and Main Content */}
+          <div className="flex-1">
+            <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 mb-6 shadow-md border border-green-100">
+              <h2 className="text-3xl font-poppins font-bold text-green-800 mb-2">
+                Welcome, {name}
+              </h2>
+              <p className="font-poppins text-base text-green-700 mb-6">
+                {role === "superadmin" ? "All Facilities" : facility}
+              </p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr,1fr] gap-8">
-          <div>
-            <HousekeepingTrends />
+              <button
+                onClick={() => setShowModal(true)}
+                className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 mb-4"
+              >
+                Post an Announcement
+              </button>
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-8">
-              <Information
-                infoName="Total Guests"
-                value={totalGuests}
-                className="glass-card"
-              />
-              <Information
-                infoName="Total Task Done"
-                value={totalRequests}
-                className="glass-card"
-              />
-              <Information
-                infoName="Average Service Rating"
-                value={`${averageRating} / 5`}
-                className="glass-card"
-              />
-              <Information
-                infoName="Total Housekeepers"
-                value={housekeeperCount}
-                className="glass-card"
-              />
+              {role === "admin" && (
+                <div className="mt-4">
+                  <AdminServiceRequest />
+                </div>
+              )}
             </div>
+            {/* Main Content Area */}
+            <div className="flex-1">
+              <HousekeepingTrends />
 
-            {/* Superadmin Facility Breakdown */}
-            {role === "superadmin" && (
-              <div className="bg-white p-6 rounded-lg shadow mt-8">
-                <h3 className="text-xl font-bold mb-4 text-green-900">
-                  Facility Breakdown
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 border border-green-200 rounded-lg bg-green-50">
-                    <h4 className="font-semibold text-green-700 text-lg mb-3">
-                      RCC
-                    </h4>
-                    <p className="text-gray-700">
-                      Housekeepers:{" "}
-                      <span className="font-semibold">
-                        {stats.rcc.housekeepers}
-                      </span>
-                    </p>
-                    <p className="text-gray-700">
-                      Active Guests:{" "}
-                      <span className="font-semibold">{stats.rcc.guests}</span>
-                    </p>
-                    <p className="text-gray-700">
-                      Requests:{" "}
-                      <span className="font-semibold">
-                        {stats.rcc.requests}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-                    <h4 className="font-semibold text-blue-700 text-lg mb-3">
-                      Hotel Rafael
-                    </h4>
-                    <p className="text-gray-700">
-                      Housekeepers:{" "}
-                      <span className="font-semibold">
-                        {stats.hotelRafael.housekeepers}
-                      </span>
-                    </p>
-                    <p className="text-gray-700">
-                      Active Guests:{" "}
-                      <span className="font-semibold">
-                        {stats.hotelRafael.guests}
-                      </span>
-                    </p>
-                    <p className="text-gray-700">
-                      Requests:{" "}
-                      <span className="font-semibold">
-                        {stats.hotelRafael.requests}
-                      </span>
-                    </p>
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+                <Information
+                  infoName="Total Guests"
+                  value={totalGuests}
+                  className="glass-card"
+                />
+                <Information
+                  infoName="Total Task Done"
+                  value={totalRequests}
+                  className="glass-card"
+                />
+                <Information
+                  infoName="Average Service Rating"
+                  value={`${averageRating} / 5`}
+                  className="glass-card"
+                />
+                <Information
+                  infoName="Total Housekeepers"
+                  value={housekeeperCount}
+                  className="glass-card"
+                />
+              </div>
+
+              {role === "superadmin" && (
+                <div className="bg-white p-6 rounded-lg shadow mt-8">
+                  <h3 className="text-xl font-bold mb-4 text-green-900">
+                    Facility Breakdown
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                      <h4 className="font-semibold text-green-700 text-lg mb-3">
+                        RCC
+                      </h4>
+                      <p className="text-gray-700">
+                        Housekeepers:{" "}
+                        <span className="font-semibold">
+                          {stats.rcc.housekeepers}
+                        </span>
+                      </p>
+                      <p className="text-gray-700">
+                        Active Guests:{" "}
+                        <span className="font-semibold">
+                          {stats.rcc.guests}
+                        </span>
+                      </p>
+                      <p className="text-gray-700">
+                        Requests:{" "}
+                        <span className="font-semibold">
+                          {stats.rcc.requests}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                      <h4 className="font-semibold text-blue-700 text-lg mb-3">
+                        Hotel Rafael
+                      </h4>
+                      <p className="text-gray-700">
+                        Housekeepers:{" "}
+                        <span className="font-semibold">
+                          {stats.hotelRafael.housekeepers}
+                        </span>
+                      </p>
+                      <p className="text-gray-700">
+                        Active Guests:{" "}
+                        <span className="font-semibold">
+                          {stats.hotelRafael.guests}
+                        </span>
+                      </p>
+                      <p className="text-gray-700">
+                        Requests:{" "}
+                        <span className="font-semibold">
+                          {stats.hotelRafael.requests}
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            <aside className="mt-8">
+              )}
+            </div>
+            <div className="mt-8">
               <BorrowedItemsList />
-            </aside>
-            <AdminFeedbackWidget feedback={adminFeedback} />
+            </div>
           </div>
 
           {/* Right Sidebar */}
-          <div className="space-y-6">
+          <div className="w-96 flex-shrink-0 space-y-6">
             <HousekeeperRatingsList />
 
-            {/* Announcements Sidebar */}
-            <aside className="sticky top-20 self-start w-full bg-white/90 backdrop-blur-md border border-green-100 rounded-3xl p-6 shadow-lg max-h-[40vh] overflow-y-auto transition-all duration-300">
+            <aside className="w-full bg-white/90 backdrop-blur-md border border-green-100 rounded-3xl p-6 shadow-lg max-h-[40vh] overflow-y-auto transition-all duration-300">
               <h3 className="text-xl font-semibold text-green-900 mb-5 flex items-center gap-2">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -505,7 +604,7 @@ const AdminDashboard = () => {
                     className="border border-green-100 rounded-2xl p-4 mb-4 bg-green-50/40 hover:bg-green-50/70 shadow-sm hover:shadow-md transition-all duration-300"
                   >
                     {editingId === a.id ? (
-                      <form onSubmit={handleEditSave} className="space-y-3">
+                      <div className="space-y-3">
                         <input
                           type="text"
                           className="w-full border border-green-200 rounded-xl p-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/70"
@@ -527,13 +626,14 @@ const AdminDashboard = () => {
                             Cancel
                           </button>
                           <button
-                            type="submit"
+                            type="button"
+                            onClick={handleEditSave}
                             className="text-green-700 font-semibold text-sm hover:text-green-900 transition"
                           >
                             Save
                           </button>
                         </div>
-                      </form>
+                      </div>
                     ) : (
                       <>
                         <h4 className="font-semibold text-green-900 text-base">
@@ -580,10 +680,11 @@ const AdminDashboard = () => {
                 ))
               )}
             </aside>
+
+            <AdminFeedbackWidget feedback={adminFeedback} />
           </div>
         </div>
 
-        {/* Post Announcement Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
             <div className="bg-white p-8 rounded-3xl shadow-2xl w-[700px] max-w-[90%]">
@@ -591,8 +692,7 @@ const AdminDashboard = () => {
                 Post New Announcement
               </h3>
 
-              <form onSubmit={handlePostAnnouncement} className="space-y-6">
-                {/* FACILITY SELECTOR FOR SUPERADMIN */}
+              <div className="space-y-6">
                 {role === "superadmin" && (
                   <div>
                     <label className="block text-gray-700 font-medium mb-2">
@@ -660,7 +760,6 @@ const AdminDashboard = () => {
                     </span>
                   </label>
 
-                  {/* ONLY SHOW "For Admins" IF SUPERADMIN */}
                   {role === "superadmin" && (
                     <label className="flex items-center gap-2">
                       <input
@@ -716,13 +815,14 @@ const AdminDashboard = () => {
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handlePostAnnouncement}
                     className="px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
                   >
                     Post
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}

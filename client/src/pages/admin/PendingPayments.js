@@ -74,7 +74,6 @@ const PendingPayments = () => {
     }
   };
 
-  // Mark one specific item group as paid
   const handleMarkAsPaid = async (id) => {
     try {
       const response = await fetch(

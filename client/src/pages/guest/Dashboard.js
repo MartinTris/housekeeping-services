@@ -265,51 +265,51 @@ const GuestDashboard = () => {
   }, [showModal]);
 
   // Listen for facility updates - CRITICAL FOR REAL-TIME UPDATES
-useEffect(() => {
-  const handler = async () => {
-    console.log("🔔 userFacilityUpdated event fired!");
-    
-    // Small delay to ensure token is written to localStorage
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Force refetch profile with NEW token from localStorage
-    try {
-      const res = await fetch("http://localhost:5000/users/me", {
-        headers: { token: localStorage.getItem("token") },
-      });
-      const data = await res.json();
-      console.log("✅ Refetched profile after facility update:", data);
-      setProfile(data);
-      
-      const fullName =
-        data.first_name && data.last_name
-          ? `${data.first_name} ${data.last_name}`
-          : data.name || "";
-      setName(fullName);
-      
-      // If facility exists, refetch service types and requests
-      if (data.facility) {
-        console.log("✅ Facility found, refetching all data...");
-        await fetchServiceTypes();
-        await fetchTotalRequests();
-        await fetchTodayRequests();
-        
-        // Force regenerate time slots after a brief delay
-        setTimeout(() => {
-          if (showModal && serviceType && preferredDate) {
-            generateTimeSlots();
-            fetchAvailability();
-          }
-        }, 300);
+  useEffect(() => {
+    const handler = async () => {
+      console.log("🔔 userFacilityUpdated event fired!");
+
+      // Small delay to ensure token is written to localStorage
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Force refetch profile with NEW token from localStorage
+      try {
+        const res = await fetch("http://localhost:5000/users/me", {
+          headers: { token: localStorage.getItem("token") },
+        });
+        const data = await res.json();
+        console.log("✅ Refetched profile after facility update:", data);
+        setProfile(data);
+
+        const fullName =
+          data.first_name && data.last_name
+            ? `${data.first_name} ${data.last_name}`
+            : data.name || "";
+        setName(fullName);
+
+        // If facility exists, refetch service types and requests
+        if (data.facility) {
+          console.log("✅ Facility found, refetching all data...");
+          await fetchServiceTypes();
+          await fetchTotalRequests();
+          await fetchTodayRequests();
+
+          // Force regenerate time slots after a brief delay
+          setTimeout(() => {
+            if (showModal && serviceType && preferredDate) {
+              generateTimeSlots();
+              fetchAvailability();
+            }
+          }, 300);
+        }
+      } catch (err) {
+        console.error("❌ Error refetching profile:", err);
       }
-    } catch (err) {
-      console.error("❌ Error refetching profile:", err);
-    }
-  };
-  
-  window.addEventListener("userFacilityUpdated", handler);
-  return () => window.removeEventListener("userFacilityUpdated", handler);
-}, [showModal, serviceType, preferredDate]);
+    };
+
+    window.addEventListener("userFacilityUpdated", handler);
+    return () => window.removeEventListener("userFacilityUpdated", handler);
+  }, [showModal, serviceType, preferredDate]);
 
   // Fetch service types when facility is detected
   useEffect(() => {
@@ -328,47 +328,67 @@ useEffect(() => {
   }, [profile?.facility, serviceType, preferredDate, serviceTypes]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-8">
         <DashboardToggle view={view} setView={setView} />
-        <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
-          Welcome, {name}
-        </h2>
-        
-        {!profile?.facility && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-            <p className="text-yellow-700">
-              ⚠️ You are not assigned to a room yet.
-            </p>
+        <div className="flex justify-between items-start mb-2">
+          <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
+            Welcome, {name}
+          </h2>
+
           </div>
-        )}
-        
-        <button
-          className="text-gray-600 mb-6 underline disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => setShowModal(true)}
-          disabled={!profile?.facility || !profile?.current_booking?.room_id}
-        >
-          Request a service
-        </button>
 
         {view === "dashboard" && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-              <Information
-                infoName="Total Service Requests"
-                value={totalRequests}
-              />
-              <Information
-                infoName="Remaining Requests (per day)"
-                value={Math.max(dailyLimit - todayRequests, 0)}
-              />
+          <div className="flex gap-6">
+            {/* Left Side - Welcome Box and Main Content */}
+            <div className="flex-1">
+              <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 mb-6 shadow-md border border-green-100">
+                <h2 className="text-3xl font-poppins font-bold text-green-800 mb-2">
+                  Welcome, {name}
+                </h2>
+                <p className="font-poppins text-base text-green-700 mb-6">
+                  {profile?.facility || "No facility assigned"}
+                </p>
+
+                {!profile?.facility && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                    <p className="text-yellow-700">
+                      ⚠️ You are not assigned to a room yet.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowModal(true)}
+                  disabled={!profile?.facility || !profile?.current_booking?.room_id}
+                  className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  Request a Service
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
+                <Information
+                  infoName="Total Service Requests"
+                  value={totalRequests}
+                  className="glass-card"
+                />
+                <Information
+                  infoName="Remaining Requests (per day)"
+                  value={Math.max(dailyLimit - todayRequests, 0)}
+                  className="glass-card"
+                />
+              </div>
+
+              <div className="mt-8">
+                <FeedbackWidget />
+              </div>
             </div>
-            <div className="mt-10">
-              <h3 className="text-xl font-semibold mb-4">My Borrowed Items</h3>
+
+            <div className="w-96 flex-shrink-0">
               <BorrowedItemsList />
             </div>
-            <FeedbackWidget />
-          </>
+          </div>
         )}
 
         {view === "announcements" && <Announcements />}
@@ -437,8 +457,7 @@ useEffect(() => {
                         color: availability[s.value] ? "black" : "#9CA3AF",
                       }}
                     >
-                      {s.label}{" "}
-                      {!availability[s.value] ? " (Unavailable)" : ""}
+                      {s.label} {!availability[s.value] ? " (Unavailable)" : ""}
                     </option>
                   ))}
                 </select>

@@ -44,7 +44,7 @@ const ForceChangePassword = () => {
             "Content-Type": "application/json",
             token: localStorage.getItem("token"),
           },
-          body: JSON.stringify({ new_password }),
+          body: JSON.stringify({ newPassword: new_password }),
         }
       );
 
@@ -71,7 +71,6 @@ const ForceChangePassword = () => {
   useEffect(() => {
     const firstLogin = localStorage.getItem("first_login");
     if (firstLogin === "false") {
-      // Redirect to dashboard if they've already changed password
       if (role === "admin") navigate("/admin");
       else if (role === "housekeeper") navigate("/housekeeper");
     }

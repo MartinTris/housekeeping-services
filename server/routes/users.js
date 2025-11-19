@@ -52,6 +52,13 @@ router.put("/reset-password", authorization, async (req, res) => {
     const userId = req.user.id;
     const { oldPassword, newPassword } = req.body;
 
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
+    if (!newPassword || !passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long and include at least 1 number and 1 special character."
+      });
+    }
+    
     const userRes = await pool.query(
       "SELECT password_hash FROM users WHERE id = $1",
       [userId]

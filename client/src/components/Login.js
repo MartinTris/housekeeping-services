@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Login = ({ setAuth, setUser }) => {
-  const [role, setRole] = useState("guest");
   const [inputs, setInputs] = useState({
     email: "",
     password: "",
@@ -25,103 +24,82 @@ const Login = ({ setAuth, setUser }) => {
   };
 
   const handleLogin = async (e, loginRole, creds) => {
-    e.preventDefault();
-    try {
-      const body = { ...creds, role: loginRole };
-      const response = await fetch("http://localhost:5000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+  e.preventDefault();
+  try {
+    const body = { ...creds, role: loginRole };
 
-      const parseRes = await response.json();
-      
-      // Debug logs
-      console.log("Login Response:", parseRes);
-      console.log("Role from server:", parseRes.role);
+    const response = await fetch("http://localhost:5000/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-      if (parseRes.token) {
-        localStorage.setItem("token", parseRes.token);
-        localStorage.setItem("role", parseRes.role);
-        localStorage.setItem("first_login", parseRes.first_login);
+    const parseRes = await response.json();
+    if (parseRes.token) {
+      localStorage.setItem("token", parseRes.token);
+      localStorage.setItem("role", parseRes.role);
+      localStorage.setItem("first_login", parseRes.first_login);
 
-        // Debug: Check what was stored
-        console.log("Stored in localStorage:", {
-          token: localStorage.getItem("token"),
-          role: localStorage.getItem("role"),
-          first_login: localStorage.getItem("first_login")
+      setAuth(true);
+      try {
+        const userRes = await fetch("http://localhost:5000/users/me", {
+          headers: { token: parseRes.token },
         });
 
-        // Set auth state
-        setAuth(true);
+        const userData = await userRes.json();
+        console.log("Fetched user data:", userData);
 
-        // **Fetch fresh user data to get complete user info including facility**
-        try {
-          const userRes = await fetch("http://localhost:5000/users/me", {
-            headers: { token: parseRes.token },
-          });
-          const userData = await userRes.json();
-          console.log("Fetched user data:", userData);
-          
-          // Set user state with complete data
-          setUser({ 
-            id: userData.id || parseRes.id,
-            role: parseRes.role,
-            facility: userData.facility,
-            email: userData.email || parseRes.email
-          });
-        } catch (err) {
-          console.error("Error fetching user data:", err);
-          // Fallback to basic user data if fetch fails
-          setUser({ 
-            id: parseRes.id,
-            role: parseRes.role,
-            email: parseRes.email
-          });
-        }
+        setUser({ 
+          id: userData.id || parseRes.id,
+          role: parseRes.role,
+          facility: userData.facility,
+          email: userData.email || parseRes.email
+        });
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+        // Fallback to basic user data if fetch fails
+        setUser({ 
+          id: parseRes.id,
+          role: parseRes.role,
+          email: parseRes.email
+        });
+      }
 
-        // **CRITICAL: Dispatch event to trigger permission refresh**
+      setTimeout(() => {
         window.dispatchEvent(new CustomEvent('permissionsNeedRefresh'));
         console.log("Dispatched permissionsNeedRefresh event");
+      }, 100);
 
-        // Close modals
-        setShowModal(false);
-        setPopupRole(null);
-        setPopupInputs({ email: "", password: "" });
+      // Close modals
+      setShowModal(false);
+      setPopupRole(null);
+      setPopupInputs({ email: "", password: "" });
 
-        // CHECK FIRST LOGIN
-        if (
-          (parseRes.role === "admin" ||
-            parseRes.role === "housekeeper" ||
-            parseRes.role === "superadmin") &&
-          parseRes.first_login === true
-        ) {
-          navigate("/force-change-password");
-          return;
-        }
-
-        // ROUTE BASED ON ROLE
-        if (parseRes.role === "admin" || parseRes.role === "superadmin") {
-          console.log("Navigating to /admin");
-          navigate("/admin");
-        } else if (parseRes.role === "housekeeper") {
-          console.log("Navigating to /housekeeper");
-          navigate("/housekeeper");
-        } else if (parseRes.role === "guest") {
-          console.log("Navigating to /guest");
-          navigate("/guest");
-        } else {
-          console.error("Unknown role:", parseRes.role);
-          alert("Unknown user role");
-        }
-      } else {
-        alert(parseRes.message || "Login failed");
+      // CHECK FIRST LOGIN
+      if (
+        (parseRes.role === "admin" ||
+          parseRes.role === "housekeeper" ||
+          parseRes.role === "superadmin") &&
+        parseRes.first_login === true
+      ) {
+        navigate("/force-change-password");
+      } else if (parseRes.role === "superadmin") {
+        navigate("/superadmin");
+      } else if (parseRes.role === "admin") {
+        navigate("/admin");
+      } else if (parseRes.role === "housekeeper") {
+        navigate("/housekeeper");
+      } else if (parseRes.role === "guest") {
+        navigate("/guest");
       }
-    } catch (err) {
-      console.error("Login error:", err.message);
-      alert("Login failed. Please try again.");
+    } else {
+      alert(parseRes.message || "Invalid Credentials");
     }
-  };
+  } catch (err) {
+    console.error(err.message);
+    alert("Login error. Please try again.");
+  }
+};
 
   const handleCancel = () => {
     setPopupInputs({ email: "", password: "" });

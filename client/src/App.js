@@ -220,11 +220,11 @@ function App() {
             <Route path="guests" element={<ProtectedRoute pageKey="guests"><ManageGuests /></ProtectedRoute>} />
             <Route path="requests" element={<ProtectedRoute pageKey="requests"><ServiceRequests /></ProtectedRoute>} />
             <Route path="item-list" element={<ProtectedRoute pageKey="item_list"><ItemList /></ProtectedRoute>} />
-            <Route path="pending-payments" element={<ProtectedRoute pageKey="pending_payments"><PendingPayments /></ProtectedRoute>} />
+            <Route path="pending-payments" element={<ProtectedRoute pageKey="dashboard"><PendingPayments /></ProtectedRoute>} />
             <Route path="service-types" element={<ProtectedRoute pageKey="service_types"><ServiceTypes /></ProtectedRoute>} />
             <Route path="reports" element={<ProtectedRoute pageKey="reports"><Reports /></ProtectedRoute>} />
             <Route path="manage-admins" element={<ManageAdmins />} />
-            <Route path="feedback" element={<ProtectedRoute pageKey="system_feedback"><FeedbackPage /></ProtectedRoute>} />
+            <Route path="feedback" element={<ProtectedRoute pageKey="dashboard"><FeedbackPage /></ProtectedRoute>} />
             <Route path="page-access" element={<PageAccessControl /> } />
           </Route>
 

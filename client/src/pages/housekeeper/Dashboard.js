@@ -29,17 +29,17 @@ const HousekeeperDashboard = () => {
   }
 
   async function getTotalDone() {
-  try {
-    const response = await fetch(
-      `http://localhost:5000/housekeeping-requests/housekeeper/total-done`,
-      { headers: { token: localStorage.token } }
-    );
-    const data = await response.json();
-    setTotalDone(data.totalDone);
-  } catch (err) {
-    console.error("Error fetching total tasks done:", err);
+    try {
+      const response = await fetch(
+        `http://localhost:5000/housekeeping-requests/housekeeper/total-done`,
+        { headers: { token: localStorage.token } }
+      );
+      const data = await response.json();
+      setTotalDone(data.totalDone);
+    } catch (err) {
+      console.error("Error fetching total tasks done:", err);
+    }
   }
-}
 
   async function getAverageFeedback() {
     try {
@@ -53,6 +53,7 @@ const HousekeeperDashboard = () => {
       console.error("Error fetching average feedback:", err);
     }
   }
+
   useEffect(() => {
     getName();
     getTotalDone();
@@ -71,20 +72,41 @@ const HousekeeperDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-8">
         <DashboardToggle view={view} setView={setView} />
-        <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
-          Welcome, {name}
-        </h2>
-        <p className="text-gray-600 mb-6">{facility}</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-          <Information infoName="Total Tasks Done" value={totalDone} />
-          <Information infoName="Average Feedback" value={`${averageFeedback}/5`} />
+        <div className="flex gap-6">
+          {/* Left Side - Welcome Box and Main Content */}
+          <div className="flex-1">
+            <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 mb-6 shadow-md border border-green-100">
+              <h2 className="text-3xl font-poppins font-bold text-green-800 mb-2">
+                Welcome, {name}
+              </h2>
+              <p className="font-poppins text-base text-green-700 mb-2">
+                {facility}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-8">
+              <Information 
+                infoName="Total Tasks Done" 
+                value={totalDone}
+                className="glass-card"
+              />
+              <Information 
+                infoName="Average Feedback" 
+                value={`${averageFeedback}/5`}
+                className="glass-card"
+              />
+            </div>
+
+            <div className="mt-8">
+              <HousekeeperFeedbackWidget />
+            </div>
+          </div>
         </div>
       </main>
-      <HousekeeperFeedbackWidget />
     </div>
   );
 };

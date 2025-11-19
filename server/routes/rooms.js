@@ -2,6 +2,7 @@ const router = require("express").Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 const { getIo } = require("../realtime");
+const { createNotification } = require("../utils/notifications");
 
 // Get rooms
 router.get("/", authorization, async (req, res) => {
@@ -195,6 +196,30 @@ router.post("/:id/assign", authorization, async (req, res) => {
 router.put("/:id/remove", authorization, async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, facility } = req.user;
+
+    if (role !== 'admin' && role !== 'superadmin') {
+      return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+
+    // Get room details first
+    const roomRes = await pool.query(
+      `SELECT r.id, r.room_number, r.facility
+       FROM rooms r
+       WHERE r.id = $1`,
+      [id]
+    );
+
+    if (roomRes.rows.length === 0) {
+      return res.status(404).json({ error: "Room not found." });
+    }
+
+    const room = roomRes.rows[0];
+
+    // For regular admin, verify facility access
+    if (role === 'admin' && room.facility.toLowerCase() !== facility.toLowerCase()) {
+      return res.status(403).json({ error: "Cannot manage rooms from other facilities." });
+    }
 
     const result = await pool.query(
       `
@@ -245,16 +270,183 @@ router.put("/:id/remove", authorization, async (req, res) => {
       facility: updatedUser.rows[0].facility, // Will be null
     });
 
-    getIo().emit("booking:removed", {
-      room_id: id,
-      history: result.rows[0],
-    });
+    const serviceTypeRes = await pool.query(
+      `SELECT id, duration FROM service_types 
+       WHERE LOWER(facility) = LOWER($1) 
+       AND LOWER(name) = 'checkout'
+       LIMIT 1`,
+      [room.facility]
+    );
+
+    let autoCleaningCreated = false;
+
+    if (serviceTypeRes.rows.length > 0) {
+      const serviceTypeId = serviceTypeRes.rows[0].id;
+      const durationMinutes = serviceTypeRes.rows[0].duration;
+      
+      const today = new Date();
+      const preferred_date = today.toISOString().split("T")[0];
+      
+      // Calculate next available time slot (e.g., current time + 15 min buffer)
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + 15); // 15-minute buffer
+      const preferred_time = now.toTimeString().split(' ')[0]; 
+
+      const facilityKey = room.facility.trim().toLowerCase();
+      const currentDay = new Date().toLocaleString("en-US", { weekday: "long" });
+
+      // Find available housekeepers
+      const availableHk = await pool.query(
+        `SELECT 
+          u.id, 
+          (u.first_name || ' ' || u.last_name) AS name,
+          hs.shift_time_in, 
+          hs.shift_time_out
+        FROM users u
+        JOIN housekeeper_schedule hs ON hs.housekeeper_id = u.id
+        WHERE 
+          u.role = 'housekeeper'
+          AND u.is_active = TRUE
+          AND LOWER(u.facility) = LOWER($1)
+          AND NOT ($2 = ANY(hs.day_offs))
+          AND (
+            (hs.shift_time_in <= hs.shift_time_out AND $3 BETWEEN hs.shift_time_in AND hs.shift_time_out)
+            OR (hs.shift_time_in > hs.shift_time_out AND ($3 >= hs.shift_time_in OR $3 <= hs.shift_time_out))
+          )`,
+        [facilityKey, currentDay, preferred_time]
+      );
+
+      if (availableHk.rows.length > 0) {
+        // Check for busy housekeepers
+        const busyReqs = await pool.query(
+          `SELECT hr.assigned_to, hr.preferred_time, st.duration
+           FROM housekeeping_requests hr
+           JOIN service_types st ON hr.service_type_id = st.id
+           WHERE hr.preferred_date = $1
+             AND hr.assigned_to IS NOT NULL
+             AND hr.status IN ('approved','in_progress')`,
+          [preferred_date]
+        );
+
+        const busyHistory = await pool.query(
+          `SELECT sh.housekeeper_id AS assigned_to, sh.preferred_time, st.duration
+           FROM service_history sh
+           JOIN service_types st ON sh.service_type_id = st.id
+           WHERE sh.preferred_date = $1
+             AND sh.housekeeper_id IS NOT NULL
+             AND sh.status IN ('approved','in_progress')`,
+          [preferred_date]
+        );
+
+        const toMinutes = (t) => {
+          const [h, m] = t.split(":").map(Number);
+          return (h || 0) * 60 + (m || 0);
+        };
+
+        const newStartMin = toMinutes(preferred_time);
+        const newEndMin = newStartMin + durationMinutes;
+
+        const busyIdsSet = new Set();
+        [...busyReqs.rows, ...busyHistory.rows].forEach(row => {
+          if (!row.assigned_to) return;
+          const otherStartMin = toMinutes(row.preferred_time);
+          const otherEndMin = otherStartMin + row.duration;
+          if (otherStartMin < newEndMin && otherEndMin > newStartMin) {
+            busyIdsSet.add(String(row.assigned_to));
+          }
+        });
+
+        const freeHk = availableHk.rows.filter(
+          hk => !busyIdsSet.has(String(hk.id))
+        );
+
+        if (freeHk.length > 0) {
+          // Get task counts for load balancing
+          const counts = await pool.query(
+            `SELECT assigned_to AS hk_id, COUNT(*) AS tasks_today
+             FROM housekeeping_requests
+             WHERE DATE(created_at) = $1
+               AND assigned_to IS NOT NULL
+               AND status IN ('approved','in_progress')
+             GROUP BY assigned_to`,
+            [preferred_date]
+          );
+
+          const countMap = {};
+          counts.rows.forEach(row => {
+            countMap[row.hk_id] = parseInt(row.tasks_today);
+          });
+
+          freeHk.sort((a, b) => {
+            const countA = countMap[a.id] || 0;
+            const countB = countMap[b.id] || 0;
+            if (countA === countB) return a.name.localeCompare(b.name);
+            return countA - countB;
+          });
+
+          const selectedHk = freeHk[0];
+
+          // Create the cleaning request - use admin's ID as the requester
+          const adminRes = await pool.query(
+            `SELECT id FROM users 
+             WHERE role IN ('admin', 'superadmin') 
+             AND LOWER(facility) = LOWER($1) 
+             LIMIT 1`,
+            [facilityKey]
+          );
+
+          const requesterId = adminRes.rows.length > 0 ? adminRes.rows[0].id : req.user.id;
+
+          await pool.query(
+            `INSERT INTO housekeeping_requests
+             (user_id, room_id, preferred_date, preferred_time, service_type_id, status, assigned_to)
+             VALUES ($1, $2, $3, $4, $5, 'approved', $6)`,
+            [requesterId, room.id, preferred_date, preferred_time, serviceTypeId, selectedHk.id]
+          );
+
+          // Notify housekeeper
+          await createNotification(
+            selectedHk.id,
+            `Automatic checkout cleaning: Room ${room.room_number} at ${preferred_time}.`
+          );
+
+          const io = getIo();
+          if (io) {
+            io.to(`user:${selectedHk.id}`).emit("newAssignment", {
+              message: `Automatic checkout cleaning assigned: Room ${room.room_number} at ${preferred_time}`,
+              room: room.room_number,
+              facility: facilityKey,
+              auto_created: true
+            });
+          }
+
+          autoCleaningCreated = true;
+        }
+      }
+    }
+
+    const io = getIo();
+    if (io) {
+      io.to(`facility:${room.facility.toLowerCase()}`).emit("booking:removed", {
+        room_id: room.id,
+        room_number: room.room_number,
+      });
+
+      if (guestId) {
+        io.to(`user:${guestId}`).emit("booking:removed", {
+          message: "You have been checked out.",
+        });
+      }
+    }
 
     res.json({
-      message: "Guest checked out and moved to booking_history",
+      message: "Guest checked out successfully.",
       history: result.rows[0],
       token: newToken,
-      guest_id: guestId
+      guest_id: guestId,
+      auto_cleaning: autoCleaningCreated 
+        ? "Checkout cleaning request created automatically"
+        : "No 'Checkout' service type found or no available housekeepers"
     });
   } catch (err) {
     console.error("Error removing guest:", err.message);

@@ -165,42 +165,10 @@ const ManageGuests = () => {
     const data = await res.json();
     console.log("Assignment response:", data);
 
-    // Check if the assigned guest is the currently logged-in user
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const currentUser = JSON.parse(atob(token.split('.')[1]));
-        console.log("Current user ID:", currentUser.id);
-        console.log("Assigned guest ID:", selectedGuest.id);
-        
-        // If assigning to self AND new token is provided, update it and reload
-        if (currentUser.id === selectedGuest.id && data.token) {
-          console.log("Updating token for current user with new facility");
-          localStorage.setItem("token", data.token);
-          
-          alert("Success! You have been assigned to " + selectedRoom.room_number + ". The page will reload to update your session.");
-          
-          // Close modal first
-          setShowModal(false);
-          
-          // Reload the page to ensure all components use the new token
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
-          return; // Exit early, don't continue with normal flow
-        } else {
-          alert("Guest assigned successfully to " + selectedRoom.room_number);
-        }
-      } catch (parseError) {
-        console.error("Error parsing token:", parseError);
-        alert("Guest assigned successfully to " + selectedRoom.room_number);
-      }
-    } else {
-      alert("Guest assigned successfully to " + selectedRoom.room_number);
-    }
-
-    // Close modal and refresh rooms (only if not reloading)
+    alert("Guest assigned successfully!");
     setShowModal(false);
+    fetchRooms();
+    setSelectedRoom(null);
     setSelectedGuest(null);
     setSearchQuery("");
     setTimeOut("");

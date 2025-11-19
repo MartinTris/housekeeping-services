@@ -119,72 +119,44 @@ router.get("/is-verify", authorization, async (req, res) => {
   }
 });
 
-// VERIFY TOKEN
-router.get("/is-verify", authorization, async (req, res) => {
-  try {
-    res.json(true);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json("Server error");
-  }
-});
-
 // Force password change on first login
 router.put("/change-password", authorization, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { new_password } = req.body;
+    const { newPassword } = req.body;
 
-    if (!new_password) {
-      return res.status(400).json({ message: "New password required" });
-    }
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
 
-    // Password validation: at least 8 characters, 1 number, 1 special character
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
-    
-    if (!passwordRegex.test(new_password)) {
-      return res.status(400).json({ 
-        message: "Password must be at least 8 characters long and contain at least 1 number and 1 special character (!@#$%^&*)" 
+    if (!newPassword || !passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 6 characters long and include at least 1 number and 1 special character"
       });
     }
 
-    const userQuery = await pool.query(
-      "SELECT password_hash FROM users WHERE id = $1",
-      [userId]
-    );
+    const saltRound = 10;
+    const salt = await bcrypt.genSalt(saltRound);
+    const bcryptPassword = await bcrypt.hash(newPassword, salt);
 
-    if (userQuery.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const currentPasswordHash = userQuery.rows[0].password_hash;
-
-    // Check if new password is the same as old password
-    const isSamePassword = await bcrypt.compare(new_password, currentPasswordHash);
-    
-    if (isSamePassword) {
-      return res.status(400).json({ 
-        message: "New password must be different from the old password" 
-      });
-    }
-
-    // Hash the new password
-    const salt = await bcrypt.genSalt(10);
-    const bcryptPassword = await bcrypt.hash(new_password, salt);
-
-    // Update password and set first_login to false
     await pool.query(
-      `UPDATE users 
-       SET password_hash = $1, first_login = FALSE
-       WHERE id = $2`,
+      "UPDATE users SET password_hash = $1, first_login = FALSE WHERE id = $2",
       [bcryptPassword, userId]
     );
 
-    res.json({ message: "Password updated successfully" });
+    const updatedUser = await pool.query(
+      "SELECT * FROM users WHERE id = $1",
+      [userId]
+    );
 
+    const newToken = jwtGenerator(updatedUser.rows[0]);
+
+    res.json({ 
+      message: "Password updated successfully",
+      token: newToken
+    });
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json("Server error");
   }
 });
 

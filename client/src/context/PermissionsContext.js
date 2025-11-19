@@ -10,43 +10,48 @@ export const PermissionsProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(null);
   const [userFacility, setUserFacility] = useState(null);
 
-  const fetchPermissions = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+const fetchPermissions = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
-      const decoded = jwtDecode(token);
-      setUserRole(decoded.role);
-      setUserFacility(decoded.facility);
+    const decoded = jwtDecode(token);
+    setUserRole(decoded.role);
+    setUserFacility(decoded.facility);
 
-      console.log("Fetching permissions for role:", decoded.role);
+    console.log("Fetching permissions for role:", decoded.role);
+    console.log("User facility from token:", decoded.facility);  // ADD THIS LINE
 
-      // Superadmin has access to everything
-      if (decoded.role === "superadmin") {
-        console.log("Superadmin detected - granting all access");
-        setAllAccess(true);
-        setPermissions([]);
-        setLoading(false);
-        return;
-      }
+    // Superadmin has access to everything
+    if (decoded.role === "superadmin") {
+      console.log("Superadmin detected - granting all access");
+      setAllAccess(true);
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
 
-      const response = await fetch(
-        "http://localhost:5000/permissions/my-permissions",
-        {
-          headers: { token },
-        }
-      );
+    // ADD THIS CHECK
+    if (!decoded.facility) {
+      console.error("ERROR: User has no facility in token!", decoded);
+      setPermissions([]);
+      setLoading(false);
+      return;
+    }
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Fetched permissions data:", data);
+    const response = await fetch("http://localhost:5000/permissions/my-permissions", {
+      headers: { token },
+    });
+
+    const data = await response.json();
+    console.log("Fetched permissions data:", data);
         setAllAccess(data.all_access || false);
         setPermissions(data.permissions || []);
       }
-    } catch (err) {
+    catch (err) {
       console.error("Error fetching permissions:", err);
       setPermissions([]);
     } finally {
@@ -79,6 +84,20 @@ export const PermissionsProvider = ({ children }) => {
       window.removeEventListener('permissionsNeedRefresh', handleRefresh);
       window.removeEventListener("userFacilityUpdated", handleFacilityUpdate);
     };
+  }, []);
+
+  // Set up polling to check for permission updates every 10 seconds
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      // Only poll if user is authenticated
+      const token = localStorage.getItem("token");
+      if (token) {
+        console.log("Polling for permission updates...");
+        fetchPermissions();
+      }
+    }, 10000); // Poll every 10 seconds
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Check if a specific page is accessible

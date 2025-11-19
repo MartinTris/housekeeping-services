@@ -172,7 +172,7 @@ const BorrowedItemsList = () => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-md w-full max-w-lg mx-auto flex flex-col h-[400px]">
+    <div className="bg-white p-4 rounded-xl shadow-md w-full flex flex-col h-[400px]">
       {/* Print content - hidden on screen */}
       <div id="print-content" style={{ display: 'none' }}>
         <div className="receipt-header">

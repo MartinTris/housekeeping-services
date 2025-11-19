@@ -9,7 +9,7 @@ function jwtGenerator(user) {
     email: user.email,
     first_login: user.first_login
   };
-
+  
   return jwt.sign(payload, process.env.jwtSecret, { expiresIn: "7d" });
 }
 
