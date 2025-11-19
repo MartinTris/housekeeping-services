@@ -331,12 +331,6 @@ const GuestDashboard = () => {
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-8">
         <DashboardToggle view={view} setView={setView} />
-        <div className="flex justify-between items-start mb-2">
-          <h2 className="text-3xl font-poppins font-bold text-green-900 mb-2">
-            Welcome, {name}
-          </h2>
-
-          </div>
 
         {view === "dashboard" && (
           <div className="flex gap-6">

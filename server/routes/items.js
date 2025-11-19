@@ -173,7 +173,6 @@ router.post("/borrow", authorization, async (req, res) => {
     }
 
     const guestName = `${first_name} ${last_name}`;
-    const facilityKey = facility.trim().toLowerCase();
 
     const bookingRes = await pool.query(
       `SELECT rb.room_id, r.room_number
@@ -194,60 +193,106 @@ router.post("/borrow", authorization, async (req, res) => {
     const { room_number } = bookingRes.rows[0];
 
     // AUTO-ASSIGN HOUSEKEEPER FOR DELIVERY
-    // Get active housekeepers in the facility
+    // Get current time and day in Manila timezone (important for Supabase/UTC databases)
+    const timeCheckResult = await pool.query(`
+      SELECT 
+        (NOW() AT TIME ZONE 'Asia/Manila')::time as manila_time,
+        ((NOW() AT TIME ZONE 'Asia/Manila')::timestamp)::date as manila_date,
+        TRIM(to_char((NOW() AT TIME ZONE 'Asia/Manila'), 'Day')) as current_day_name
+    `);
+    
+    const { manila_time, manila_date, current_day_name } = timeCheckResult.rows[0];
+    
+    console.log('=== HOUSEKEEPER ASSIGNMENT DEBUG ===');
+    console.log('Facility:', facility);
+    console.log('Manila Time:', manila_time);
+    console.log('Manila Date:', manila_date);
+    console.log('Manila Date Type:', typeof manila_date);
+    console.log('Current Day:', current_day_name);
+    
+    // Query for available housekeepers
     const availableHk = await pool.query(
       `
       SELECT 
         u.id,
-        (u.first_name || ' ' || u.last_name) AS name
+        (u.first_name || ' ' || u.last_name) AS name,
+        s.shift_time_in,
+        s.shift_time_out,
+        s.day_offs
       FROM users u
       JOIN housekeeper_schedule s ON u.id = s.housekeeper_id
       WHERE u.role = 'housekeeper'
         AND u.is_active = TRUE
-        AND LOWER(u.facility) = LOWER($1)
-        -- exclude housekeepers whose current day is in their day_offs array
-        AND NOT (TRIM(to_char(CURRENT_DATE, 'Day')) = ANY(s.day_offs))
-        -- exclude housekeepers not currently within their shift time
-        AND (
-          (CURRENT_TIME AT TIME ZONE 'Asia/Manila') BETWEEN s.shift_time_in AND s.shift_time_out
-        )
+        AND u.facility = $1
+        -- Check if current day is NOT in their day_offs array
+        AND NOT ($2 = ANY(s.day_offs))
+        -- Check if current Manila time is within shift hours
+        AND $3::time BETWEEN s.shift_time_in AND s.shift_time_out
       `,
-      [facilityKey]
+      [facility, current_day_name, manila_time]
     );
+
+    console.log('Available housekeepers found:', availableHk.rows.length);
+    if (availableHk.rows.length > 0) {
+      console.log('Housekeepers details:', availableHk.rows.map(h => ({
+        name: h.name,
+        id: h.id,
+        shift: `${h.shift_time_in} - ${h.shift_time_out}`,
+        day_offs: h.day_offs,
+        current_time_in_range: `${manila_time} is between ${h.shift_time_in} and ${h.shift_time_out}`
+      })));
+    } else {
+      console.log('No housekeepers matched the criteria');
+    }
+    console.log('=== END DEBUG ===');
 
     let assignedHousekeeperId;
     let assignedHousekeeperName;
 
     if (availableHk.rows.length === 0) {
+      console.log('No available housekeepers found for facility:', facility);
       assignedHousekeeperId = null;
       assignedHousekeeperName = null;
     } else {
-      // Exclude busy housekeepers with ongoing housekeeping tasks today
+      console.log('=== CHECKING BUSY HOUSEKEEPERS ===');
+      // Exclude busy housekeepers with ongoing housekeeping tasks today (Manila date)
       const busyHk = await pool.query(`
-        SELECT DISTINCT assigned_to
+        SELECT DISTINCT assigned_to, preferred_date
         FROM housekeeping_requests
         WHERE status IN ('approved', 'in_progress')
           AND archived = FALSE
           AND assigned_to IS NOT NULL
-          AND preferred_date = CURRENT_DATE
-      `);
+          AND preferred_date = $1
+      `, [manila_date]);
+
+      console.log('Busy housekeepers query result:', busyHk.rows);
+      console.log('Busy housekeepers count:', busyHk.rows.length);
 
       const busyIds = busyHk.rows.map((r) => String(r.assigned_to));
+      console.log('Busy IDs:', busyIds);
+      
       const freeHk = availableHk.rows.filter(
         (hk) => !busyIds.includes(String(hk.id))
       );
 
-      const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
+      console.log('Free housekeepers after filtering busy ones:', freeHk.length);
+      console.log('Free housekeepers:', freeHk.map(h => ({ id: h.id, name: h.name })));
 
-      // Count ongoing deliveries for fairness
+      const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
+      console.log('Final candidates count:', candidates.length);
+
+      // Count ongoing deliveries for fairness (Manila date)
       const counts = await pool.query(`
-        SELECT housekeeper_id, COUNT(*) AS delivery_count
+        SELECT housekeeper_id, COUNT(*) AS delivery_count,
+               (created_at AT TIME ZONE 'Asia/Manila')::date as created_date
         FROM borrowed_items
         WHERE housekeeper_id IS NOT NULL
           AND delivery_status IN ('pending_delivery', 'in_progress')
-          AND created_at::date = CURRENT_DATE
-        GROUP BY housekeeper_id
-      `);
+          AND (created_at AT TIME ZONE 'Asia/Manila')::date = $1
+        GROUP BY housekeeper_id, created_date
+      `, [manila_date]);
+
+      console.log('Delivery counts:', counts.rows);
 
       const countMap = {};
       counts.rows.forEach((row) => {
@@ -265,6 +310,9 @@ router.post("/borrow", authorization, async (req, res) => {
       const selectedHk = candidates[0];
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
+      
+      console.log('Selected housekeeper:', { id: assignedHousekeeperId, name: assignedHousekeeperName });
+      console.log('=== END ASSIGNMENT LOGIC ===');
     }
 
     // Reduce item quantity
@@ -351,7 +399,6 @@ router.post("/borrow", authorization, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
 router.get("/borrowed", authorization, async (req, res) => {
   try {
     const { id: user_id, role, facility } = req.user;
