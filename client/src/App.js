@@ -48,6 +48,7 @@ import HousekeeperProfile from "./pages/housekeeper/HousekeeperProfile";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ForceChangePassword from "./components/ForceChangePassword";
+import VerifyEmail from './pages/VerifyEmail';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -187,6 +188,9 @@ function App() {
               )
             }
           />
+          
+          {/* ================= VERIFY EMAIL ================= */}
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           {/* ================= FORCE PASSWORD CHANGE ================= */}
           <Route

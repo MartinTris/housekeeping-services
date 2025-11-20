@@ -2,6 +2,8 @@ const router = require("express").Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
+const { sendVerificationEmail } = require("../utils/emailService");
 
 router.get("/", authorization, async (req, res) => {
   try {
@@ -80,12 +82,27 @@ router.post("/", authorization, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const newUser = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, is_active)
-       VALUES ($1, $2, $3, $4, 'housekeeper', $5, TRUE)
+      `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, is_active,
+                         email_verified, verification_token, verification_token_expires)
+       VALUES ($1, $2, $3, $4, 'housekeeper', $5, TRUE, $6, $7, $8)
        RETURNING id, first_name, last_name, email, is_active, facility`,
-      [first_name, last_name, email, bcryptPassword, housekeeperFacility]
+      [first_name, last_name, email, bcryptPassword, housekeeperFacility, 
+       false, verificationToken, tokenExpiry]
     );
+
+    // Send verification email
+    try {
+      await sendVerificationEmail(email, verificationToken, first_name);
+      console.log('✓ Verification email sent to housekeeper:', email);
+    } catch (emailError) {
+      console.error('Failed to send verification email to housekeeper:', emailError);
+      // Continue even if email fails
+    }
 
     const hk = newUser.rows[0];
     res.json({
@@ -94,6 +111,7 @@ router.post("/", authorization, async (req, res) => {
       email: hk.email,
       is_active: hk.is_active,
       facility: hk.facility,
+      message: "Housekeeper added successfully. Verification email sent."
     });
   } catch (err) {
     console.error(err.message);

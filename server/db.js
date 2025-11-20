@@ -4,28 +4,32 @@ const pool = new Pool({
   host: 'aws-1-ap-northeast-1.pooler.supabase.com',
   port: 6543,
   database: 'postgres',
-  user: 'postgres.eitovqmmjupbercrbeao',
-  password: 'martin_19',
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
   ssl: {
     rejectUnauthorized: false
   },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000
+  max: 20,                          
+  min: 5,                           
+  idleTimeoutMillis: 30000,         
+  connectionTimeoutMillis: 10000,   
+  maxUses: 7500,                    
+  allowExitOnIdle: false            
 });
 
-  // const pool = new Pool({
-  //   connectionString: process.env.DATABASE_URL,
-  //   ssl: false,
-  //   max: 20,
-  // });
+// Add error handler to prevent crashes
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
+});
 
-  // const pool = new Pool({
-  //     user: "postgres",
-  //     password: "martin_19",
-  //     host: "localhost",
-  //     port: 5432,
-  //     database: "housekeeping_system",
-  // });
+// Test connection on startup
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Error connecting to database:', err);
+  } else {
+    console.log('Database connected successfully at:', res.rows[0].now);
+  }
+});
+
 
 module.exports = pool;

@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require("../db");
 const bcrypt = require("bcrypt");
 const { authorization } = require("../middleware/authorization");
+const crypto = require("crypto");
+const { sendVerificationEmail } = require("../utils/emailService");
 
 // Get all admins (superadmin only)
 router.get("/", authorization, async (req, res) => {
@@ -62,15 +64,33 @@ router.post("/", authorization, async (req, res) => {
     const salt = await bcrypt.genSalt(saltRounds);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
-    // Insert new admin - FIXED: Changed 'password' to 'password_hash'
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Insert new admin with email verification
     const newAdmin = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, is_active)
-       VALUES ($1, $2, $3, $4, 'admin', $5, true)
+      `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, is_active,
+                         email_verified, verification_token, verification_token_expires)
+       VALUES ($1, $2, $3, $4, 'admin', $5, true, $6, $7, $8)
        RETURNING id, first_name, last_name, email, facility, is_active, created_at`,
-      [first_name, last_name, email, bcryptPassword, facility]
+      [first_name, last_name, email, bcryptPassword, facility,
+       false, verificationToken, tokenExpiry]
     );
 
-    res.json(newAdmin.rows[0]);
+    // Send verification email
+    try {
+      await sendVerificationEmail(email, verificationToken, first_name);
+      console.log('✓ Verification email sent to admin:', email);
+    } catch (emailError) {
+      console.error('Failed to send verification email to admin:', emailError);
+      // Continue even if email fails
+    }
+
+    res.json({
+      ...newAdmin.rows[0],
+      message: "Admin added successfully. Verification email sent."
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ error: "Server error" });
