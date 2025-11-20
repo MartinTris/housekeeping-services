@@ -610,7 +610,6 @@ router.get("/availability", authorization, async (req, res) => {
     const date = new Date().toISOString().split("T")[0];
     const facility = req.user.facility;
 
-    // Log for debugging
     console.log('Checking availability for:', { serviceType, serviceTypeId, facility, date });
 
     let duration, foundServiceTypeId;
@@ -635,21 +634,16 @@ router.get("/availability", authorization, async (req, res) => {
         [serviceType, facility]
       );
 
-      console.log('Service type search result:', serviceTypeRes.rows);
-
       if (serviceTypeRes.rows.length > 0) {
         foundServiceTypeId = serviceTypeRes.rows[0].id;
         duration = serviceTypeRes.rows[0].duration;
-        console.log('Found service type:', { id: foundServiceTypeId, duration });
       }
     }
 
-    // If still not found, return error with available types
+    // If still not found, return error with available types (exclude Checkout)
     if (!duration) {
-      console.error('Service type not found:', { serviceType, serviceTypeId });
-      
       const availableTypes = await pool.query(
-        "SELECT id, name FROM service_types WHERE LOWER(facility) = LOWER($1)",
+        "SELECT id, name FROM service_types WHERE LOWER(facility) = LOWER($1) AND LOWER(name) != 'checkout'",
         [facility]
       );
       
@@ -660,6 +654,7 @@ router.get("/availability", authorization, async (req, res) => {
       });
     }
 
+    // Get all housekeepers with their schedules
     const housekeepers = await pool.query(
       `SELECT u.id, s.shift_time_in, s.shift_time_out, s.day_offs
        FROM users u
@@ -668,27 +663,25 @@ router.get("/availability", authorization, async (req, res) => {
       [facility]
     );
 
+    // Get busy times from housekeeping_requests
     const busy = await pool.query(
-      `
-      SELECT hr.assigned_to AS housekeeper_id, hr.preferred_time, st.duration
-      FROM housekeeping_requests hr
-      JOIN service_types st ON hr.service_type_id = st.id
-      WHERE hr.preferred_date = $1
-      AND hr.assigned_to IS NOT NULL
-      AND hr.status IN ('approved', 'in_progress')
-      `,
+      `SELECT hr.assigned_to AS housekeeper_id, hr.preferred_time, st.duration
+       FROM housekeeping_requests hr
+       JOIN service_types st ON hr.service_type_id = st.id
+       WHERE hr.preferred_date = $1
+       AND hr.assigned_to IS NOT NULL
+       AND hr.status IN ('approved', 'in_progress')`,
       [date]
     );
 
+    // Get busy times from service_history
     const busyHistory = await pool.query(
-      `
-      SELECT sh.housekeeper_id, sh.preferred_time, st.duration
-      FROM service_history sh
-      JOIN service_types st ON sh.service_type_id = st.id
-      WHERE sh.preferred_date = $1
-      AND sh.housekeeper_id IS NOT NULL
-      AND sh.status IN ('approved', 'in_progress')
-      `,
+      `SELECT sh.housekeeper_id, sh.preferred_time, st.duration
+       FROM service_history sh
+       JOIN service_types st ON sh.service_type_id = st.id
+       WHERE sh.preferred_date = $1
+       AND sh.housekeeper_id IS NOT NULL
+       AND sh.status IN ('approved', 'in_progress')`,
       [date]
     );
 
@@ -698,11 +691,13 @@ router.get("/availability", authorization, async (req, res) => {
       weekday: "long",
     });
 
+    // Helper function to convert time string to minutes
     const toMinutes = (timeStr) => {
       const [h, m] = timeStr.split(":").map(Number);
       return h * 60 + m;
     };
 
+    // Build a map of busy intervals for each housekeeper
     const busyMap = {};
 
     // Combine both busy arrays
@@ -710,46 +705,84 @@ router.get("/availability", authorization, async (req, res) => {
 
     for (const b of allBusy) {
       const hkId = b.housekeeper_id;
-      const start = toMinutes(b.preferred_time);
-      const end = start + b.duration;
+      const startMin = toMinutes(b.preferred_time);
+      const endMin = startMin + b.duration;
+      
       if (!busyMap[hkId]) busyMap[hkId] = [];
-      busyMap[hkId].push({ start, end });
+      busyMap[hkId].push({ start: startMin, end: endMin });
     }
+
+    console.log('Busy map:', JSON.stringify(busyMap, null, 2));
 
     const availability = {};
 
+    // Generate all possible time slots
     for (
       let timeInMinutes = startHour * 60;
       timeInMinutes < endHour * 60;
       timeInMinutes += duration
     ) {
-      const start = timeInMinutes;
-      const end = start + duration;
+      const slotStart = timeInMinutes;
+      const slotEnd = slotStart + duration;
 
-      if (end > endHour * 60) continue;
+      // Don't create slots that extend past end hour
+      if (slotEnd > endHour * 60) continue;
 
       const hour = Math.floor(timeInMinutes / 60);
       const minute = timeInMinutes % 60;
 
-      const timeKey = `${String(hour).padStart(2, "0")}:${String(
-        minute
-      ).padStart(2, "0")}:00`;
+      const timeKey = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
 
+      // Check if ANY housekeeper is available for this slot
       const availableHousekeepers = housekeepers.rows.filter((hk) => {
+        // Check if it's their day off
         const isDayOff = hk.day_offs?.includes(selectedDay);
-        if (isDayOff) return false;
+        if (isDayOff) {
+          console.log(`Housekeeper ${hk.id} is off on ${selectedDay}`);
+          return false;
+        }
 
+        // Check if the slot falls within their shift
+        const shiftStart = toMinutes(hk.shift_time_in);
+        const shiftEnd = toMinutes(hk.shift_time_out);
+        
+        // Handle shifts that cross midnight
+        let isWithinShift;
+        if (shiftStart <= shiftEnd) {
+          // Normal shift (e.g., 8:00 to 17:00)
+          isWithinShift = slotStart >= shiftStart && slotEnd <= shiftEnd;
+        } else {
+          // Overnight shift (e.g., 22:00 to 06:00)
+          isWithinShift = slotStart >= shiftStart || slotEnd <= shiftEnd;
+        }
+
+        if (!isWithinShift) {
+          console.log(`Slot ${timeKey} is outside shift for housekeeper ${hk.id}`);
+          return false;
+        }
+
+        // Check if they have any conflicting busy intervals
         const blockedIntervals = busyMap[hk.id] || [];
-        const overlaps = blockedIntervals.some(
-          (b) => start < b.end && end > b.start
-        );
+        const hasConflict = blockedIntervals.some((b) => {
+          // Two intervals overlap if: start1 < end2 AND end1 > start2
+          const overlaps = slotStart < b.end && slotEnd > b.start;
+          if (overlaps) {
+            console.log(`Housekeeper ${hk.id} is busy during ${timeKey}: slot ${slotStart}-${slotEnd} overlaps with busy ${b.start}-${b.end}`);
+          }
+          return overlaps;
+        });
 
-        return !overlaps;
+        return !hasConflict;
       });
 
       availability[timeKey] = availableHousekeepers.length > 0;
+      
+      if (!availability[timeKey]) {
+        console.log(`No housekeepers available for ${timeKey}`);
+      }
     }
 
+    console.log('Final availability:', availability);
     res.json(availability);
   } catch (err) {
     console.error("Error checking availability:", err);
@@ -886,7 +919,7 @@ router.get("/service-types", authorization, async (req, res) => {
     const { facility } = req.user;
 
     const types = await pool.query(
-      "SELECT id, name, duration FROM service_types WHERE LOWER(facility) = LOWER($1) ORDER BY name ASC",
+      "SELECT id, name, duration FROM service_types WHERE LOWER(facility) = LOWER($1) AND LOWER(name) != 'checkout' ORDER BY name ASC",
       [facility]
     );
     res.json(types.rows);

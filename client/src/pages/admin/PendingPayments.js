@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import { Printer } from "lucide-react";
+import { Printer, X } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
 const PendingPayments = () => {
@@ -8,6 +7,11 @@ const PendingPayments = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState("");
+  
+  // Invoice modal states
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [selectedAction, setSelectedAction] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -21,7 +25,6 @@ const PendingPayments = () => {
     }
   }, []);
 
-  // Fetch all pending payments
   const fetchPendingPayments = async () => {
     try {
       const response = await fetch("http://localhost:5000/items/pending", {
@@ -46,10 +49,34 @@ const PendingPayments = () => {
     fetchPendingPayments();
   }, []);
 
-  // Mark all items for a guest as paid
-  const handleMarkAllAsPaid = async (userId) => {
-    if (!window.confirm("Mark all items for this user as paid?")) return;
+  const openInvoiceModal = (actionType, itemId = null, userId = null) => {
+    setSelectedAction({ type: actionType, itemId, userId });
+    setInvoiceNumber("");
+    setShowInvoiceModal(true);
+  };
 
+  const closeInvoiceModal = () => {
+    setShowInvoiceModal(false);
+    setInvoiceNumber("");
+    setSelectedAction(null);
+  };
+
+  const handleInvoiceSubmit = async () => {
+    if (!invoiceNumber.trim()) {
+      alert("Please enter an invoice number");
+      return;
+    }
+
+    if (selectedAction.type === "single") {
+      await handleMarkAsPaid(selectedAction.itemId, invoiceNumber.trim());
+    } else if (selectedAction.type === "all") {
+      await handleMarkAllAsPaid(selectedAction.userId, invoiceNumber.trim());
+    }
+
+    closeInvoiceModal();
+  };
+
+  const handleMarkAllAsPaid = async (userId, invoice) => {
     try {
       const response = await fetch(
         `http://localhost:5000/items/mark-all-paid/${userId}`,
@@ -59,6 +86,7 @@ const PendingPayments = () => {
             "Content-Type": "application/json",
             token: localStorage.getItem("token"),
           },
+          body: JSON.stringify({ invoice_number: invoice }),
         }
       );
 
@@ -66,7 +94,8 @@ const PendingPayments = () => {
         alert("All items marked as paid!");
         fetchPendingPayments();
       } else {
-        alert("Failed to mark all as paid");
+        const data = await response.json();
+        alert(data.error || "Failed to mark all as paid");
       }
     } catch (err) {
       console.error(err);
@@ -74,7 +103,7 @@ const PendingPayments = () => {
     }
   };
 
-  const handleMarkAsPaid = async (id) => {
+  const handleMarkAsPaid = async (id, invoice) => {
     try {
       const response = await fetch(
         `http://localhost:5000/items/${id}/mark-paid`,
@@ -84,6 +113,7 @@ const PendingPayments = () => {
             "Content-Type": "application/json",
             token: localStorage.getItem("token"),
           },
+          body: JSON.stringify({ invoice_number: invoice }),
         }
       );
 
@@ -91,7 +121,8 @@ const PendingPayments = () => {
         alert("Item marked as paid!");
         fetchPendingPayments();
       } else {
-        alert("Failed to update status");
+        const data = await response.json();
+        alert(data.error || "Failed to update status");
       }
     } catch (err) {
       console.error(err);
@@ -106,67 +137,72 @@ const PendingPayments = () => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Borrowed Items Receipt - ${guestName}</title>
+          <title>Receipt</title>
           <style>
+            @page {
+              size: 80mm 297mm;
+              margin: 0;
+            }
+            
             body {
               font-family: Arial, sans-serif;
-              padding: 20px;
-              max-width: 800px;
-              margin: 0 auto;
+              padding: 10mm;
+              max-width: 100%;
+              margin: 0;
+              font-size: 12px;
             }
             .receipt-header {
               text-align: center;
-              margin-bottom: 30px;
+              margin-bottom: 20px;
               border-bottom: 2px solid #166534;
-              padding-bottom: 15px;
+              padding-bottom: 10px;
             }
             .receipt-title {
-              font-size: 24px;
+              font-size: 18px;
               font-weight: bold;
               color: #166534;
-              margin-bottom: 10px;
+              margin-bottom: 8px;
             }
             .receipt-info {
-              font-size: 14px;
+              font-size: 11px;
               color: #4b5563;
-              margin: 5px 0;
+              margin: 3px 0;
             }
             .borrower-info {
-              margin: 20px 0;
-              padding: 15px;
+              margin: 15px 0;
+              padding: 10px;
               background-color: #f3f4f6;
-              border-radius: 8px;
+              border-radius: 4px;
             }
             .borrower-label {
               font-weight: bold;
               color: #374151;
+              font-size: 11px;
             }
             table {
               width: 100%;
               border-collapse: collapse;
-              margin: 20px 0;
+              margin: 15px 0;
+              font-size: 11px;
             }
             th {
               background-color: #166534;
               color: white;
-              padding: 12px;
+              padding: 8px;
               text-align: left;
               font-weight: 600;
             }
             td {
-              padding: 10px 12px;
+              padding: 6px 8px;
               border-bottom: 1px solid #e5e7eb;
-            }
-            tr:hover {
-              background-color: #f9fafb;
             }
             .total-row {
               font-weight: bold;
-              font-size: 18px;
+              font-size: 13px;
               background-color: #f3f4f6;
             }
             .total-row td {
-              padding: 15px 12px;
+              padding: 10px 8px;
               border-top: 2px solid #166534;
               border-bottom: 2px solid #166534;
             }
@@ -178,7 +214,7 @@ const PendingPayments = () => {
             }
             @media print {
               body {
-                padding: 0;
+                padding: 5mm;
               }
             }
           </style>
@@ -209,7 +245,6 @@ const PendingPayments = () => {
     });
   };
 
-  // Group items by guest and then by item name
   const groupedByGuest = items.reduce((acc, item) => {
     const guest = item.borrower_name || "Unknown Guest";
     const userId = item.user_id;
@@ -232,7 +267,6 @@ const PendingPayments = () => {
         <p className="text-gray-600 text-center">No pending payments found.</p>
       ) : (
         Object.entries(groupedByGuest).map(([userId, { guest, facility, items: guestItems }]) => {
-          // Group by item_name for this guest
           const groupedItems = guestItems.reduce((acc, item) => {
             const key = item.item_name;
             const itemQuantity = Number(item.quantity || 0);
@@ -249,7 +283,6 @@ const PendingPayments = () => {
             } else {
               acc[key].quantity += itemQuantity;
               acc[key].totalCharge += itemTotalCharge;
-              // Keep the price per item consistent (from first transaction)
             }
             return acc;
           }, {});
@@ -264,7 +297,6 @@ const PendingPayments = () => {
               key={userId}
               className="mb-6 border border-gray-300 rounded-lg p-4 shadow-sm"
             >
-              {/* Print content - hidden on screen */}
               <div id={`print-content-${userId}`} style={{ display: 'none' }}>
                 <div className="receipt-header">
                   <div className="receipt-title">BORROWED ITEMS RECEIPT</div>
@@ -301,7 +333,6 @@ const PendingPayments = () => {
                 </table>
               </div>
 
-              {/* Screen display */}
               <div className="flex justify-between items-center mb-3">
                 <div>
                   <h3 className="text-lg font-semibold text-green-800">
@@ -333,7 +364,7 @@ const PendingPayments = () => {
                   </button>
                   {userRole === "admin" && (
                     <button
-                      onClick={() => handleMarkAllAsPaid(userId)}
+                      onClick={() => openInvoiceModal("all", null, userId)}
                       className="px-3 py-1 bg-green-700 text-white text-sm rounded hover:bg-green-800"
                     >
                       Mark All as Paid
@@ -366,7 +397,7 @@ const PendingPayments = () => {
                       {userRole === "admin" && (
                         <td className="p-2 border">
                           <button
-                            onClick={() => handleMarkAsPaid(item.id)}
+                            onClick={() => openInvoiceModal("single", item.id)}
                             className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
                           >
                             Mark as Paid
@@ -384,6 +415,57 @@ const PendingPayments = () => {
             </div>
           );
         })
+      )}
+
+      {/* Invoice Number Modal */}
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-96 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-green-800">
+                Enter Invoice Number
+              </h3>
+              <button
+                onClick={closeInvoiceModal}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Invoice Number *
+              </label>
+              <input
+                type="text"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="Enter invoice number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                This invoice number will be recorded with the payment
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeInvoiceModal}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleInvoiceSubmit}
+                className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+              >
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="mt-6 text-center">

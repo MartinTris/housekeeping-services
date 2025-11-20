@@ -47,6 +47,11 @@ const ServiceTypes = () => {
     fetchServiceTypes();
   }, []);
 
+  // Helper function to check if service type is Checkout
+  const isCheckout = (name) => {
+    return name && name.toLowerCase() === "checkout";
+  };
+
   // Add service type
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -112,7 +117,13 @@ const ServiceTypes = () => {
   };
 
   // Delete service type
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, name) => {
+    // Double check on frontend (backend also protects)
+    if (isCheckout(name)) {
+      alert("The 'Checkout' service type cannot be deleted as it is a system-required service.");
+      return;
+    }
+
     if (!window.confirm("Delete this service type?")) return;
 
     try {
@@ -121,10 +132,12 @@ const ServiceTypes = () => {
         headers: { token: localStorage.token }
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         setServiceTypes(serviceTypes.filter((st) => st.id !== id));
       } else {
-        alert("Deletion failed.");
+        alert(data.error || "Deletion failed.");
       }
     } catch (err) {
       console.error(err);
@@ -222,7 +235,14 @@ const ServiceTypes = () => {
                   {type.facility}
                 </span>
               )}
-              <h3 className="text-lg font-bold text-green-900">{type.name}</h3>
+              <h3 className="text-lg font-bold text-green-900">
+                {type.name}
+                {isCheckout(type.name) && (
+                  <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                    System Required
+                  </span>
+                )}
+              </h3>
               <p className="text-gray-700">
                 Duration: {type.duration} minutes
               </p>
@@ -240,12 +260,15 @@ const ServiceTypes = () => {
                 >
                   Edit
                 </button>
-                <button
-                  onClick={() => handleDelete(type.id)}
-                  className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                >
-                  Delete
-                </button>
+                {/* Hide delete button for Checkout */}
+                {!isCheckout(type.name) && (
+                  <button
+                    onClick={() => handleDelete(type.id, type.name)}
+                    className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -261,16 +284,33 @@ const ServiceTypes = () => {
 
             <form onSubmit={handleEditSubmit}>
               <div className="mb-4">
-                <label className="block font-medium mb-1">Name</label>
+                <label className="block font-medium mb-1">
+                  Name
+                  {isCheckout(editData.name) && (
+                    <span className="ml-2 text-xs text-gray-500">
+                      (Cannot be changed)
+                    </span>
+                  )}
+                </label>
                 <input
                   type="text"
-                  className="w-full p-2 border rounded-lg"
+                  className={`w-full p-2 border rounded-lg ${
+                    isCheckout(editData.name)
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : ""
+                  }`}
                   value={editData.name}
                   onChange={(e) =>
                     setEditData({ ...editData, name: e.target.value })
                   }
+                  disabled={isCheckout(editData.name)}
                   required
                 />
+                {isCheckout(editData.name) && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    ⚠️ The Checkout service type name is protected and cannot be modified.
+                  </p>
+                )}
               </div>
 
               <div className="mb-4">

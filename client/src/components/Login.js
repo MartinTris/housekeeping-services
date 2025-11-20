@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import TermsAndConditionsModal from "../components/TermsAndConditionsModal";
 
 const Login = ({ setAuth, setUser }) => {
   const [inputs, setInputs] = useState({
@@ -11,6 +12,9 @@ const Login = ({ setAuth, setUser }) => {
   const [popupInputs, setPopupInputs] = useState({ email: "", password: "" });
   const [showModal, setShowModal] = useState(false);
 
+  // ✅ Add this new state for T&C modal
+  const [showTerms, setShowTerms] = useState(false);
+
   const navigate = useNavigate();
 
   const { email, password } = inputs;
@@ -18,88 +22,85 @@ const Login = ({ setAuth, setUser }) => {
   const onChange = (e) => {
     setInputs({ ...inputs, [e.target.name]: e.target.value });
   };
-  
+
   const onPopupChange = (e) => {
     setPopupInputs({ ...popupInputs, [e.target.name]: e.target.value });
   };
 
   const handleLogin = async (e, loginRole, creds) => {
-  e.preventDefault();
-  try {
-    const body = { ...creds, role: loginRole };
+    e.preventDefault();
+    try {
+      const body = { ...creds, role: loginRole };
 
-    const response = await fetch("http://localhost:5000/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      const response = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    const parseRes = await response.json();
-    if (parseRes.token) {
-      localStorage.setItem("token", parseRes.token);
-      localStorage.setItem("role", parseRes.role);
-      localStorage.setItem("first_login", parseRes.first_login);
+      const parseRes = await response.json();
+      if (parseRes.token) {
+        localStorage.setItem("token", parseRes.token);
+        localStorage.setItem("role", parseRes.role);
+        localStorage.setItem("first_login", parseRes.first_login);
 
-      setAuth(true);
-      try {
-        const userRes = await fetch("http://localhost:5000/users/me", {
-          headers: { token: parseRes.token },
-        });
+        setAuth(true);
+        try {
+          const userRes = await fetch("http://localhost:5000/users/me", {
+            headers: { token: parseRes.token },
+          });
 
-        const userData = await userRes.json();
-        console.log("Fetched user data:", userData);
+          const userData = await userRes.json();
+          console.log("Fetched user data:", userData);
 
-        setUser({ 
-          id: userData.id || parseRes.id,
-          role: parseRes.role,
-          facility: userData.facility,
-          email: userData.email || parseRes.email
-        });
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-        // Fallback to basic user data if fetch fails
-        setUser({ 
-          id: parseRes.id,
-          role: parseRes.role,
-          email: parseRes.email
-        });
+          setUser({
+            id: userData.id || parseRes.id,
+            role: parseRes.role,
+            facility: userData.facility,
+            email: userData.email || parseRes.email,
+          });
+        } catch (err) {
+          console.error("Error fetching user data:", err);
+          setUser({
+            id: parseRes.id,
+            role: parseRes.role,
+            email: parseRes.email,
+          });
+        }
+
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("permissionsNeedRefresh"));
+          console.log("Dispatched permissionsNeedRefresh event");
+        }, 100);
+
+        setShowModal(false);
+        setPopupRole(null);
+        setPopupInputs({ email: "", password: "" });
+
+        if (
+          (parseRes.role === "admin" ||
+            parseRes.role === "housekeeper" ||
+            parseRes.role === "superadmin") &&
+          parseRes.first_login === true
+        ) {
+          navigate("/force-change-password");
+        } else if (parseRes.role === "superadmin") {
+          navigate("/superadmin");
+        } else if (parseRes.role === "admin") {
+          navigate("/admin");
+        } else if (parseRes.role === "housekeeper") {
+          navigate("/housekeeper");
+        } else if (parseRes.role === "guest") {
+          navigate("/guest");
+        }
+      } else {
+        alert(parseRes.message || "Invalid Credentials");
       }
-
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('permissionsNeedRefresh'));
-        console.log("Dispatched permissionsNeedRefresh event");
-      }, 100);
-
-      // Close modals
-      setShowModal(false);
-      setPopupRole(null);
-      setPopupInputs({ email: "", password: "" });
-
-      // CHECK FIRST LOGIN
-      if (
-        (parseRes.role === "admin" ||
-          parseRes.role === "housekeeper" ||
-          parseRes.role === "superadmin") &&
-        parseRes.first_login === true
-      ) {
-        navigate("/force-change-password");
-      } else if (parseRes.role === "superadmin") {
-        navigate("/superadmin");
-      } else if (parseRes.role === "admin") {
-        navigate("/admin");
-      } else if (parseRes.role === "housekeeper") {
-        navigate("/housekeeper");
-      } else if (parseRes.role === "guest") {
-        navigate("/guest");
-      }
-    } else {
-      alert(parseRes.message || "Invalid Credentials");
+    } catch (err) {
+      console.error(err.message);
+      alert("Login error. Please try again.");
     }
-  } catch (err) {
-    console.error(err.message);
-    alert("Login error. Please try again.");
-  }
-};
+  };
 
   const handleCancel = () => {
     setPopupInputs({ email: "", password: "" });
@@ -217,13 +218,13 @@ const Login = ({ setAuth, setUser }) => {
             </form>
 
             <p className="mt-4 text-center text-gray-600">
-              Don't have an account?{" "}
-              <a
-                href="/register"
+              Don't have an account? {/* ✅ REPLACED ONLY THIS PART */}
+              <button
+                onClick={() => setShowTerms(true)}
                 className="text-green-700 font-poppins font-semibold hover:underline"
               >
                 Register here
-              </a>
+              </button>
             </p>
 
             <div className="mt-6 text-center">
@@ -311,6 +312,18 @@ const Login = ({ setAuth, setUser }) => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* ✅ TERMS & CONDITIONS MODAL ADDED */}
+      {showTerms && (
+        <TermsAndConditionsModal
+          isOpen={showTerms}
+          onClose={() => setShowTerms(false)}
+          onAccept={() => {
+            setShowTerms(false);
+            navigate("/register");
+          }}
+        />
       )}
     </div>
   );

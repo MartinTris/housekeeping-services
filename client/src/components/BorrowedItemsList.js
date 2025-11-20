@@ -80,36 +80,43 @@ const BorrowedItemsList = () => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Borrowed Items Receipt</title>
+          <title>Receipt</title>
           <style>
+            @page {
+              size: 80mm 297mm;
+              margin: 0;
+            }
+            
             body {
               font-family: Arial, sans-serif;
-              padding: 20px;
-              max-width: 800px;
-              margin: 0 auto;
+              padding: 10mm;
+              max-width: 100%;
+              margin: 0;
+              font-size: 12px;
             }
             .receipt-header {
               text-align: center;
-              margin-bottom: 30px;
+              margin-bottom: 20px;
               border-bottom: 2px solid #166534;
-              padding-bottom: 15px;
+              padding-bottom: 10px;
             }
             .receipt-title {
-              font-size: 24px;
+              font-size: 18px;
               font-weight: bold;
               color: #166534;
-              margin-bottom: 10px;
+              margin-bottom: 8px;
             }
             .receipt-info {
-              font-size: 14px;
+              font-size: 11px;
               color: #4b5563;
-              margin: 5px 0;
+              margin: 3px 0;
             }
             .borrower-info {
-              margin: 20px 0;
-              padding: 15px;
+              margin: 15px 0;
+              padding: 10px;
               background-color: #f3f4f6;
-              border-radius: 8px;
+              border-radius: 4px;
+              font-size: 11px;
             }
             .borrower-label {
               font-weight: bold;
@@ -118,29 +125,27 @@ const BorrowedItemsList = () => {
             table {
               width: 100%;
               border-collapse: collapse;
-              margin: 20px 0;
+              margin: 15px 0;
+              font-size: 11px;
             }
             th {
               background-color: #166534;
               color: white;
-              padding: 12px;
+              padding: 8px;
               text-align: left;
               font-weight: 600;
             }
             td {
-              padding: 10px 12px;
+              padding: 6px 8px;
               border-bottom: 1px solid #e5e7eb;
-            }
-            tr:hover {
-              background-color: #f9fafb;
             }
             .total-row {
               font-weight: bold;
-              font-size: 18px;
+              font-size: 13px;
               background-color: #f3f4f6;
             }
             .total-row td {
-              padding: 15px 12px;
+              padding: 10px 8px;
               border-top: 2px solid #166534;
               border-bottom: 2px solid #166534;
             }
@@ -152,7 +157,7 @@ const BorrowedItemsList = () => {
             }
             @media print {
               body {
-                padding: 0;
+                padding: 5mm;
               }
             }
           </style>
@@ -169,6 +174,8 @@ const BorrowedItemsList = () => {
       printWindow.print();
       printWindow.close();
     }, 250);
+
+    console.log(user);
   };
 
   return (
@@ -179,12 +186,6 @@ const BorrowedItemsList = () => {
           <div className="receipt-title">BORROWED ITEMS RECEIPT</div>
           <div className="receipt-info">Date & Time: {formatDateTime()}</div>
         </div>
-        
-        {user && (
-          <div className="borrower-info">
-            <span className="borrower-label">Borrower:</span> {user.first_name} {user.last_name}
-          </div>
-        )}
 
         <table>
           <thead>

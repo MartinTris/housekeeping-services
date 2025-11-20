@@ -2,6 +2,7 @@ const router = require("express").Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 
+// Main reports endpoint - for housekeeping requests (completed only from service_history)
 router.get("/", authorization, async (req, res) => {
   try {
     const { facility: adminFacility, role } = req.user;
@@ -28,10 +29,12 @@ router.get("/", authorization, async (req, res) => {
     let housekeeperFilter = "";
     if (housekeeper_id) {
       params.push(housekeeper_id);
-      housekeeperFilter = `AND sh.assigned_to = $${paramIndex}`;
+      housekeeperFilter = `AND sh.housekeeper_id = $${paramIndex}`;
       paramIndex++;
     }
 
+    // Query from service_history table
+    // Filter by status = 'completed' and use assigned_at for date range
     const reportQuery = `
       SELECT 
         CASE 
@@ -42,19 +45,20 @@ router.get("/", authorization, async (req, res) => {
         st.name AS service_type,
         CONCAT(hk.first_name, ' ', hk.last_name) AS housekeeper_name,
         r.room_number,
-        r.facility,
+        COALESCE(r.facility, hk.facility) AS facility,
         TO_CHAR(sh.preferred_date, 'YYYY-MM-DD') AS date,
         TO_CHAR(sh.preferred_time, 'HH12:MI AM') AS time,
         sh.status
-      FROM housekeeping_requests sh
-      LEFT JOIN users requester ON sh.user_id = requester.id
-      LEFT JOIN users hk ON sh.assigned_to = hk.id AND hk.role = 'housekeeper'
+      FROM service_history sh
+      LEFT JOIN users requester ON sh.guest_id = requester.id
+      LEFT JOIN users hk ON sh.housekeeper_id = hk.id AND hk.role = 'housekeeper'
       LEFT JOIN rooms r ON sh.room_id = r.id
       LEFT JOIN service_types st ON sh.service_type_id = st.id
-      WHERE sh.created_at >= NOW() - INTERVAL '${range} days'
+      WHERE sh.status = 'completed'
+        AND sh.assigned_at >= NOW() - INTERVAL '${range} days'
         AND ${facilityFilter}
         ${housekeeperFilter}
-      ORDER BY r.facility, sh.preferred_date DESC, sh.preferred_time DESC;
+      ORDER BY COALESCE(r.facility, hk.facility), sh.preferred_date DESC, sh.preferred_time DESC;
     `;
 
     const { rows } = await pool.query(reportQuery, params);
@@ -110,17 +114,26 @@ router.get("/housekeepers", authorization, async (req, res) => {
   }
 });
 
-// Get borrowed items report - FIXED TO SHOW INDIVIDUAL TRANSACTIONS
+// Get borrowed items report with payment filter and room number
 router.get("/borrowed-items", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
-    const { days } = req.query;
+    const { days, payment_status } = req.query;
     const validDays = [7, 14, 30];
     const range = validDays.includes(Number(days)) ? Number(days) : 7;
 
     if (role !== 'admin' && role !== 'superadmin') {
       return res.status(403).json({ error: "Unauthorized." });
     }
+
+    // Build payment filter
+    let paymentFilter = "";
+    if (payment_status === "paid") {
+      paymentFilter = "AND bi.is_paid = true";
+    } else if (payment_status === "unpaid") {
+      paymentFilter = "AND bi.is_paid = false";
+    }
+    // If payment_status is "all" or not provided, no filter is added
 
     let query;
     let params;
@@ -133,12 +146,16 @@ router.get("/borrowed-items", authorization, async (req, res) => {
           bi.quantity,
           bi.charge_amount AS total_amount,
           TO_CHAR(bi.created_at, 'YYYY-MM-DD') AS borrowed_date,
-          u.facility
+          COALESCE(u.facility, r.facility) as facility,
+          r.room_number,
+          bi.is_paid
         FROM borrowed_items bi
         JOIN users u ON bi.user_id = u.id
+        LEFT JOIN rooms r ON bi.room_id = r.id
         WHERE bi.created_at >= NOW() - INTERVAL '${range} days'
-          AND u.facility IN ('RCC', 'Hotel Rafael')
-        ORDER BY u.facility, bi.created_at DESC
+          AND (u.facility IN ('RCC', 'Hotel Rafael') OR r.facility IN ('RCC', 'Hotel Rafael'))
+          ${paymentFilter}
+        ORDER BY COALESCE(u.facility, r.facility), bi.created_at DESC
       `;
       params = [];
     } else {
@@ -148,11 +165,15 @@ router.get("/borrowed-items", authorization, async (req, res) => {
           bi.item_name,
           bi.quantity,
           bi.charge_amount AS total_amount,
-          TO_CHAR(bi.created_at, 'YYYY-MM-DD') AS borrowed_date
+          TO_CHAR(bi.created_at, 'YYYY-MM-DD') AS borrowed_date,
+          r.room_number,
+          bi.is_paid
         FROM borrowed_items bi
         JOIN users u ON bi.user_id = u.id
+        LEFT JOIN rooms r ON bi.room_id = r.id
         WHERE bi.created_at >= NOW() - INTERVAL '${range} days'
-          AND u.facility = $1
+          AND (u.facility = $1 OR r.facility = $1)
+          ${paymentFilter}
         ORDER BY bi.created_at DESC
       `;
       params = [facility];

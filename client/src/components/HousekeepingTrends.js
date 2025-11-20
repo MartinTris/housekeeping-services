@@ -14,9 +14,14 @@ const HousekeepingTrends = () => {
   const [data, setData] = useState([]);
   const [granularity, setGranularity] = useState("daily");
   const [serviceTypes, setServiceTypes] = useState([]);
-  const [selectedServiceType, setSelectedServiceType] = useState("");
+  const [selectedServiceType, setSelectedServiceType] = useState("all");
+  const [selectedFacility, setSelectedFacility] = useState("all");
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
+    // Fetch user role (you might want to get this from context or props)
+    const role = localStorage.getItem("role"); // Adjust based on your auth setup
+    setUserRole(role);
     fetchServiceTypes();
   }, []);
 
@@ -24,7 +29,7 @@ const HousekeepingTrends = () => {
     if (selectedServiceType) {
       fetchTrends();
     }
-  }, [granularity, selectedServiceType]);
+  }, [granularity, selectedServiceType, selectedFacility]);
 
   const fetchServiceTypes = async () => {
     try {
@@ -34,10 +39,7 @@ const HousekeepingTrends = () => {
       const types = await res.json();
       setServiceTypes(types);
       
-      // Auto-select the first service type
-      if (types.length > 0) {
-        setSelectedServiceType(types[0].name);
-      }
+      setSelectedServiceType("all");
     } catch (err) {
       console.error("Error fetching service types:", err);
     }
@@ -45,12 +47,16 @@ const HousekeepingTrends = () => {
 
   const fetchTrends = async () => {
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/trends/housekeeping-trends?granularity=${granularity}`,
-        {
-          headers: { token: localStorage.getItem("token") },
-        }
-      );
+      let url = `http://localhost:5000/api/trends/housekeeping-trends?granularity=${granularity}`;
+      
+      // Add facility parameter for superadmin
+      if (userRole === 'superadmin' && selectedFacility) {
+        url += `&facility=${selectedFacility}`;
+      }
+
+      const res = await fetch(url, {
+        headers: { token: localStorage.getItem("token") },
+      });
 
       const raw = await res.json();
       const formatted = formatTrends(raw);
@@ -73,14 +79,41 @@ const HousekeepingTrends = () => {
       });
 
       return days.map((day) => {
-        const record = rawData.find(
-          (r) => r.period === day && r.service_type === selectedServiceType
-        );
+        const dataPoint = { period: day };
+        
+        if (selectedServiceType === "all") {
+          // Group service types by facility for superadmin viewing all facilities
+          const serviceTypeFacilityKeys = new Set();
+          rawData.forEach((r) => {
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              serviceTypeFacilityKeys.add(`${r.service_type} (${r.facility})`);
+            } else {
+              serviceTypeFacilityKeys.add(r.service_type);
+            }
+          });
 
-        return {
-          period: day,
-          [selectedServiceType]: record ? parseInt(record.quantity) : 0,
-        };
+          serviceTypeFacilityKeys.forEach((key) => {
+            let record;
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              const [serviceType, facility] = key.match(/(.+) \((.+)\)/).slice(1);
+              record = rawData.find(
+                (r) => r.period === day && r.service_type === serviceType && r.facility === facility
+              );
+            } else {
+              record = rawData.find(
+                (r) => r.period === day && r.service_type === key
+              );
+            }
+            dataPoint[key] = record ? parseInt(record.quantity) : 0;
+          });
+        } else {
+          const record = rawData.find(
+            (r) => r.period === day && r.service_type === selectedServiceType
+          );
+          dataPoint[selectedServiceType] = record ? parseInt(record.quantity) : 0;
+        }
+
+        return dataPoint;
       });
     }
 
@@ -117,14 +150,42 @@ const HousekeepingTrends = () => {
           return `${month}-${day}-${year}`;
         };
 
-        const record = rawData.find(
-          (r) => r.period === monday && r.service_type === selectedServiceType
-        );
-
-        return {
+        const dataPoint = {
           period: `${formatDate(mondayDate)} - ${formatDate(sundayDate)}`,
-          [selectedServiceType]: record ? parseInt(record.quantity) : 0,
         };
+
+        if (selectedServiceType === "all") {
+          const serviceTypeFacilityKeys = new Set();
+          rawData.forEach((r) => {
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              serviceTypeFacilityKeys.add(`${r.service_type} (${r.facility})`);
+            } else {
+              serviceTypeFacilityKeys.add(r.service_type);
+            }
+          });
+
+          serviceTypeFacilityKeys.forEach((key) => {
+            let record;
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              const [serviceType, facility] = key.match(/(.+) \((.+)\)/).slice(1);
+              record = rawData.find(
+                (r) => r.period === monday && r.service_type === serviceType && r.facility === facility
+              );
+            } else {
+              record = rawData.find(
+                (r) => r.period === monday && r.service_type === key
+              );
+            }
+            dataPoint[key] = record ? parseInt(record.quantity) : 0;
+          });
+        } else {
+          const record = rawData.find(
+            (r) => r.period === monday && r.service_type === selectedServiceType
+          );
+          dataPoint[selectedServiceType] = record ? parseInt(record.quantity) : 0;
+        }
+
+        return dataPoint;
       });
     }
 
@@ -148,14 +209,42 @@ const HousekeepingTrends = () => {
       return months.map((monthName, index) => {
         const monthKey = `${currentYear}-${String(index + 1).padStart(2, "0")}`;
 
-        const record = rawData.find(
-          (r) => r.period === monthKey && r.service_type === selectedServiceType
-        );
-
-        return {
+        const dataPoint = {
           period: `${monthName} ${currentYear}`,
-          [selectedServiceType]: record ? parseInt(record.quantity) : 0,
         };
+
+        if (selectedServiceType === "all") {
+          const serviceTypeFacilityKeys = new Set();
+          rawData.forEach((r) => {
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              serviceTypeFacilityKeys.add(`${r.service_type} (${r.facility})`);
+            } else {
+              serviceTypeFacilityKeys.add(r.service_type);
+            }
+          });
+
+          serviceTypeFacilityKeys.forEach((key) => {
+            let record;
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              const [serviceType, facility] = key.match(/(.+) \((.+)\)/).slice(1);
+              record = rawData.find(
+                (r) => r.period === monthKey && r.service_type === serviceType && r.facility === facility
+              );
+            } else {
+              record = rawData.find(
+                (r) => r.period === monthKey && r.service_type === key
+              );
+            }
+            dataPoint[key] = record ? parseInt(record.quantity) : 0;
+          });
+        } else {
+          const record = rawData.find(
+            (r) => r.period === monthKey && r.service_type === selectedServiceType
+          );
+          dataPoint[selectedServiceType] = record ? parseInt(record.quantity) : 0;
+        }
+
+        return dataPoint;
       });
     }
 
@@ -166,21 +255,48 @@ const HousekeepingTrends = () => {
       return years.map((year) => {
         const yearKey = String(year);
 
-        const record = rawData.find(
-          (r) => r.period === yearKey && r.service_type === selectedServiceType
-        );
-
-        return {
+        const dataPoint = {
           period: yearKey,
-          [selectedServiceType]: record ? parseInt(record.quantity) : 0,
         };
+
+        if (selectedServiceType === "all") {
+          const serviceTypeFacilityKeys = new Set();
+          rawData.forEach((r) => {
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              serviceTypeFacilityKeys.add(`${r.service_type} (${r.facility})`);
+            } else {
+              serviceTypeFacilityKeys.add(r.service_type);
+            }
+          });
+
+          serviceTypeFacilityKeys.forEach((key) => {
+            let record;
+            if (userRole === 'superadmin' && selectedFacility === 'all') {
+              const [serviceType, facility] = key.match(/(.+) \((.+)\)/).slice(1);
+              record = rawData.find(
+                (r) => r.period === yearKey && r.service_type === serviceType && r.facility === facility
+              );
+            } else {
+              record = rawData.find(
+                (r) => r.period === yearKey && r.service_type === key
+              );
+            }
+            dataPoint[key] = record ? parseInt(record.quantity) : 0;
+          });
+        } else {
+          const record = rawData.find(
+            (r) => r.period === yearKey && r.service_type === selectedServiceType
+          );
+          dataPoint[selectedServiceType] = record ? parseInt(record.quantity) : 0;
+        }
+
+        return dataPoint;
       });
     }
 
     return [];
   };
 
-  // Generate a color based on service type name
   const getColorForServiceType = (serviceType) => {
     const colors = {
       regular: "#16a34a",
@@ -188,20 +304,32 @@ const HousekeepingTrends = () => {
       express: "#3b82f6",
       laundry: "#f59e0b",
       maintenance: "#ef4444",
+      checkout: "#8b5cf6",
     };
     
-    // Return predefined color or generate one based on string hash
-    if (colors[serviceType.toLowerCase()]) {
-      return colors[serviceType.toLowerCase()];
+    // Extract base service type name if it includes facility
+    const baseType = serviceType.includes('(') 
+      ? serviceType.split(' (')[0].toLowerCase() 
+      : serviceType.toLowerCase();
+    
+    if (colors[baseType]) {
+      return colors[baseType];
     }
     
-    // Simple hash function to generate consistent colors
     let hash = 0;
     for (let i = 0; i < serviceType.length; i++) {
       hash = serviceType.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = hash % 360;
     return `hsl(${hue}, 60%, 50%)`;
+  };
+
+  // Get unique service type keys for rendering bars
+  const getServiceTypeKeys = () => {
+    if (data.length === 0) return [];
+    
+    const keys = Object.keys(data[0]).filter(key => key !== 'period');
+    return keys;
   };
 
   return (
@@ -211,6 +339,21 @@ const HousekeepingTrends = () => {
       </h2>
 
       <div className="flex items-center gap-4 mb-6 flex-wrap">
+        {userRole === 'superadmin' && (
+          <label className="text-gray-700 font-medium text-sm">
+            Facility:
+            <select
+              value={selectedFacility}
+              onChange={(e) => setSelectedFacility(e.target.value)}
+              className="ml-2 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="all">All Facilities</option>
+              <option value="RCC">RCC</option>
+              <option value="Hotel Rafael">Hotel Rafael</option>
+            </select>
+          </label>
+        )}
+
         <label className="text-gray-700 font-medium text-sm">
           Service Type:
           <select
@@ -218,6 +361,7 @@ const HousekeepingTrends = () => {
             onChange={(e) => setSelectedServiceType(e.target.value)}
             className="ml-2 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
           >
+            <option value="all">All Service Types</option>
             {serviceTypes.map((type) => (
               <option key={type.id} value={type.name}>
                 {type.name}
@@ -261,12 +405,16 @@ const HousekeepingTrends = () => {
               }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar
-              dataKey={selectedServiceType}
-              fill={getColorForServiceType(selectedServiceType)}
-              radius={[4, 4, 0, 0]}
-              name={selectedServiceType}
-            />
+            
+            {getServiceTypeKeys().map((key) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                fill={getColorForServiceType(key)}
+                radius={[4, 4, 0, 0]}
+                name={key}
+              />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>

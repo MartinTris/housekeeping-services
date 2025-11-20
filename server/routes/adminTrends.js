@@ -4,7 +4,7 @@ const { authorization } = require("../middleware/authorization");
 
 router.get("/housekeeping-trends", authorization, async (req, res) => {
   try {
-    const { granularity } = req.query;
+    const { granularity, facility } = req.query;
     const { facility: adminFacility, role } = req.user;
 
     const validGranularity = ["daily", "weekly", "monthly", "yearly"];
@@ -12,16 +12,21 @@ router.get("/housekeeping-trends", authorization, async (req, res) => {
       return res.status(400).json({ error: "Invalid granularity" });
     }
 
-    if (!adminFacility) {
+    if (!adminFacility && role !== 'superadmin') {
       return res.status(403).json({ error: "Admin facility not defined" });
     }
 
     let facilityFilter;
-    let params;
+    let params = [];
 
     if (role === 'superadmin') {
-      facilityFilter = `sh.facility IN ('RCC', 'Hotel Rafael')`;
-      params = [];
+      // Superadmin can filter by facility or view all
+      if (facility && facility !== 'all') {
+        facilityFilter = `sh.facility = $1`;
+        params = [facility];
+      } else {
+        facilityFilter = `sh.facility IN ('RCC', 'Hotel Rafael')`;
+      }
     } else {
       facilityFilter = `sh.facility = $1`;
       params = [adminFacility];

@@ -14,6 +14,7 @@ const Reports = () => {
   const [error, setError] = useState("");
   const printRef = useRef(null);
   const [facilityFilter, setFacilityFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
 
   // Get user role
   useEffect(() => {
@@ -62,6 +63,9 @@ const Reports = () => {
         }
       } else if (reportType === "borrowed") {
         url = `http://localhost:5000/api/admin/reports/borrowed-items?days=${days}`;
+        if (paymentFilter !== "all") {
+          url += `&payment_status=${paymentFilter}`;
+        }
       }
 
       const res = await fetch(url, { headers: { token: localStorage.token } });
@@ -132,7 +136,7 @@ const Reports = () => {
 
   useEffect(() => {
     fetchReports();
-  }, [days, selectedHousekeeper, selectedServiceType, reportType]);
+  }, [days, selectedHousekeeper, selectedServiceType, reportType, paymentFilter]);
 
   // Filter reports by facility for superadmin
   const displayedReports = reports.filter((report) => {
@@ -190,6 +194,20 @@ const Reports = () => {
               color: gray;
               text-align: center;
             }
+            .status-badge {
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-size: 12px;
+              font-weight: bold;
+            }
+            .status-paid {
+              background-color: #d1fae5;
+              color: #065f46;
+            }
+            .status-unpaid {
+              background-color: #fef3c7;
+              color: #92400e;
+            }
           </style>
         </head>
         <body>
@@ -212,6 +230,11 @@ const Reports = () => {
             ${
               reportType === "housekeeping" && selectedServiceType
                 ? `<p><strong>Service Type:</strong> ${selectedServiceType}</p>`
+                : ""
+            }
+            ${
+              reportType === "borrowed" && paymentFilter !== "all"
+                ? `<p><strong>Payment Status:</strong> ${paymentFilter === "paid" ? "Paid" : "Unpaid"}</p>`
                 : ""
             }
             ${role === 'superadmin' && facilityFilter !== 'all' ? `<p><strong>Filtered by:</strong> ${facilityFilter}</p>` : ''}
@@ -251,6 +274,7 @@ const Reports = () => {
             onChange={(e) => {
               setReportType(e.target.value);
               setSelectedServiceType(""); // Reset service type filter
+              setPaymentFilter("all"); // Reset payment filter
             }}
             className="border rounded px-3 py-1"
           >
@@ -323,6 +347,22 @@ const Reports = () => {
                   {hk.name} {role === 'superadmin' && hk.facility && `(${hk.facility})`}
                 </option>
               ))}
+            </select>
+          </div>
+        )}
+
+        {/* Payment Status Filter (only for borrowed items) */}
+        {reportType === "borrowed" && (
+          <div>
+            <label className="mr-2 font-medium">Payment Status:</label>
+            <select
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value)}
+              className="border rounded px-3 py-1"
+            >
+              <option value="all">All</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
             </select>
           </div>
         )}
@@ -408,10 +448,12 @@ const Reports = () => {
                     <tr>
                       {role === "superadmin" && <th className="p-3 text-left border-b">Facility</th>}
                       <th className="p-3 text-left border-b">Guest Name</th>
+                      <th className="p-3 text-left border-b">Room</th>
                       <th className="p-3 text-left border-b">Item Name</th>
                       <th className="p-3 text-left border-b">Quantity</th>
                       <th className="p-3 text-left border-b">Amount (₱)</th>
                       <th className="p-3 text-left border-b">Date Borrowed</th>
+                      <th className="p-3 text-left border-b">Payment Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -433,6 +475,9 @@ const Reports = () => {
                         <td className="p-3 border-b">
                           {r.guest_name || "N/A"}
                         </td>
+                        <td className="p-3 border-b">
+                          {r.room_number || "N/A"}
+                        </td>
                         <td className="p-3 border-b">{r.item_name}</td>
                         <td className="p-3 border-b">{r.quantity}</td>
                         <td className="p-3 border-b">
@@ -440,6 +485,17 @@ const Reports = () => {
                         </td>
                         <td className="p-3 border-b">
                           {r.borrowed_date || "—"}
+                        </td>
+                        <td className="p-3 border-b">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-semibold ${
+                              r.is_paid
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {r.is_paid ? "Paid" : "Unpaid"}
+                          </span>
                         </td>
                       </tr>
                     ))}

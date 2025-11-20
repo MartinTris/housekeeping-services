@@ -153,7 +153,7 @@ router.post("/borrow", authorization, async (req, res) => {
 
     if (!facility) {
       return res
-        .status(400)
+        .status(400)  
         .json({ error: "You are not assigned to a facility." });
     }
 
@@ -174,6 +174,7 @@ router.post("/borrow", authorization, async (req, res) => {
 
     const guestName = `${first_name} ${last_name}`;
 
+    // Get the guest's current room booking with room_id
     const bookingRes = await pool.query(
       `SELECT rb.room_id, r.room_number
        FROM room_bookings rb
@@ -190,10 +191,8 @@ router.post("/borrow", authorization, async (req, res) => {
       return res.status(400).json({ error: "No active room booking found." });
     }
 
-    const { room_number } = bookingRes.rows[0];
+    const { room_id, room_number } = bookingRes.rows[0];
 
-    // AUTO-ASSIGN HOUSEKEEPER FOR DELIVERY
-    // Get current time and day in Manila timezone (important for Supabase/UTC databases)
     const timeCheckResult = await pool.query(`
       SELECT 
         (NOW() AT TIME ZONE 'Asia/Manila')::time as manila_time,
@@ -202,13 +201,6 @@ router.post("/borrow", authorization, async (req, res) => {
     `);
     
     const { manila_time, manila_date, current_day_name } = timeCheckResult.rows[0];
-    
-    console.log('=== HOUSEKEEPER ASSIGNMENT DEBUG ===');
-    console.log('Facility:', facility);
-    console.log('Manila Time:', manila_time);
-    console.log('Manila Date:', manila_date);
-    console.log('Manila Date Type:', typeof manila_date);
-    console.log('Current Day:', current_day_name);
     
     // Query for available housekeepers
     const availableHk = await pool.query(
@@ -231,20 +223,6 @@ router.post("/borrow", authorization, async (req, res) => {
       `,
       [facility, current_day_name, manila_time]
     );
-
-    console.log('Available housekeepers found:', availableHk.rows.length);
-    if (availableHk.rows.length > 0) {
-      console.log('Housekeepers details:', availableHk.rows.map(h => ({
-        name: h.name,
-        id: h.id,
-        shift: `${h.shift_time_in} - ${h.shift_time_out}`,
-        day_offs: h.day_offs,
-        current_time_in_range: `${manila_time} is between ${h.shift_time_in} and ${h.shift_time_out}`
-      })));
-    } else {
-      console.log('No housekeepers matched the criteria');
-    }
-    console.log('=== END DEBUG ===');
 
     let assignedHousekeeperId;
     let assignedHousekeeperName;
@@ -280,39 +258,64 @@ router.post("/borrow", authorization, async (req, res) => {
 
       const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
       console.log('Final candidates count:', candidates.length);
+      console.log('Candidates:', candidates.map(c => ({ id: c.id, name: c.name })));
 
-      // Count ongoing deliveries for fairness (Manila date)
-      const counts = await pool.query(`
-        SELECT housekeeper_id, COUNT(*) AS delivery_count,
-               (created_at AT TIME ZONE 'Asia/Manila')::date as created_date
+      // Count ongoing deliveries for fairness
+      console.log('=== CHECKING DELIVERY COUNTS ===');
+      
+      // First check all deliveries
+      const allDeliveries = await pool.query(`
+        SELECT 
+          id,
+          housekeeper_id, 
+          delivery_status,
+          created_at,
+          created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as manila_created_datetime,
+          (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date as manila_created_date
         FROM borrowed_items
         WHERE housekeeper_id IS NOT NULL
           AND delivery_status IN ('pending_delivery', 'in_progress')
-          AND (created_at AT TIME ZONE 'Asia/Manila')::date = $1
-        GROUP BY housekeeper_id, created_date
-      `, [manila_date]);
-
-      console.log('Delivery counts:', counts.rows);
-
+      `);
+      
+      console.log('All pending/in-progress deliveries:', allDeliveries.rows);
+      
+      // Count manually in JavaScript for better debugging
       const countMap = {};
-      counts.rows.forEach((row) => {
-        countMap[row.housekeeper_id] = parseInt(row.delivery_count);
+      const manilaDateStr = new Date(manila_date).toISOString().split('T')[0];
+      console.log('Target Manila Date:', manilaDateStr);
+      
+      allDeliveries.rows.forEach(delivery => {
+        const deliveryDateStr = new Date(delivery.manila_created_date).toISOString().split('T')[0];
+        
+        if (deliveryDateStr === manilaDateStr) {
+          const hkId = delivery.housekeeper_id;
+          countMap[hkId] = (countMap[hkId] || 0) + 1;
+        }
       });
+      
+      console.log('Final count map:', countMap);
 
-      // Sort by least tasks, then alphabetically
+      candidates.forEach(c => {
+        const count = countMap[c.id] || 0;
+        console.log(`${c.name} (${c.id}): ${count} deliveries`);
+      });
+      
       candidates.sort((a, b) => {
         const countA = countMap[a.id] || 0;
         const countB = countMap[b.id] || 0;
-        if (countA === countB) return a.name.localeCompare(b.name);
+        if (countA === countB) {
+          const result = a.name.localeCompare(b.name);
+          return result;
+        }
         return countA - countB;
       });
+
+      console.log('Sorted candidates:', candidates.map(c => c.name));
 
       const selectedHk = candidates[0];
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
       
-      console.log('Selected housekeeper:', { id: assignedHousekeeperId, name: assignedHousekeeperName });
-      console.log('=== END ASSIGNMENT LOGIC ===');
     }
 
     // Reduce item quantity
@@ -321,18 +324,20 @@ router.post("/borrow", authorization, async (req, res) => {
       [quantity, item_id]
     );
 
-    // Insert borrowed item with delivery status and assigned housekeeper
+    // Insert borrowed item with delivery status, assigned housekeeper, AND room_id
     const borrowed = await pool.query(
       `INSERT INTO borrowed_items 
-       (user_id, item_name, quantity, charge_amount, delivery_status, housekeeper_id)
-       VALUES ($1, $2, $3, $4, 'pending_delivery', $5)
+       (user_id, item_name, quantity, charge_amount, delivery_status, housekeeper_id, room_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         user_id,
         item.name,
         quantity,
         item.price * quantity,
+        'pending_delivery',
         assignedHousekeeperId,
+        room_id  // Added room_id here
       ]
     );
 
@@ -399,6 +404,7 @@ router.post("/borrow", authorization, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
 router.get("/borrowed", authorization, async (req, res) => {
   try {
     const { id: user_id, role, facility } = req.user;
@@ -523,11 +529,16 @@ router.get("/pending", authorization, async (req, res) => {
 
 router.put("/:id/mark-paid", authorization, async (req, res) => {
   const { id } = req.params;
+  const { invoice_number } = req.body;
 
   try {
     const { role, id: admin_id } = req.user;
     if (role !== "admin") {
       return res.status(403).json({ error: "Unauthorized access." });
+    }
+
+    if (!invoice_number || !invoice_number.trim()) {
+      return res.status(400).json({ error: "Invoice number is required." });
     }
 
     const adminRes = await pool.query(
@@ -555,8 +566,11 @@ router.put("/:id/mark-paid", authorization, async (req, res) => {
     }
 
     const result = await pool.query(
-      "UPDATE borrowed_items SET is_paid = true WHERE id = $1 RETURNING *",
-      [id]
+      `UPDATE borrowed_items 
+       SET is_paid = true, invoice_number = $1, paid_at = NOW() 
+       WHERE id = $2 
+       RETURNING *`,
+      [invoice_number.trim(), id]
     );
 
     res.json({
@@ -569,13 +583,19 @@ router.put("/:id/mark-paid", authorization, async (req, res) => {
   }
 });
 
+// Mark all items for a user as paid
 router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
   try {
     const { userId } = req.params;
+    const { invoice_number } = req.body;
     const { role, id: admin_id } = req.user;
 
     if (role !== "admin") {
       return res.status(403).json({ error: "Unauthorized access." });
+    }
+
+    if (!invoice_number || !invoice_number.trim()) {
+      return res.status(400).json({ error: "Invoice number is required." });
     }
 
     const adminRes = await pool.query(
@@ -601,9 +621,10 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
 
     const result = await pool.query(
       `UPDATE borrowed_items
-       SET is_paid = true
-       WHERE user_id = $1 AND is_paid = false`,
-      [userId]
+       SET is_paid = true, invoice_number = $1, paid_at = NOW()
+       WHERE user_id = $2 AND is_paid = false
+       RETURNING *`,
+      [invoice_number.trim(), userId]
     );
 
     if (result.rowCount === 0) {
@@ -614,6 +635,8 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
 
     res.json({
       message: `All borrowed items for user ID ${userId} marked as paid.`,
+      updated_count: result.rowCount,
+      invoice_number: invoice_number.trim()
     });
   } catch (err) {
     console.error("Error marking all as paid:", err.message);

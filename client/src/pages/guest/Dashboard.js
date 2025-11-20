@@ -4,6 +4,7 @@ import BorrowedItemsList from "../../components/BorrowedItemsList";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements";
 import FeedbackWidget from "../../components/FeedbackWidget";
+import { Wallet } from "lucide-react";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -22,6 +23,7 @@ const GuestDashboard = () => {
 
   const [totalRequests, setTotalRequests] = useState(0);
   const [todayRequests, setTodayRequests] = useState(0);
+  const [remainingBalance, setRemainingBalance] = useState(0);
   const dailyLimit = 3;
 
   async function fetchProfile() {
@@ -79,6 +81,36 @@ const GuestDashboard = () => {
     }
   }
 
+  async function fetchRemainingBalance() {
+    try {
+      const response = await fetch("http://localhost:5000/items/borrowed", {
+        headers: { token: localStorage.getItem("token") },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const validData = Array.isArray(data) ? data : [];
+
+        const unpaidItems = validData.filter((item) => {
+          const isPaid =
+            item.is_paid === true ||
+            item.is_paid === "true" ||
+            item.is_paid === 1;
+          return !isPaid;
+        });
+
+        const totalAmount = unpaidItems.reduce(
+          (sum, item) => sum + Number(item.charge_amount || 0),
+          0
+        );
+        setRemainingBalance(totalAmount);
+      }
+    } catch (err) {
+      console.error("Error fetching remaining balance:", err);
+    }
+  }
+
   async function fetchServiceTypes() {
     try {
       const res = await fetch("http://localhost:5000/service-types", {
@@ -99,6 +131,7 @@ const GuestDashboard = () => {
     fetchTotalRequests();
     fetchTodayRequests();
     fetchServiceTypes();
+    fetchRemainingBalance();
   }, []);
 
   const generateTimeSlots = () => {
@@ -379,7 +412,21 @@ const GuestDashboard = () => {
               </div>
             </div>
 
-            <div className="w-96 flex-shrink-0">
+            <div className="w-96 flex-shrink-0 space-y-4">
+              {/* Remaining Balance Widget */}
+              <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-6 rounded-xl shadow-md border border-green-100">
+                <div className="flex items-center gap-4">
+                  <div className="p-4 bg-white rounded-xl shadow-sm">
+                    <Wallet className="text-green-600" size={32} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-700 mb-1">Remaining Balance</p>
+                    <p className="text-3xl font-bold text-green-800">₱{remainingBalance.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Borrowed Items List */}
               <BorrowedItemsList />
             </div>
           </div>

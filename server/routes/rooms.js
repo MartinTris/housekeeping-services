@@ -12,7 +12,7 @@ router.get("/", authorization, async (req, res) => {
     let query;
     let params;
 
-    if (role === 'superadmin') {
+    if (role === "superadmin") {
       query = `
         SELECT 
           r.id, 
@@ -179,12 +179,12 @@ router.post("/:id/assign", authorization, async (req, res) => {
       booking: newBooking.rows[0],
     });
 
-    res.json({ 
-      message: "Guest assigned", 
+    res.json({
+      message: "Guest assigned",
       booking: newBooking.rows[0],
       token: newToken,
       guest_id: guest_id,
-      facility: updatedUser.rows[0].facility
+      facility: updatedUser.rows[0].facility,
     });
   } catch (err) {
     console.error("Error assigning guest:", err.message);
@@ -221,6 +221,31 @@ router.put("/:id/remove", authorization, async (req, res) => {
       return res.status(403).json({ error: "Cannot manage rooms from other facilities." });
     }
 
+    // NEW: Check for unpaid borrowed items before allowing checkout
+    const unpaidItems = await pool.query(
+      `SELECT COUNT(*) as unpaid_count, 
+              SUM(bi.charge_amount) as total_unpaid
+       FROM borrowed_items bi
+       JOIN room_bookings rb ON bi.user_id = rb.guest_id
+       WHERE rb.room_id = $1
+         AND rb.time_in <= NOW()
+         AND (rb.time_out IS NULL OR rb.time_out > NOW())
+         AND bi.is_paid = false
+         AND bi.delivery_status = 'delivered'`,
+      [id]
+    );
+
+    const unpaidCount = parseInt(unpaidItems.rows[0].unpaid_count);
+    if (unpaidCount > 0) {
+      const totalUnpaid = parseFloat(unpaidItems.rows[0].total_unpaid || 0);
+      return res.status(400).json({ 
+        error: "Cannot check out guest with pending payments. Please settle all borrowed item charges first.",
+        unpaid_count: unpaidCount,
+        total_amount: totalUnpaid.toFixed(2)
+      });
+    }
+
+    // Continue with existing checkout logic
     const result = await pool.query(
       `
       WITH active AS (
@@ -267,9 +292,10 @@ router.put("/:id/remove", authorization, async (req, res) => {
       id: updatedUser.rows[0].id,
       email: updatedUser.rows[0].email,
       role: updatedUser.rows[0].role,
-      facility: updatedUser.rows[0].facility, // Will be null
+      facility: updatedUser.rows[0].facility,
     });
 
+    // Auto-create checkout cleaning request
     const serviceTypeRes = await pool.query(
       `SELECT id, duration FROM service_types 
        WHERE LOWER(facility) = LOWER($1) 
@@ -287,15 +313,13 @@ router.put("/:id/remove", authorization, async (req, res) => {
       const today = new Date();
       const preferred_date = today.toISOString().split("T")[0];
       
-      // Calculate next available time slot (e.g., current time + 15 min buffer)
       const now = new Date();
-      now.setMinutes(now.getMinutes() + 15); // 15-minute buffer
+      now.setMinutes(now.getMinutes() + 15);
       const preferred_time = now.toTimeString().split(' ')[0]; 
 
       const facilityKey = room.facility.trim().toLowerCase();
       const currentDay = new Date().toLocaleString("en-US", { weekday: "long" });
 
-      // Find available housekeepers
       const availableHk = await pool.query(
         `SELECT 
           u.id, 
@@ -317,7 +341,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
       );
 
       if (availableHk.rows.length > 0) {
-        // Check for busy housekeepers
         const busyReqs = await pool.query(
           `SELECT hr.assigned_to, hr.preferred_time, st.duration
            FROM housekeeping_requests hr
@@ -361,7 +384,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
         );
 
         if (freeHk.length > 0) {
-          // Get task counts for load balancing
           const counts = await pool.query(
             `SELECT assigned_to AS hk_id, COUNT(*) AS tasks_today
              FROM housekeeping_requests
@@ -386,7 +408,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
 
           const selectedHk = freeHk[0];
 
-          // Create the cleaning request - use admin's ID as the requester
           const adminRes = await pool.query(
             `SELECT id FROM users 
              WHERE role IN ('admin', 'superadmin') 
@@ -404,7 +425,7 @@ router.put("/:id/remove", authorization, async (req, res) => {
             [requesterId, room.id, preferred_date, preferred_time, serviceTypeId, selectedHk.id]
           );
 
-          // Notify housekeeper
+          const { createNotification } = require("../utils/notifications");
           await createNotification(
             selectedHk.id,
             `Automatic checkout cleaning: Room ${room.room_number} at ${preferred_time}.`
@@ -454,6 +475,70 @@ router.put("/:id/remove", authorization, async (req, res) => {
   }
 });
 
+// Frontend handleRemove update to show detailed error
+const handleRemove = async (room) => {
+  if (role === "superadmin") {
+    alert("Superadmins can only view rooms. Guest checkout is restricted to facility admins.");
+    return;
+  }
+
+  if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
+
+  try {
+    const res = await fetch(`http://localhost:5000/rooms/${room.id}/remove`, {
+      method: "PUT",
+      headers: { token: localStorage.token },
+    });
+
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      
+      // Handle payment error with detailed information
+      if (j.unpaid_count && j.total_amount) {
+        alert(
+          `${j.error}\n\n` +
+          `Unpaid items: ${j.unpaid_count}\n` +
+          `Total amount: ₱${j.total_amount}\n\n` +
+          `Please settle payments in the Borrowed Items section before checking out.`
+        );
+      } else {
+        alert("Checkout failed: " + (j.error || j.message || res.status));
+      }
+      return;
+    }
+
+    const data = await res.json();
+    
+    // Check if checked-out guest is current user
+    const token = localStorage.getItem("token");
+    if (token && data.token) {
+      try {
+        const currentUser = JSON.parse(atob(token.split('.')[1]));
+        if (currentUser.id === room.booking?.guest_id) {
+          console.log("Current user was checked out - updating token and reloading");
+          localStorage.setItem("token", data.token);
+          
+          alert("You have been checked out. The page will reload to update your session.");
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+          return;
+        }
+      } catch (parseError) {
+        console.error("Error parsing token:", parseError);
+      }
+    }
+
+    await fetchRooms();
+    alert("Guest checked out successfully.");
+    
+  } catch (err) {
+    console.error("Remove error:", err);
+    alert("Network error. Please check your connection.");
+  }
+};
+
 // update timeout
 router.put("/:id/update-timeout", authorization, async (req, res) => {
   try {
@@ -489,9 +574,8 @@ router.post("/", authorization, async (req, res) => {
     const { facility, role } = req.user;
     const { room_number, facility: targetFacility } = req.body;
 
-    const roomFacility = role === 'superadmin' && targetFacility 
-      ? targetFacility 
-      : facility;
+    const roomFacility =
+      role === "superadmin" && targetFacility ? targetFacility : facility;
 
     if (!room_number || room_number.trim() === "") {
       return res.status(400).json({ error: "Room number is required." });
@@ -503,7 +587,9 @@ router.post("/", authorization, async (req, res) => {
     );
 
     if (exists.rows.length > 0) {
-      return res.status(400).json({ error: "Room already exists in this facility." });
+      return res
+        .status(400)
+        .json({ error: "Room already exists in this facility." });
     }
 
     const newRoom = await pool.query(
@@ -534,7 +620,8 @@ router.put("/:id", authorization, async (req, res) => {
       [room_number.trim(), id]
     );
 
-    if (!updated.rows.length) return res.status(404).json({ error: "Room not found." });
+    if (!updated.rows.length)
+      return res.status(404).json({ error: "Room not found." });
 
     getIo().emit("room:updated", updated.rows[0]);
     res.json({ message: "Room renamed", room: updated.rows[0] });
@@ -559,12 +646,18 @@ router.delete("/:id", authorization, async (req, res) => {
     );
 
     if (active.rows.length > 0) {
-      return res.status(400).json({ error: "Cannot delete — room currently occupied." });
+      return res
+        .status(400)
+        .json({ error: "Cannot delete — room currently occupied." });
     }
 
-    const deleted = await pool.query("DELETE FROM rooms WHERE id = $1 RETURNING *", [id]);
+    const deleted = await pool.query(
+      "DELETE FROM rooms WHERE id = $1 RETURNING *",
+      [id]
+    );
 
-    if (!deleted.rows.length) return res.status(404).json({ error: "Room not found." });
+    if (!deleted.rows.length)
+      return res.status(404).json({ error: "Room not found." });
 
     getIo().emit("room:deleted", deleted.rows[0]);
     res.json({ message: "Room deleted", room: deleted.rows[0] });

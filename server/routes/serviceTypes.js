@@ -10,19 +10,37 @@ router.get("/", authorization, async (req, res) => {
     let query;
     let params;
 
+    // For guests, exclude "Checkout" service type
+    // For admin/superadmin/housekeeper, show all service types
+    const excludeCheckout = role === "guest" || (!role || role === "user");
+
     if (role === "superadmin") {
-      query = `
-        SELECT * FROM service_types 
-        WHERE facility IN ('RCC', 'Hotel Rafael') 
-        ORDER BY facility, created_at DESC
-      `;
+      query = excludeCheckout
+        ? `
+          SELECT * FROM service_types 
+          WHERE facility IN ('RCC', 'Hotel Rafael') 
+          AND LOWER(name) != 'checkout'
+          ORDER BY facility, created_at DESC
+        `
+        : `
+          SELECT * FROM service_types 
+          WHERE facility IN ('RCC', 'Hotel Rafael') 
+          ORDER BY facility, created_at DESC
+        `;
       params = [];
     } else {
-      query = `
-        SELECT * FROM service_types 
-        WHERE facility = $1 
-        ORDER BY created_at DESC
-      `;
+      query = excludeCheckout
+        ? `
+          SELECT * FROM service_types 
+          WHERE facility = $1 
+          AND LOWER(name) != 'checkout'
+          ORDER BY created_at DESC
+        `
+        : `
+          SELECT * FROM service_types 
+          WHERE facility = $1 
+          ORDER BY created_at DESC
+        `;
       params = [facility];
     }
 
