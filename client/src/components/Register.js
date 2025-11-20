@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const Register = () => {
   const [role, setRole] = useState("guest");
   const [inputs, setInputs] = useState({
@@ -23,7 +25,7 @@ const Register = () => {
   try {
     const body = { first_name, last_name, email, password, role };
 
-    const response = await fetch("http://localhost:5000/auth/register", {
+    const response = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -38,7 +40,7 @@ const Register = () => {
     }
 
     if (response.ok) {
-      alert("Registration successful! Please wait for admin to assign you a room, then login.");
+      alert("Registration successful! Please check your email for verification and wait for admin to assign you a room, then login.");
       navigate("/login");
     } else {
       alert(parseRes.message || "Registration failed");

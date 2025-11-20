@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TermsAndConditionsModal from "../components/TermsAndConditionsModal";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const Login = ({ setAuth, setUser }) => {
   const [inputs, setInputs] = useState({
     email: "",
@@ -32,7 +34,7 @@ const Login = ({ setAuth, setUser }) => {
     try {
       const body = { ...creds, role: loginRole };
 
-      const response = await fetch("http://localhost:5000/auth/login", {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -46,7 +48,7 @@ const Login = ({ setAuth, setUser }) => {
 
         setAuth(true);
         try {
-          const userRes = await fetch("http://localhost:5000/users/me", {
+          const userRes = await fetch(`${API_URL}/users/me`, {
             headers: { token: parseRes.token },
           });
 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Megaphone, ChevronLeft, ChevronRight } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [facility, setFacility] = useState("");
