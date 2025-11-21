@@ -13,7 +13,7 @@ app.use(express.json());
 // for socket.io
 const server = http.createServer(app);
 const realtime = require("./realtime");
-const io = realtime.init(server, { corsOrigin: process.env.CLIENT_URL });
+const io = realtime.init(server, { corsOrigin: "http://localhost:3000" });
 
 app.use((req, res, next) => {
   req.io = io;
