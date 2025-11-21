@@ -9,6 +9,8 @@ import {
   useLocation,
 } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "./context/NotificationContext";
 import { PermissionsProvider, usePermissions } from "./context/PermissionsContext";
@@ -74,7 +76,7 @@ function App() {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/auth/is-verify", {
+      const response = await fetch(`${API_URL}/auth/is-verify`, {
         method: "GET",
         headers: { token: token },
       });
