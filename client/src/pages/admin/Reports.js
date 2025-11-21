@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const Reports = () => {
   const [days, setDays] = useState(7);
   const [reportType, setReportType] = useState("housekeeping");
@@ -25,7 +27,7 @@ const Reports = () => {
   const fetchHousekeepers = async () => {
     try {
       const res = await fetch(
-        "http://localhost:5000/api/admin/reports/housekeepers",
+        `${API_URL}/api/admin/reports/housekeepers`,
         {
           headers: { token: localStorage.token },
         }
@@ -39,7 +41,7 @@ const Reports = () => {
 
   const fetchServiceTypes = async () => {
     try {
-      const res = await fetch("http://localhost:5000/service-types", {
+      const res = await fetch(`${API_URL}/service-types`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
@@ -57,12 +59,12 @@ const Reports = () => {
       let url = "";
 
       if (reportType === "housekeeping") {
-        url = `http://localhost:5000/api/admin/reports?days=${days}&type=${reportType}`;
+        url = `${API_URL}/api/admin/reports?days=${days}&type=${reportType}`;
         if (selectedHousekeeper) {
           url += `&housekeeper_id=${selectedHousekeeper}`;
         }
       } else if (reportType === "borrowed") {
-        url = `http://localhost:5000/api/admin/reports/borrowed-items?days=${days}`;
+        url = `${API_URL}/api/admin/reports/borrowed-items?days=${days}`;
         if (paymentFilter !== "all") {
           url += `&payment_status=${paymentFilter}`;
         }

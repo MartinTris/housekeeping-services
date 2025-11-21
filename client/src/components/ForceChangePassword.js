@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ForceChangePassword = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
@@ -37,7 +39,7 @@ const ForceChangePassword = () => {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/auth/change-password",
+        `${API_URL}/auth/change-password`,
         {
           method: "PUT",
           headers: {

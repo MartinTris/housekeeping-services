@@ -3,6 +3,8 @@ import { toast } from "react-hot-toast";
 import { Trash2, Pencil } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ItemList = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ const ItemList = () => {
 
   const fetchItems = async () => {
     try {
-      const res = await fetch("http://localhost:5000/items", {
+      const res = await fetch(`${API_URL}/items`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
@@ -57,7 +59,7 @@ const ItemList = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/items", {
+      const res = await fetch(`${API_URL}/items`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,7 +86,7 @@ const ItemList = () => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/items/${id}`, {
+      const res = await fetch(`${API_URL}/items/${id}`, {
         method: "DELETE",
         headers: { token: localStorage.token },
       });
@@ -111,7 +113,7 @@ const ItemList = () => {
     e.preventDefault();
     try {
       const res = await fetch(
-        `http://localhost:5000/items/${selectedItem.id}`,
+        `${API_URL}/items/${selectedItem.id}`,
         {
           method: "PUT",
           headers: {

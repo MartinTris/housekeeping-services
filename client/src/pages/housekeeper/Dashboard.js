@@ -4,6 +4,8 @@ import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements";
 import HousekeeperFeedbackWidget from "../../components/HousekeeperFeedbackWidget.js";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const HousekeeperDashboard = () => {
   const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
@@ -14,7 +16,7 @@ const HousekeeperDashboard = () => {
 
   async function getName() {
     try {
-      const response = await fetch("http://localhost:5000/dashboard/", {
+      const response = await fetch(`${API_URL}/dashboard/`, {
         method: "GET",
         headers: { token: localStorage.token },
       });
@@ -31,7 +33,7 @@ const HousekeeperDashboard = () => {
   async function getTotalDone() {
     try {
       const response = await fetch(
-        `http://localhost:5000/housekeeping-requests/housekeeper/total-done`,
+        `${API_URL}/housekeeping-requests/housekeeper/total-done`,
         { headers: { token: localStorage.token } }
       );
       const data = await response.json();
@@ -44,7 +46,7 @@ const HousekeeperDashboard = () => {
   async function getAverageFeedback() {
     try {
       const response = await fetch(
-        `http://localhost:5000/feedback/housekeeper/average`,
+        `${API_URL}/feedback/housekeeper/average`,
         { headers: { token: localStorage.token } }
       );
       const data = await response.json();

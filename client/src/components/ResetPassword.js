@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ResetPasswordModal = ({ onClose }) => {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -20,7 +22,7 @@ const ResetPasswordModal = ({ onClose }) => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/users/reset-password", {
+      const res = await fetch(`${API_URL}/users/reset-password`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

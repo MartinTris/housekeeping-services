@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ const VerifyEmail = () => {
 
   const verifyEmail = async (token) => {
     try {
-      const response = await fetch(`http://localhost:5000/auth/verify-email/${token}`);
+      const response = await fetch(`${API_URL}/auth/verify-email/${token}`);
       const data = await response.json();
 
       if (response.ok) {

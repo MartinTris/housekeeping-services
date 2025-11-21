@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ManageAdmins = () => {
   const [inputs, setInputs] = useState({
     first_name: "",
@@ -33,7 +35,7 @@ const ManageAdmins = () => {
 
   const getAdmins = async () => {
     try {
-      const response = await fetch("http://localhost:5000/admins", {
+      const response = await fetch(`${API_URL}/admins`, {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await response.json();
@@ -68,7 +70,7 @@ const ManageAdmins = () => {
         facility: inputs.facility,
       };
 
-      const response = await fetch("http://localhost:5000/admins", {
+      const response = await fetch(`${API_URL}/admins`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +105,7 @@ const ManageAdmins = () => {
   const toggleStatus = async (id) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/admins/${id}/toggle-status`,
+        `${API_URL}/admins/${id}/toggle-status`,
         {
           method: "PUT",
           headers: { token: localStorage.getItem("token") },

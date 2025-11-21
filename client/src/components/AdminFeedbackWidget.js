@@ -25,15 +25,15 @@ const AdminFeedbackWidget = () => {
   const fetchFeedbacks = async () => {
     try {
       const endpoint = feedbackType === "system" 
-        ? "http://localhost:5000/feedback/admin/system"
-        : "http://localhost:5000/feedback/admin";
+        ? `${API_URL}/feedback/admin/system`
+        : `${API_URL}/feedback/admin`;
         
       const res = await fetch(endpoint, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
       if (res.ok) {
-        setFeedbacks(data.slice(0, 3)); // Only get 3 most recent
+        setFeedbacks(data.slice(0, 3));
       }
       setLoading(false);
     } catch (err) {

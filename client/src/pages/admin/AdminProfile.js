@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import ResetPassword from "../../components/ResetPassword"
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const AdminProfile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -9,7 +11,7 @@ const AdminProfile = () => {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/users/me", {
+      const res = await fetch(`${API_URL}/users/me`, {
         headers: { token: localStorage.token },
       });
 

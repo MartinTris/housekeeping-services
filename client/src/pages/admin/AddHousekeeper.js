@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ScheduleModal = ({ show, onClose, housekeeper, schedule, onSave }) => {
   const [localSchedule, setLocalSchedule] = useState({
     shift_time_in: "08:00",
@@ -138,7 +140,7 @@ const AddHousekeeper = () => {
 
   const getHousekeepers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/housekeepers", {
+      const response = await fetch(`${API_URL}/housekeepers`, {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await response.json();
@@ -152,7 +154,7 @@ const AddHousekeeper = () => {
   const getSchedules = async () => {
     try {
       const res = await fetch(
-        "http://localhost:5000/housekeepers/all-schedules",
+        `${API_URL}/housekeepers/all-schedules`,
         {
           headers: { token: localStorage.getItem("token") },
         }
@@ -182,7 +184,7 @@ const AddHousekeeper = () => {
         payload.facility = inputs.facility;
       }
 
-      const response = await fetch("http://localhost:5000/housekeepers", {
+      const response = await fetch(`${API_URL}/housekeepers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -229,7 +231,7 @@ const AddHousekeeper = () => {
   const toggleStatus = async (id) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeepers/${id}/toggle-status`,
+        `${API_URL}/housekeepers/${id}/toggle-status`,
         {
           method: "PUT",
           headers: { token: localStorage.getItem("token") },
@@ -263,7 +265,7 @@ const AddHousekeeper = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeepers/${selectedHousekeeper.id}/schedule`,
+        `${API_URL}/housekeepers/${selectedHousekeeper.id}/schedule`,
         {
           method: "POST",
           headers: {

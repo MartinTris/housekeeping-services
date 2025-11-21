@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 
 const PermissionsContext = createContext();
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 export const PermissionsProvider = ({ children }) => {
   const [permissions, setPermissions] = useState([]);
@@ -42,7 +43,7 @@ const fetchPermissions = async () => {
       return;
     }
 
-    const response = await fetch("http://localhost:5000/permissions/my-permissions", {
+    const response = await fetch(`${API_URL}/permissions/my-permissions`, {
       headers: { token },
     });
 

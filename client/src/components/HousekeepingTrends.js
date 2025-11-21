@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const HousekeepingTrends = () => {
   const [data, setData] = useState([]);
   const [granularity, setGranularity] = useState("daily");
@@ -33,7 +35,7 @@ const HousekeepingTrends = () => {
 
   const fetchServiceTypes = async () => {
     try {
-      const res = await fetch("http://localhost:5000/service-types", {
+      const res = await fetch(`${API_URL}/service-types`, {
         headers: { token: localStorage.getItem("token") },
       });
       const types = await res.json();
@@ -47,7 +49,7 @@ const HousekeepingTrends = () => {
 
   const fetchTrends = async () => {
     try {
-      let url = `http://localhost:5000/api/trends/housekeeping-trends?granularity=${granularity}`;
+      let url = `${API_URL}/api/trends/housekeeping-trends?granularity=${granularity}`;
       
       // Add facility parameter for superadmin
       if (userRole === 'superadmin' && selectedFacility) {

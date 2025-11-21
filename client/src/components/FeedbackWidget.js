@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const FeedbackWidget = () => {
   const [recentCompleted, setRecentCompleted] = useState([]);
   const [feedbackModal, setFeedbackModal] = useState({ show: false, requestId: null });
@@ -11,7 +13,7 @@ const FeedbackWidget = () => {
   // 🔄 Fetch completed requests eligible for feedback
   const fetchRecentCompleted = async () => {
     try {
-      const res = await fetch("http://localhost:5000/feedback/recent", {
+      const res = await fetch(`${API_URL}/feedback/recent`, {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
@@ -30,7 +32,7 @@ const FeedbackWidget = () => {
     try {
       if (!feedbackModal.requestId) throw new Error("Missing request ID");
 
-      const res = await fetch("http://localhost:5000/feedback", {
+      const res = await fetch(`${API_URL}/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

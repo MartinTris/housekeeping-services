@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const HousekeeperTasks = () => {
   const [housekeepingTasks, setHousekeepingTasks] = useState([]);
   const [deliveryTasks, setDeliveryTasks] = useState([]);
@@ -8,7 +10,7 @@ const HousekeeperTasks = () => {
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch("http://localhost:5000/housekeepers/tasks", {
+      const res = await fetch(`${API_URL}/housekeepers/tasks`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
@@ -29,7 +31,7 @@ const HousekeeperTasks = () => {
   const handleAcknowledge = async (taskId) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeepers/tasks/${taskId}/acknowledge`,
+        `${API_URL}/housekeepers/tasks/${taskId}/acknowledge`,
         {
           method: "PUT",
           headers: {
@@ -58,7 +60,7 @@ const HousekeeperTasks = () => {
   const handleMarkDone = async (taskId) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeepers/tasks/${taskId}/complete`,
+        `${API_URL}/housekeepers/tasks/${taskId}/complete`,
         {
           method: "PUT",
           headers: {
@@ -83,7 +85,7 @@ const HousekeeperTasks = () => {
   const handleItemDelivered = async (deliveryId) => {
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeepers/delivery/${deliveryId}/confirm`,
+        `${API_URL}/housekeepers/delivery/${deliveryId}/confirm`,
         {
           method: "PUT",
           headers: {

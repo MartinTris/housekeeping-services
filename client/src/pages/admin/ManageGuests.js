@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
 import { Trash2, Edit3, Check, X } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ManageGuests = () => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ const ManageGuests = () => {
   const fetchRooms = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/rooms", {
+      const res = await fetch(`${API_URL}/rooms`, {
         headers: { token: localStorage.token },
       });
 
@@ -73,7 +75,7 @@ const ManageGuests = () => {
     (async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/guests/search?query=${encodeURIComponent(
+          `${API_URL}/guests/search?query=${encodeURIComponent(
             searchQuery
           )}`,
           {
@@ -145,7 +147,7 @@ const ManageGuests = () => {
 
   try {
     const res = await fetch(
-      `http://localhost:5000/rooms/${selectedRoom.id}/assign`,
+      `${API_URL}/rooms/${selectedRoom.id}/assign`,
       {
         method: "POST",
         headers: {
@@ -184,7 +186,7 @@ const ManageGuests = () => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const socket = io("http://localhost:5000", {
+    const socket = io(`${API_URL}`, {
       transports: ["websocket"],
       auth: { token: localStorage.getItem("token") },
     });
@@ -219,7 +221,7 @@ const ManageGuests = () => {
   if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
 
   try {
-    const res = await fetch(`http://localhost:5000/rooms/${room.id}/remove`, {
+    const res = await fetch(`${API_URL}/rooms/${room.id}/remove`, {
       method: "PUT",
       headers: { token: localStorage.token },
     });
@@ -267,7 +269,7 @@ const ManageGuests = () => {
     if (!newRoomName.trim()) return alert("Room name is required.");
 
     try {
-      const res = await fetch("http://localhost:5000/rooms", {
+      const res = await fetch(`${API_URL}/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -296,7 +298,7 @@ const ManageGuests = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/rooms/${roomToDelete.id}`,
+        `${API_URL}/rooms/${roomToDelete.id}`,
         {
           method: "DELETE",
           headers: { token: localStorage.token },
@@ -322,7 +324,7 @@ const ManageGuests = () => {
     if (!editedRoomName.trim()) return alert("Room name cannot be empty.");
 
     try {
-      const res = await fetch(`http://localhost:5000/rooms/${roomId}`, {
+      const res = await fetch(`${API_URL}/rooms/${roomId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

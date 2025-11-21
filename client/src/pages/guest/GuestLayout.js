@@ -3,6 +3,8 @@ import { Outlet } from "react-router-dom";
 import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const GuestLayout = ({ setAuth, role }) => {
   const [userId, setUserId] = useState(null);
 
@@ -10,7 +12,7 @@ const GuestLayout = ({ setAuth, role }) => {
     // Fetch current user to get ID for notifications
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:5000/users/me", {
+        const res = await fetch(`${API_URL}/users/me`, {
           headers: { token: localStorage.token },
         });
         const data = await res.json();

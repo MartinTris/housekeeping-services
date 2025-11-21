@@ -3,6 +3,8 @@ import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 import { Printer } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const BorrowedItemsList = () => {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -24,7 +26,7 @@ const BorrowedItemsList = () => {
 
   const fetchBorrowedItems = async () => {
     try {
-      const response = await fetch("http://localhost:5000/items/borrowed", {
+      const response = await fetch(`${API_URL}/items/borrowed`, {
         headers: { token: localStorage.getItem("token") },
       });
 

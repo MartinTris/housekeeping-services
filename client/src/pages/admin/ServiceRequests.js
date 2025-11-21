@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ServiceRequests = () => {
   const [requests, setRequests] = useState([]);
   const [housekeepers, setHousekeepers] = useState([]);
@@ -14,7 +16,7 @@ const ServiceRequests = () => {
   // fetch requests
   const fetchRequests = async () => {
     try {
-      const res = await fetch("http://localhost:5000/housekeeping-requests", {
+      const res = await fetch(`${API_URL}/housekeeping-requests`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
@@ -34,7 +36,7 @@ const ServiceRequests = () => {
   // fetch housekeepers
   const fetchHousekeepers = async () => {
     try {
-      const res = await fetch("http://localhost:5000/housekeepers", {
+      const res = await fetch(`${API_URL}/housekeepers`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
@@ -61,7 +63,7 @@ const ServiceRequests = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeeping-requests/${selectedRequest.id}/assign`,
+        `${API_URL}/housekeeping-requests/${selectedRequest.id}/assign`,
         {
           method: "PUT",
           headers: {

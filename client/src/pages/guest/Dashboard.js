@@ -6,6 +6,8 @@ import Announcements from "../../components/Announcements";
 import FeedbackWidget from "../../components/FeedbackWidget";
 import { Wallet } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const pad = (n) => String(n).padStart(2, "0");
 
 const GuestDashboard = () => {
@@ -28,7 +30,7 @@ const GuestDashboard = () => {
 
   async function fetchProfile() {
     try {
-      const res = await fetch("http://localhost:5000/users/me", {
+      const res = await fetch(`${API_URL}/users/me`, {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
@@ -48,7 +50,7 @@ const GuestDashboard = () => {
   async function fetchTotalRequests() {
     try {
       const res = await fetch(
-        "http://localhost:5000/housekeeping-requests/user/total",
+        `${API_URL}/housekeeping-requests/user/total`,
         { headers: { token: localStorage.token } }
       );
       if (!res.ok) {
@@ -66,7 +68,7 @@ const GuestDashboard = () => {
   async function fetchTodayRequests() {
     try {
       const res = await fetch(
-        "http://localhost:5000/housekeeping-requests/user/today",
+        `${API_URL}/housekeeping-requests/user/today`,
         { headers: { token: localStorage.token } }
       );
       if (!res.ok) {
@@ -83,7 +85,7 @@ const GuestDashboard = () => {
 
   async function fetchRemainingBalance() {
     try {
-      const response = await fetch("http://localhost:5000/items/borrowed", {
+      const response = await fetch(`${API_URL}/items/borrowed`, {
         headers: { token: localStorage.getItem("token") },
       });
 
@@ -113,7 +115,7 @@ const GuestDashboard = () => {
 
   async function fetchServiceTypes() {
     try {
-      const res = await fetch("http://localhost:5000/service-types", {
+      const res = await fetch(`${API_URL}/service-types`, {
         headers: { token: localStorage.getItem("token") },
       });
 
@@ -216,7 +218,7 @@ const GuestDashboard = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/housekeeping-requests", {
+      const res = await fetch(`${API_URL}/housekeeping-requests`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -255,7 +257,7 @@ const GuestDashboard = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeeping-requests/availability?serviceType=${serviceType}`,
+        `${API_URL}/housekeeping-requests/availability?serviceType=${serviceType}`,
         {
           headers: { token: localStorage.token },
         }
@@ -307,7 +309,7 @@ const GuestDashboard = () => {
 
       // Force refetch profile with NEW token from localStorage
       try {
-        const res = await fetch("http://localhost:5000/users/me", {
+        const res = await fetch(`${API_URL}/users/me`, {
           headers: { token: localStorage.getItem("token") },
         });
         const data = await res.json();

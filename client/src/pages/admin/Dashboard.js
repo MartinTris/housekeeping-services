@@ -9,6 +9,8 @@ import AdminServiceRequest from "../../components/AdminServiceRequest.js";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements.js";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [view, setView] = useState("dashboard");
@@ -61,7 +63,7 @@ const AdminDashboard = () => {
 
   async function getName() {
     try {
-      const response = await fetch("http://localhost:5000/dashboard/", {
+      const response = await fetch(`${API_URL}/dashboard/`, {
         method: "GET",
         headers: { token: localStorage.token },
       });
@@ -83,7 +85,7 @@ const AdminDashboard = () => {
 
   async function getHousekeeperCount() {
     try {
-      const res = await fetch("http://localhost:5000/housekeepers", {
+      const res = await fetch(`${API_URL}/housekeepers`, {
         headers: { token: localStorage.token },
       });
       
@@ -115,7 +117,7 @@ const AdminDashboard = () => {
 
   async function getTotalGuests() {
     try {
-      const res = await fetch("http://localhost:5000/rooms", {
+      const res = await fetch(`${API_URL}/rooms`, {
         headers: { token: localStorage.token },
       });
       
@@ -155,7 +157,7 @@ const AdminDashboard = () => {
   async function fetchTotalRequests() {
     try {
       const res = await fetch(
-        "http://localhost:5000/housekeeping-requests/admin/total",
+        `${API_URL}/housekeeping-requests/admin/total`,
         {
           headers: { token: localStorage.token },
         }
@@ -190,7 +192,7 @@ const AdminDashboard = () => {
 
   async function getAverageRating() {
     try {
-      const res = await fetch("http://localhost:5000/feedback/admin", {
+      const res = await fetch(`${API_URL}/feedback/admin`, {
         headers: { token: localStorage.token },
       });
       
@@ -241,7 +243,7 @@ const AdminDashboard = () => {
       if (!isAuthenticated) return;
       
       try {
-        const res = await fetch("http://localhost:5000/feedback/admin", {
+        const res = await fetch(`${API_URL}/feedback/admin`, {
           headers: { token: localStorage.token },
         });
         
@@ -306,7 +308,7 @@ const AdminDashboard = () => {
       announcementFacilities = [actualFacility];
     }
 
-    fetch("http://localhost:5000/announcements", {
+    fetch(`${API_URL}/announcements`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -354,7 +356,7 @@ const AdminDashboard = () => {
 
   async function fetchMyAnnouncements() {
     try {
-      const res = await fetch("http://localhost:5000/announcements/admin", {
+      const res = await fetch(`${API_URL}/announcements/admin`, {
         headers: { token: localStorage.token },
       });
       
@@ -381,7 +383,7 @@ const AdminDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this announcement?"))
       return;
     try {
-      const res = await fetch(`http://localhost:5000/announcements/${id}`, {
+      const res = await fetch(`${API_URL}/announcements/${id}`, {
         method: "DELETE",
         headers: { token: localStorage.token },
       });
@@ -403,7 +405,7 @@ const AdminDashboard = () => {
 
   function handleEditSave(e) {
     e.preventDefault();
-    fetch(`http://localhost:5000/announcements/${editingId}`, {
+    fetch(`${API_URL}/announcements/${editingId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

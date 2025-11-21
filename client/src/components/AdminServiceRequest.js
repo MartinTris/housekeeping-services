@@ -15,7 +15,7 @@ const AdminServiceRequest = () => {
 
   async function fetchServiceTypes() {
     try {
-      const res = await fetch("http://localhost:5000/service-types", {
+      const res = await fetch(`${API_URL}/service-types`, {
         headers: { token: localStorage.token },
       });
 
@@ -93,7 +93,7 @@ const AdminServiceRequest = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/housekeeping-requests", {
+      const res = await fetch(`${API_URL}/housekeeping-requests`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -124,7 +124,7 @@ const AdminServiceRequest = () => {
   async function fetchAvailability() {
     try {
       const res = await fetch(
-        `http://localhost:5000/housekeeping-requests/availability?serviceType=${serviceType}`,
+        `${API_URL}/housekeeping-requests/availability?serviceType=${serviceType}`,
         {
           headers: { token: localStorage.token },
         }

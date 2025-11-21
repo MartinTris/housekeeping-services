@@ -9,6 +9,8 @@ import { toast } from "react-hot-toast";
 import socket from "../socket";
 import { jwtDecode } from "jwt-decode";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 export const NotificationContext = createContext();
 
 export const NotificationProvider = ({ children }) => {
@@ -20,7 +22,7 @@ export const NotificationProvider = ({ children }) => {
       const token = localStorage.getItem("token");
       if (!token) return;
       const decoded = jwtDecode(token);
-      const res = await fetch("http://localhost:5000/users/me", {
+      const res = await fetch(`${API_URL}/users/me`, {
         headers: { token },
       });
       const data = await res.json();
@@ -33,7 +35,7 @@ export const NotificationProvider = ({ children }) => {
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`http://localhost:5000/notifications/${user.id}`);
+      const res = await fetch(`${API_URL}/notifications/${user.id}`);
       const data = await res.json();
       setNotifications(data);
     } catch (err) {
@@ -44,7 +46,7 @@ export const NotificationProvider = ({ children }) => {
   const markAllAsRead = async () => {
   if (!user?.id) return;
   try {
-    const res = await fetch(`http://localhost:5000/notifications/user/${user.id}/read-all`, {
+    const res = await fetch(`${API_URL}/notifications/user/${user.id}/read-all`, {
       method: "PUT",
     });
     if (!res.ok) throw new Error("Failed to mark all as read");

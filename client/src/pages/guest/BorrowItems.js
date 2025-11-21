@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const BorrowItems = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +14,7 @@ const BorrowItems = () => {
 
   const fetchUserFacility = async () => {
     try {
-      const res = await fetch("http://localhost:5000/users/me", {
+      const res = await fetch(`${API_URL}/users/me`, {
         headers: { token: localStorage.getItem("token") },
       });
       if (!res.ok) throw new Error("Failed to fetch user info");
@@ -41,7 +43,7 @@ const BorrowItems = () => {
     
     // Refetch user facility from server with current token
     try {
-      const res = await fetch("http://localhost:5000/users/me", {
+      const res = await fetch(`${API_URL}/users/me`, {
         headers: { token: localStorage.getItem("token") },
       });
       if (!res.ok) throw new Error("Failed to fetch user info");
@@ -66,7 +68,7 @@ const BorrowItems = () => {
 
   const fetchItems = async () => {
     try {
-      const res = await fetch("http://localhost:5000/items", {
+      const res = await fetch(`${API_URL}/items`, {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await res.json();
@@ -88,7 +90,7 @@ const BorrowItems = () => {
   }
 
   try {
-    const res = await fetch("http://localhost:5000/items/borrow", {
+    const res = await fetch(`${API_URL}/items/borrow`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

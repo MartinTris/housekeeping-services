@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const NotificationBell = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const { notifications, fetchNotifications, user, markAllAsRead } = useNotifications();
@@ -12,7 +14,7 @@ const NotificationBell = () => {
 
   const markAsRead = async (id) => {
     try {
-      await fetch(`http://localhost:5000/notifications/${id}/read`, {
+      await fetch(`${API_URL}/notifications/${id}/read`, {
         method: "PUT",
       });
       fetchNotifications();

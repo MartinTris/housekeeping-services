@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const PendingPayments = () => {
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ const PendingPayments = () => {
 
   const fetchPendingPayments = async () => {
     try {
-      const response = await fetch("http://localhost:5000/items/pending", {
+      const response = await fetch(`${API_URL}/items/pending`, {
         headers: { token: localStorage.getItem("token") },
       });
       const data = await response.json();
@@ -79,7 +81,7 @@ const PendingPayments = () => {
   const handleMarkAllAsPaid = async (userId, invoice) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/items/mark-all-paid/${userId}`,
+        `${API_URL}/items/mark-all-paid/${userId}`,
         {
           method: "PUT",
           headers: {
@@ -106,7 +108,7 @@ const PendingPayments = () => {
   const handleMarkAsPaid = async (id, invoice) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/items/${id}/mark-paid`,
+        `${API_URL}/items/${id}/mark-paid`,
         {
           method: "PUT",
           headers: {

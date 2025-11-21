@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const PageAccessControl = () => {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ const PageAccessControl = () => {
     try {
       setLoading(true);
       const response = await fetch(
-        `http://localhost:5000/permissions?facility=${selectedFacility}`,
+        `${API_URL}/permissions?facility=${selectedFacility}`,
         {
           headers: { token: localStorage.getItem("token") },
         }
@@ -46,7 +48,7 @@ const PageAccessControl = () => {
   const togglePermission = async (permissionId, currentState) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/permissions/${permissionId}`,
+        `${API_URL}/permissions/${permissionId}`,
         {
           method: "PUT",
           headers: {
@@ -81,7 +83,7 @@ const PageAccessControl = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/permissions/bulk/facility-role`,
+        `${API_URL}/permissions/bulk/facility-role`,
         {
           method: "PUT",
           headers: {

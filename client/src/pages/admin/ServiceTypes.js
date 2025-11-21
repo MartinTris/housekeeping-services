@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const ServiceTypes = () => {
   const [serviceTypes, setServiceTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,7 @@ const ServiceTypes = () => {
 
   const fetchServiceTypes = async () => {
     try {
-      const res = await fetch("http://localhost:5000/service-types", {
+      const res = await fetch(`${API_URL}/service-types`, {
         method: "GET",
         headers: { token: localStorage.token }
       });
@@ -63,7 +65,7 @@ const ServiceTypes = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/service-types", {
+      const res = await fetch(`${API_URL}/service-types`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,7 +91,7 @@ const ServiceTypes = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:5000/service-types/${editData.id}`, {
+      const res = await fetch(`${API_URL}/service-types/${editData.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +129,7 @@ const ServiceTypes = () => {
     if (!window.confirm("Delete this service type?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/service-types/${id}`, {
+      const res = await fetch(`${API_URL}/service-types/${id}`, {
         method: "DELETE",
         headers: { token: localStorage.token }
       });

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const FeedbackPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -30,8 +32,8 @@ const FeedbackPage = () => {
   const fetchFeedbacks = async () => {
     try {
       const endpoint = feedbackType === "system" 
-        ? "http://localhost:5000/feedback/admin/system"
-        : "http://localhost:5000/feedback/admin";
+        ? `${API_URL}/feedback/admin/system`
+        : `${API_URL}/feedback/admin`;
         
       const res = await fetch(endpoint, {
         headers: { token: localStorage.getItem("token") },

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const HousekeeperFeedbackWidget = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchFeedbacks = async () => {
     try {
-      const res = await fetch("http://localhost:5000/feedback/housekeeper", {
+      const res = await fetch(`${API_URL}/feedback/housekeeper`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();

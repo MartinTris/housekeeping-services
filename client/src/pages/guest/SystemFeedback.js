@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const SystemFeedback = () => {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -9,7 +11,7 @@ const SystemFeedback = () => {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    await fetch("http://localhost:5000/feedback", {
+    await fetch(`${API_URL}/feedback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

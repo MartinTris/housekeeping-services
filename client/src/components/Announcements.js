@@ -13,7 +13,7 @@ const Announcements = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const res = await fetch("http://localhost:5000/dashboard/", {
+      const res = await fetch(`${API_URL}/dashboard/`, {
         headers: { token: localStorage.token },
       });
       const data = await res.json();
@@ -32,7 +32,7 @@ const Announcements = () => {
       setRole(data.role);
       setNotCheckedIn(false);
 
-      const annRes = await fetch("http://localhost:5000/announcements", {
+      const annRes = await fetch(`${API_URL}/announcements`, {
         headers: { token: localStorage.token },
       });
 

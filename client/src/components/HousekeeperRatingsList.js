@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const HousekeeperRatingsList = () => {
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,7 +13,7 @@ const HousekeeperRatingsList = () => {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No token found");
 
-        const res = await fetch("http://localhost:5000/feedback/admin/housekeeper-ratings", {
+        const res = await fetch(`${API_URL}/feedback/admin/housekeeper-ratings`, {
           headers: { token },
         });
 
