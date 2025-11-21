@@ -117,7 +117,7 @@ const AddHousekeeper = () => {
     last_name: "",
     email: "",
     password: "",
-    facility: "", // For superadmin
+    facility: "",
   });
   const [housekeepers, setHousekeepers] = useState([]);
   const [schedules, setSchedules] = useState([]);

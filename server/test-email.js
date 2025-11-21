@@ -18,7 +18,7 @@ console.log('Sender:', process.env.SENDER_EMAIL);
 
 transporter.sendMail({
   from: process.env.SENDER_EMAIL,
-  to: 'martintristantabirao7@gmail.com', // ← CHANGE THIS TO YOUR ACTUAL EMAIL
+  to: 'martintristantabirao7@gmail.com', 
   subject: 'Test Email from Housekeeping Services',
   text: 'If you receive this, your Brevo setup is working!',
   html: '<h1>Success!</h1><p>If you receive this, your Brevo setup is working!</p>',
@@ -27,7 +27,7 @@ transporter.sendMail({
     console.error('❌ Error:', error);
   } else {
     console.log('✅ Email sent!', info.messageId);
-    console.log('Check your inbox at: martintristantabirao7@gmail.com'); // ← ADD THIS
+    console.log('Check your inbox at: martintristantabirao7@gmail.com'); 
   }
   process.exit();
 });

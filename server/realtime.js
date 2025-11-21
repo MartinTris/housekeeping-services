@@ -1,4 +1,3 @@
-// realtime.js (server)
 let io = null;
 
 module.exports = {
