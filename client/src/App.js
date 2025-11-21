@@ -9,8 +9,6 @@ import {
   useLocation,
 } from "react-router-dom";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "./context/NotificationContext";
 import { PermissionsProvider, usePermissions } from "./context/PermissionsContext";
@@ -57,7 +55,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
-
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const setAuth = (boolean) => {
     setIsAuthenticated(boolean);
   };
