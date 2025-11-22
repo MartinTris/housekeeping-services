@@ -455,25 +455,25 @@ const AdminDashboard = () => {
     );
   }
 
-  return (
+return (
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-8 lg:ml-64">
         <DashboardToggle view={view} setView={setView} />
 
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           {/* Left Side - Welcome Box and Main Content */}
-          <div className="flex-1">
-            <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 mb-6 shadow-md border border-green-100">
-              <h2 className="text-3xl font-poppins font-bold text-green-800 mb-2">
+          <div className="flex-1 w-full">
+            <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-4 sm:p-8 mb-4 sm:mb-6 shadow-md border border-green-100">
+              <h2 className="text-2xl sm:text-3xl font-poppins font-bold text-green-800 mb-2">
                 Welcome, {name}
               </h2>
-              <p className="font-poppins text-base text-green-700 mb-6">
+              <p className="font-poppins text-sm sm:text-base text-green-700 mb-4 sm:mb-6">
                 {role === "superadmin" ? "All Facilities" : facility}
               </p>
 
               <button
                 onClick={() => setShowModal(true)}
-                className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 mb-4"
+                className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 mb-4 text-sm sm:text-base"
               >
                 Post an Announcement
               </button>
@@ -484,11 +484,12 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
+
             {/* Main Content Area */}
             <div className="flex-1">
               <HousekeepingTrends />
 
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mt-4 sm:mt-8">
                 <Information
                   infoName="Total Guests"
                   value={totalGuests}
@@ -512,28 +513,28 @@ const AdminDashboard = () => {
               </div>
 
               {role === "superadmin" && (
-                <div className="bg-white p-6 rounded-lg shadow mt-8">
-                  <h3 className="text-xl font-bold mb-4 text-green-900">
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow mt-4 sm:mt-8">
+                  <h3 className="text-lg sm:text-xl font-bold mb-4 text-green-900">
                     Facility Breakdown
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-4 border border-green-200 rounded-lg bg-green-50">
-                      <h4 className="font-semibold text-green-700 text-lg mb-3">
+                      <h4 className="font-semibold text-green-700 text-base sm:text-lg mb-3">
                         RCC
                       </h4>
-                      <p className="text-gray-700">
+                      <p className="text-sm sm:text-base text-gray-700">
                         Housekeepers:{" "}
                         <span className="font-semibold">
                           {stats.rcc.housekeepers}
                         </span>
                       </p>
-                      <p className="text-gray-700">
+                      <p className="text-sm sm:text-base text-gray-700">
                         Active Guests:{" "}
                         <span className="font-semibold">
                           {stats.rcc.guests}
                         </span>
                       </p>
-                      <p className="text-gray-700">
+                      <p className="text-sm sm:text-base text-gray-700">
                         Requests:{" "}
                         <span className="font-semibold">
                           {stats.rcc.requests}
@@ -541,22 +542,22 @@ const AdminDashboard = () => {
                       </p>
                     </div>
                     <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
-                      <h4 className="font-semibold text-blue-700 text-lg mb-3">
+                      <h4 className="font-semibold text-blue-700 text-base sm:text-lg mb-3">
                         Hotel Rafael
                       </h4>
-                      <p className="text-gray-700">
+                      <p className="text-sm sm:text-base text-gray-700">
                         Housekeepers:{" "}
                         <span className="font-semibold">
                           {stats.hotelRafael.housekeepers}
                         </span>
                       </p>
-                      <p className="text-gray-700">
+                      <p className="text-sm sm:text-base text-gray-700">
                         Active Guests:{" "}
                         <span className="font-semibold">
                           {stats.hotelRafael.guests}
                         </span>
                       </p>
-                      <p className="text-gray-700">
+                      <p className="text-sm sm:text-base text-gray-700">
                         Requests:{" "}
                         <span className="font-semibold">
                           {stats.hotelRafael.requests}
@@ -567,20 +568,21 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
-            <div className="mt-8">
+
+            <div className="mt-4 sm:mt-8">
               <BorrowedItemsList />
             </div>
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-96 flex-shrink-0 space-y-6">
+          {/* Right Sidebar - Stacks below on mobile */}
+          <div className="w-full lg:w-96 lg:flex-shrink-0 space-y-4 sm:space-y-6">
             <HousekeeperRatingsList />
 
-            <aside className="w-full bg-white/90 backdrop-blur-md border border-green-100 rounded-3xl p-6 shadow-lg max-h-[40vh] overflow-y-auto transition-all duration-300">
-              <h3 className="text-xl font-semibold text-green-900 mb-5 flex items-center gap-2">
+            <aside className="w-full bg-white/90 backdrop-blur-md border border-green-100 rounded-3xl p-4 sm:p-6 shadow-lg max-h-[40vh] overflow-y-auto transition-all duration-300">
+              <h3 className="text-lg sm:text-xl font-semibold text-green-900 mb-4 sm:mb-5 flex items-center gap-2">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5 text-green-700"
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-green-700"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -603,7 +605,7 @@ const AdminDashboard = () => {
                 myAnnouncements.map((a) => (
                   <div
                     key={a.id}
-                    className="border border-green-100 rounded-2xl p-4 mb-4 bg-green-50/40 hover:bg-green-50/70 shadow-sm hover:shadow-md transition-all duration-300"
+                    className="border border-green-100 rounded-2xl p-3 sm:p-4 mb-3 sm:mb-4 bg-green-50/40 hover:bg-green-50/70 shadow-sm hover:shadow-md transition-all duration-300"
                   >
                     {editingId === a.id ? (
                       <div className="space-y-3">
@@ -638,10 +640,10 @@ const AdminDashboard = () => {
                       </div>
                     ) : (
                       <>
-                        <h4 className="font-semibold text-green-900 text-base">
+                        <h4 className="font-semibold text-green-900 text-sm sm:text-base">
                           {a.title}
                         </h4>
-                        <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
                           {a.message}
                         </p>
                         {role === "superadmin" && a.facility && (
@@ -665,13 +667,13 @@ const AdminDashboard = () => {
                               setEditTitle(a.title);
                               setEditMessage(a.message);
                             }}
-                            className="text-blue-600 text-sm font-medium hover:text-blue-800 transition"
+                            className="text-blue-600 text-xs sm:text-sm font-medium hover:text-blue-800 transition"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => handleDelete(a.id)}
-                            className="text-red-500 text-sm font-medium hover:text-red-700 transition"
+                            className="text-red-500 text-xs sm:text-sm font-medium hover:text-red-700 transition"
                           >
                             Delete
                           </button>
@@ -688,19 +690,19 @@ const AdminDashboard = () => {
         </div>
 
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-3xl shadow-2xl w-[700px] max-w-[90%]">
-              <h3 className="text-2xl font-semibold text-gray-900 mb-6">
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[700px] max-h-[90vh] overflow-y-auto">
+              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
                 Post New Announcement
               </h3>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {role === "superadmin" && (
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
                       Select Facilities
                     </label>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-3 sm:gap-4">
                       <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -710,7 +712,7 @@ const AdminDashboard = () => {
                           onChange={() => handleFacilityChange("RCC")}
                           className="accent-green-500"
                         />
-                        <span className="font-medium text-gray-700">RCC</span>
+                        <span className="font-medium text-gray-700 text-sm sm:text-base">RCC</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <input
@@ -721,7 +723,7 @@ const AdminDashboard = () => {
                           onChange={() => handleFacilityChange("Hotel Rafael")}
                           className="accent-green-500"
                         />
-                        <span className="font-medium text-gray-700">
+                        <span className="font-medium text-gray-700 text-sm sm:text-base">
                           Hotel Rafael
                         </span>
                       </label>
@@ -729,11 +731,11 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300 text-sm sm:text-base"
                   >
                     {selectAll ? "Deselect All" : "Select All"}
                   </button>
@@ -745,7 +747,7 @@ const AdminDashboard = () => {
                       onChange={(e) => setTargetGuests(e.target.checked)}
                       className="accent-green-500"
                     />
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-gray-700 text-sm sm:text-base">
                       For Guests
                     </span>
                   </label>
@@ -757,7 +759,7 @@ const AdminDashboard = () => {
                       onChange={(e) => setTargetHousekeepers(e.target.checked)}
                       className="accent-green-500"
                     />
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-gray-700 text-sm sm:text-base">
                       For Housekeepers
                     </span>
                   </label>
@@ -770,7 +772,7 @@ const AdminDashboard = () => {
                         onChange={(e) => setTargetAdmins(e.target.checked)}
                         className="accent-green-500"
                       />
-                      <span className="font-medium text-gray-700">
+                      <span className="font-medium text-gray-700 text-sm sm:text-base">
                         For Admins
                       </span>
                     </label>
@@ -778,7 +780,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
                     Title
                   </label>
                   <input
@@ -786,13 +788,13 @@ const AdminDashboard = () => {
                     placeholder="Enter announcement title..."
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
+                    className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm sm:text-base"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
+                  <label className="block text-gray-700 font-medium mb-2 text-sm sm:text-base">
                     Message
                   </label>
                   <textarea
@@ -800,7 +802,7 @@ const AdminDashboard = () => {
                     placeholder="Write your announcement here..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-green-400"
+                    className="w-full border border-gray-300 rounded-lg p-2 sm:p-3 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm sm:text-base"
                     required
                   ></textarea>
                 </div>
@@ -812,14 +814,14 @@ const AdminDashboard = () => {
                       setShowModal(false);
                       setSelectedFacilitiesForAnnouncement([]);
                     }}
-                    className="px-5 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition"
+                    className="px-4 sm:px-5 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition text-sm sm:text-base"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handlePostAnnouncement}
-                    className="px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300"
+                    className="px-4 sm:px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300 text-sm sm:text-base"
                   >
                     Post
                   </button>
@@ -832,5 +834,4 @@ const AdminDashboard = () => {
     </div>
   );
 };
-
 export default AdminDashboard;

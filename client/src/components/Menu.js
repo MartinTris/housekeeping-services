@@ -1,10 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
 import socket from "../socket";
 import { usePermissions } from "../context/PermissionsContext";
 
 const Menu = ({ setAuth, role }) => {
   const location = useLocation();
   const { hasAccess, allAccess, loading } = usePermissions();
+  const [isOpen, setIsOpen] = useState(false);
 
   // Map route paths to permission page_keys
   const pageKeyMap = {
@@ -109,50 +111,103 @@ const Menu = ({ setAuth, role }) => {
     return location.pathname.startsWith(path);
   };
 
-  return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col p-6 shadow-sm overflow-hidden">
-      <h2 className="text-xl font-poppins font-bold mb-6 text-green-800">
-        {panelTitle}
-      </h2>
+  const handleLinkClick = () => {
+    // Close menu on mobile when a link is clicked
+    if (window.innerWidth < 1024) {
+      setIsOpen(false);
+    }
+  };
 
-      {loading ? (
-        <div className="text-sm text-gray-500 mb-4">Loading menu...</div>
-      ) : (
-        filteredItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`px-4 py-2 mb-2 rounded transition ${
-              isActive(item.path)
-                ? "bg-green-100 text-green-800 font-semibold"
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            {item.name}
-          </Link>
-        ))
+  return (
+    <>
+      {/* Mobile Menu Button - Fixed at top left */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-colors"
+        aria-label="Toggle menu"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          {isOpen ? (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          )}
+        </svg>
+      </button>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsOpen(false)}
+        />
       )}
 
-      <button
-        onClick={() => {
-          try {
-            socket.disconnect();
-          } catch (err) {
-            console.warn("Socket disconnect failed:", err);
-          }
-
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
-          localStorage.removeItem("first_login");
-          
-          if (typeof setAuth === "function") setAuth(false);
-          window.location.href = "/login";
-        }}
-        className="mt-auto text-sm text-red-500 hover:text-red-700 transition"
+      {/* Sidebar */}
+      <aside
+        className={`fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col p-6 shadow-sm overflow-y-auto z-40 transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
       >
-        Logout
-      </button>
-    </aside>
+        <h2 className="text-xl font-poppins font-bold mb-6 text-green-800 mt-12 lg:mt-0">
+          {panelTitle}
+        </h2>
+
+        {loading ? (
+          <div className="text-sm text-gray-500 mb-4">Loading menu...</div>
+        ) : (
+          filteredItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={handleLinkClick}
+              className={`px-4 py-2 mb-2 rounded transition ${
+                isActive(item.path)
+                  ? "bg-green-100 text-green-800 font-semibold"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              {item.name}
+            </Link>
+          ))
+        )}
+
+        <button
+          onClick={() => {
+            try {
+              socket.disconnect();
+            } catch (err) {
+              console.warn("Socket disconnect failed:", err);
+            }
+
+            localStorage.removeItem("token");
+            localStorage.removeItem("role");
+            localStorage.removeItem("first_login");
+            
+            if (typeof setAuth === "function") setAuth(false);
+            window.location.href = "/login";
+          }}
+          className="mt-auto text-sm text-red-500 hover:text-red-700 transition"
+        >
+          Logout
+        </button>
+      </aside>
+    </>
   );
 };
 

@@ -44,7 +44,7 @@ router.get("/", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
 
-    if (!facility) {
+    if (!facility && role !== 'superadmin') {
       return res.json([]);
     }
 
