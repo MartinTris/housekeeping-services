@@ -38,7 +38,7 @@ const BorrowItems = () => {
       closeTime = "5:00 PM";
     } else if (facility === "Hotel Rafael") {
       openMinutes = 6 * 60; // 6:00 AM
-      closeMinutes = 18 * 60; // 6:00 PM
+      closeMinutes = 22 * 60; // 6:00 PM
       openTime = "6:00 AM";
       closeTime = "6:00 PM";
     } else {
