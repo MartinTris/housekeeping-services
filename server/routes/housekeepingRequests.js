@@ -3,6 +3,7 @@ const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 const { createNotification } = require("../utils/notifications");
 const { getIo } = require("../realtime");
+const { sendTaskAssignmentEmail } = require("../utils/emailService");
 
 router.post("/", authorization, async (req, res) => {
   try {
@@ -12,7 +13,7 @@ router.post("/", authorization, async (req, res) => {
 
     const todayDate = new Date().toISOString().split("T")[0];
 
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
+    if (userRole !== "admin" && userRole !== "superadmin") {
       const requestCountRes = await pool.query(
         `
     SELECT COUNT(*) AS count FROM (
@@ -70,9 +71,9 @@ router.post("/", authorization, async (req, res) => {
     );
 
     if (userRes.rows.length === 0 || !userRes.rows[0].facility) {
-      return res
-        .status(400)
-        .json({ error: "You must be assigned to a facility to request service." });
+      return res.status(400).json({
+        error: "You must be assigned to a facility to request service.",
+      });
     }
 
     const { facility, first_name, last_name } = userRes.rows[0];
@@ -84,7 +85,9 @@ router.post("/", authorization, async (req, res) => {
       [service_type, facility]
     );
     if (typeRes.rows.length === 0) {
-      return res.status(400).json({ error: "Invalid service type for your facility." });
+      return res
+        .status(400)
+        .json({ error: "Invalid service type for your facility." });
     }
     const serviceTypeId = typeRes.rows[0].id;
     const durationMinutes = typeRes.rows[0].duration;
@@ -116,7 +119,7 @@ router.post("/", authorization, async (req, res) => {
 
     let roomId, room_number;
 
-    if (userRole === 'admin' || userRole === 'superadmin') {
+    if (userRole === "admin" || userRole === "superadmin") {
       const adminRoomRes = await pool.query(
         `SELECT id, room_number FROM rooms 
          WHERE LOWER(room_number) = 'admin office' 
@@ -262,7 +265,7 @@ router.post("/", authorization, async (req, res) => {
       );
 
       // Only notify admin if requester is not admin/superadmin
-      if (userRole !== 'admin' && userRole !== 'superadmin') {
+      if (userRole !== "admin" && userRole !== "superadmin") {
         const adminRes = await pool.query(
           `SELECT id FROM users WHERE role IN ('admin', 'superadmin') AND LOWER(facility) = LOWER($1) LIMIT 1`,
           [facilityKey]
@@ -335,7 +338,7 @@ router.post("/", authorization, async (req, res) => {
     );
 
     // Only notify admin if requester is not admin/superadmin
-    if (userRole !== 'admin' && userRole !== 'superadmin') {
+    if (userRole !== "admin" && userRole !== "superadmin") {
       const adminRes = await pool.query(
         `SELECT id FROM users WHERE role IN ('admin', 'superadmin') AND LOWER(facility) = LOWER($1) LIMIT 1`,
         [facilityKey]
@@ -386,6 +389,36 @@ router.post("/", authorization, async (req, res) => {
       ]
     );
 
+    // Get housekeeper email
+    const hkDetails = await pool.query(
+      `SELECT email, first_name FROM users WHERE id = $1`,
+      [selectedHk.id]
+    );
+
+    if (hkDetails.rows.length > 0) {
+      try {
+        await sendTaskAssignmentEmail(
+          hkDetails.rows[0].email,
+          hkDetails.rows[0].first_name,
+          {
+            type: "housekeeping",
+            roomNumber: room_number,
+            serviceType: service_type,
+            preferredDate: preferred_date,
+            preferredTime: normalizedTime,
+            guestName: guestName,
+          }
+        );
+        console.log(
+          "✓ Task assignment email sent to:",
+          hkDetails.rows[0].email
+        );
+      } catch (emailError) {
+        console.error("Failed to send task assignment email:", emailError);
+        // Continue even if email fails
+      }
+    }
+
     if (io) {
       io.to(`user:${selectedHk.id}`).emit("newAssignment", {
         message: `You have been assigned a new housekeeping request for ${room_number} on ${preferred_date} at ${normalizedTime}.`,
@@ -411,14 +444,14 @@ router.get("/", authorization, async (req, res) => {
   try {
     const { id: adminId, role, facility } = req.user;
 
-    if (role !== 'admin' && role !== 'superadmin') {
+    if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
     let query;
     let params;
 
-    if (role === 'superadmin') {
+    if (role === "superadmin") {
       query = `
         SELECT hr.*, 
                (u.first_name || ' ' || u.last_name) AS guest_name, 
@@ -471,7 +504,7 @@ router.put("/:id/assign", authorization, async (req, res) => {
     const { housekeeperId } = req.body;
     const { id: adminId, role, facility } = req.user;
 
-    if (role !== 'admin' && role !== 'superadmin') {
+    if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
@@ -495,7 +528,7 @@ router.put("/:id/assign", authorization, async (req, res) => {
     let hkCheckQuery;
     let hkCheckParams;
 
-    if (role === 'superadmin') {
+    if (role === "superadmin") {
       hkCheckQuery = `
         SELECT (first_name || ' ' || last_name) AS name, is_active, facility
         FROM users 
@@ -507,9 +540,11 @@ router.put("/:id/assign", authorization, async (req, res) => {
     } else {
       // Regular admin must assign within their own facility
       if (requestFacility.toLowerCase() !== facility.toLowerCase()) {
-        return res.status(403).json({ error: "Cannot assign requests from other facilities." });
+        return res
+          .status(403)
+          .json({ error: "Cannot assign requests from other facilities." });
       }
-      
+
       hkCheckQuery = `
         SELECT (first_name || ' ' || last_name) AS name, is_active 
         FROM users 
@@ -588,6 +623,36 @@ router.put("/:id/assign", authorization, async (req, res) => {
       ]
     );
 
+    // Get housekeeper email and service type details
+    const hkEmailDetails = await pool.query(
+      `SELECT u.email, u.first_name, st.name as service_type_name, 
+          r.room_number, guest.first_name || ' ' || guest.last_name as guest_name
+   FROM users u
+   CROSS JOIN housekeeping_requests hr
+   JOIN rooms r ON hr.room_id = r.id
+   JOIN users guest ON hr.user_id = guest.id
+   LEFT JOIN service_types st ON hr.service_type_id = st.id
+   WHERE u.id = $1 AND hr.id = $2`,
+      [housekeeperId, id]
+    );
+
+    if (hkEmailDetails.rows.length > 0) {
+      const details = hkEmailDetails.rows[0];
+      try {
+        await sendTaskAssignmentEmail(details.email, details.first_name, {
+          type: "housekeeping",
+          roomNumber: details.room_number,
+          serviceType: details.service_type_name,
+          preferredDate: reqData.preferred_date,
+          preferredTime: reqData.preferred_time,
+          guestName: details.guest_name,
+        });
+        console.log("✓ Manual assignment email sent to:", details.email);
+      } catch (emailError) {
+        console.error("Failed to send manual assignment email:", emailError);
+      }
+    }
+
     res.json({
       message: "Housekeeper assigned and request archived.",
       moved: true,
@@ -610,7 +675,12 @@ router.get("/availability", authorization, async (req, res) => {
     const date = new Date().toISOString().split("T")[0];
     const facility = req.user.facility;
 
-    console.log('Checking availability for:', { serviceType, serviceTypeId, facility, date });
+    console.log("Checking availability for:", {
+      serviceType,
+      serviceTypeId,
+      facility,
+      date,
+    });
 
     let duration, foundServiceTypeId;
 
@@ -646,11 +716,11 @@ router.get("/availability", authorization, async (req, res) => {
         "SELECT id, name FROM service_types WHERE LOWER(facility) = LOWER($1) AND LOWER(name) != 'checkout'",
         [facility]
       );
-      
-      return res.status(400).json({ 
+
+      return res.status(400).json({
         error: "Invalid service type",
         serviceTypeProvided: serviceType || serviceTypeId,
-        availableServiceTypes: availableTypes.rows
+        availableServiceTypes: availableTypes.rows,
       });
     }
 
@@ -707,12 +777,12 @@ router.get("/availability", authorization, async (req, res) => {
       const hkId = b.housekeeper_id;
       const startMin = toMinutes(b.preferred_time);
       const endMin = startMin + b.duration;
-      
+
       if (!busyMap[hkId]) busyMap[hkId] = [];
       busyMap[hkId].push({ start: startMin, end: endMin });
     }
 
-    console.log('Busy map:', JSON.stringify(busyMap, null, 2));
+    console.log("Busy map:", JSON.stringify(busyMap, null, 2));
 
     const availability = {};
 
@@ -731,7 +801,9 @@ router.get("/availability", authorization, async (req, res) => {
       const hour = Math.floor(timeInMinutes / 60);
       const minute = timeInMinutes % 60;
 
-      const timeKey = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+      const timeKey = `${String(hour).padStart(2, "0")}:${String(
+        minute
+      ).padStart(2, "0")}:00`;
 
       // Check if ANY housekeeper is available for this slot
       const availableHousekeepers = housekeepers.rows.filter((hk) => {
@@ -745,7 +817,7 @@ router.get("/availability", authorization, async (req, res) => {
         // Check if the slot falls within their shift
         const shiftStart = toMinutes(hk.shift_time_in);
         const shiftEnd = toMinutes(hk.shift_time_out);
-        
+
         // Handle shifts that cross midnight
         let isWithinShift;
         if (shiftStart <= shiftEnd) {
@@ -757,7 +829,9 @@ router.get("/availability", authorization, async (req, res) => {
         }
 
         if (!isWithinShift) {
-          console.log(`Slot ${timeKey} is outside shift for housekeeper ${hk.id}`);
+          console.log(
+            `Slot ${timeKey} is outside shift for housekeeper ${hk.id}`
+          );
           return false;
         }
 
@@ -767,7 +841,9 @@ router.get("/availability", authorization, async (req, res) => {
           // Two intervals overlap if: start1 < end2 AND end1 > start2
           const overlaps = slotStart < b.end && slotEnd > b.start;
           if (overlaps) {
-            console.log(`Housekeeper ${hk.id} is busy during ${timeKey}: slot ${slotStart}-${slotEnd} overlaps with busy ${b.start}-${b.end}`);
+            console.log(
+              `Housekeeper ${hk.id} is busy during ${timeKey}: slot ${slotStart}-${slotEnd} overlaps with busy ${b.start}-${b.end}`
+            );
           }
           return overlaps;
         });
@@ -776,13 +852,13 @@ router.get("/availability", authorization, async (req, res) => {
       });
 
       availability[timeKey] = availableHousekeepers.length > 0;
-      
+
       if (!availability[timeKey]) {
         console.log(`No housekeepers available for ${timeKey}`);
       }
     }
 
-    console.log('Final availability:', availability);
+    console.log("Final availability:", availability);
     res.json(availability);
   } catch (err) {
     console.error("Error checking availability:", err);
@@ -861,7 +937,7 @@ router.get("/admin/total", authorization, async (req, res) => {
     let query;
     let params;
 
-    if (role === 'superadmin') {
+    if (role === "superadmin") {
       query = `
         SELECT COUNT(*) AS count
         FROM service_history
@@ -894,7 +970,11 @@ router.get("/housekeeper/total-done", authorization, async (req, res) => {
   try {
     const housekeeperId = req.user.id;
 
-    if (req.user.role !== "housekeeper" && req.user.role !== "admin" && req.user.role !== "superadmin") {
+    if (
+      req.user.role !== "housekeeper" &&
+      req.user.role !== "admin" &&
+      req.user.role !== "superadmin"
+    ) {
       return res.status(403).json({ error: "Access denied" });
     }
 

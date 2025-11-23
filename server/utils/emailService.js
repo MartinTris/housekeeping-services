@@ -116,4 +116,107 @@ async function sendVerificationEmail(email, token, firstName) {
   }
 }
 
-module.exports = { sendVerificationEmail };
+async function sendTaskAssignmentEmail(email, firstName, taskDetails) {
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  
+  sendSmtpEmail.sender = {
+    name: "DLSU-D Housekeeping Services",
+    email: process.env.SENDER_EMAIL
+  };
+  
+  sendSmtpEmail.to = [{ email: email, name: firstName }];
+  
+  sendSmtpEmail.subject = "New Task Assignment - Housekeeping Services";
+  
+  sendSmtpEmail.htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #087830; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
+        .task-details { 
+          background: white; 
+          padding: 15px; 
+          border-left: 4px solid #087830; 
+          margin: 20px 0;
+        }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; padding: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1 style="margin: 0;">🏠 DLSU-D Housekeeping Services</h1>
+        </div>
+        <div class="content">
+          <h2>Hello ${firstName}! 👋</h2>
+          <p>You have been assigned a new ${taskDetails.type === 'delivery' ? 'delivery task' : 'housekeeping task'}.</p>
+          
+          <div class="task-details">
+            <h3 style="margin-top: 0; color: #087830;">Task Details:</h3>
+            ${taskDetails.type === 'housekeeping' ? `
+              <p><strong>Room:</strong> ${taskDetails.roomNumber}</p>
+              <p><strong>Service Type:</strong> ${taskDetails.serviceType || 'N/A'}</p>
+              <p><strong>Preferred Date:</strong> ${taskDetails.preferredDate}</p>
+              <p><strong>Preferred Time:</strong> ${taskDetails.preferredTime}</p>
+              <p><strong>Guest:</strong> ${taskDetails.guestName || 'N/A'}</p>
+            ` : `
+              <p><strong>Item:</strong> ${taskDetails.itemName}</p>
+              <p><strong>Quantity:</strong> ${taskDetails.quantity}</p>
+              <p><strong>Room:</strong> ${taskDetails.roomNumber}</p>
+              <p><strong>Guest:</strong> ${taskDetails.guestName}</p>
+            `}
+          </div>
+          
+          <p style="margin-top: 20px;">Please log in to your account to view complete details and manage this task.</p>
+          <p style="color: #666; font-size: 14px;">Thank you for your service!</p>
+        </div>
+        <div class="footer">
+          <p>&copy; 2025 Housekeeping Services. All rights reserved.</p>
+          <p style="font-size: 11px; color: #999;">This is an automated email. Please do not reply.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  sendSmtpEmail.textContent = `
+    DLSU-D Housekeeping Services
+    
+    Hello ${firstName}!
+    
+    You have been assigned a new ${taskDetails.type === 'delivery' ? 'delivery task' : 'housekeeping task'}.
+    
+    ${taskDetails.type === 'housekeeping' ? `
+    Room: ${taskDetails.roomNumber}
+    Service Type: ${taskDetails.serviceType || 'N/A'}
+    Date: ${taskDetails.preferredDate}
+    Time: ${taskDetails.preferredTime}
+    Guest: ${taskDetails.guestName || 'N/A'}
+    ` : `
+    Item: ${taskDetails.itemName}
+    Quantity: ${taskDetails.quantity}
+    Room: ${taskDetails.roomNumber}
+    Guest: ${taskDetails.guestName}
+    `}
+    
+    Please log in to view complete details.
+    
+    ---
+    DLSU-D Housekeeping Services
+  `;
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('✅ Task assignment email sent successfully!');
+    return { success: true, messageId: data.messageId };
+  } catch (error) {
+    console.error('❌ Error sending task assignment email:', error.message);
+    throw error;
+  }
+}
+
+module.exports = { sendVerificationEmail, sendTaskAssignmentEmail };

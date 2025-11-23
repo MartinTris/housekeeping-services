@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
+const { sendTaskAssignmentEmail } = require("../utils/emailService");
 
 router.post("/", authorization, async (req, res) => {
   try {
@@ -44,14 +45,14 @@ router.get("/", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
 
-    if (!facility && role !== 'superadmin') {
+    if (!facility && role !== "superadmin") {
       return res.json([]);
     }
 
     let query;
     let params;
 
-    if (role === 'superadmin') {
+    if (role === "superadmin") {
       query = `
         SELECT * FROM borrowable_items 
         WHERE facility IN ('RCC', 'Hotel Rafael') 
@@ -153,7 +154,7 @@ router.post("/borrow", authorization, async (req, res) => {
 
     if (!facility) {
       return res
-        .status(400)  
+        .status(400)
         .json({ error: "You are not assigned to a facility." });
     }
 
@@ -199,9 +200,10 @@ router.post("/borrow", authorization, async (req, res) => {
         ((NOW() AT TIME ZONE 'Asia/Manila')::timestamp)::date as manila_date,
         TRIM(to_char((NOW() AT TIME ZONE 'Asia/Manila'), 'Day')) as current_day_name
     `);
-    
-    const { manila_time, manila_date, current_day_name } = timeCheckResult.rows[0];
-    
+
+    const { manila_time, manila_date, current_day_name } =
+      timeCheckResult.rows[0];
+
     // Query for available housekeepers
     const availableHk = await pool.query(
       `
@@ -228,41 +230,53 @@ router.post("/borrow", authorization, async (req, res) => {
     let assignedHousekeeperName;
 
     if (availableHk.rows.length === 0) {
-      console.log('No available housekeepers found for facility:', facility);
+      console.log("No available housekeepers found for facility:", facility);
       assignedHousekeeperId = null;
       assignedHousekeeperName = null;
     } else {
-      console.log('=== CHECKING BUSY HOUSEKEEPERS ===');
+      console.log("=== CHECKING BUSY HOUSEKEEPERS ===");
       // Exclude busy housekeepers with ongoing housekeeping tasks today (Manila date)
-      const busyHk = await pool.query(`
+      const busyHk = await pool.query(
+        `
         SELECT DISTINCT assigned_to, preferred_date
         FROM housekeeping_requests
         WHERE status IN ('approved', 'in_progress')
           AND archived = FALSE
           AND assigned_to IS NOT NULL
           AND preferred_date = $1
-      `, [manila_date]);
+      `,
+        [manila_date]
+      );
 
-      console.log('Busy housekeepers query result:', busyHk.rows);
-      console.log('Busy housekeepers count:', busyHk.rows.length);
+      console.log("Busy housekeepers query result:", busyHk.rows);
+      console.log("Busy housekeepers count:", busyHk.rows.length);
 
       const busyIds = busyHk.rows.map((r) => String(r.assigned_to));
-      console.log('Busy IDs:', busyIds);
-      
+      console.log("Busy IDs:", busyIds);
+
       const freeHk = availableHk.rows.filter(
         (hk) => !busyIds.includes(String(hk.id))
       );
 
-      console.log('Free housekeepers after filtering busy ones:', freeHk.length);
-      console.log('Free housekeepers:', freeHk.map(h => ({ id: h.id, name: h.name })));
+      console.log(
+        "Free housekeepers after filtering busy ones:",
+        freeHk.length
+      );
+      console.log(
+        "Free housekeepers:",
+        freeHk.map((h) => ({ id: h.id, name: h.name }))
+      );
 
       const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
-      console.log('Final candidates count:', candidates.length);
-      console.log('Candidates:', candidates.map(c => ({ id: c.id, name: c.name })));
+      console.log("Final candidates count:", candidates.length);
+      console.log(
+        "Candidates:",
+        candidates.map((c) => ({ id: c.id, name: c.name }))
+      );
 
       // Count ongoing deliveries for fairness
-      console.log('=== CHECKING DELIVERY COUNTS ===');
-      
+      console.log("=== CHECKING DELIVERY COUNTS ===");
+
       // First check all deliveries
       const allDeliveries = await pool.query(`
         SELECT 
@@ -276,30 +290,32 @@ router.post("/borrow", authorization, async (req, res) => {
         WHERE housekeeper_id IS NOT NULL
           AND delivery_status IN ('pending_delivery', 'in_progress')
       `);
-      
-      console.log('All pending/in-progress deliveries:', allDeliveries.rows);
-      
+
+      console.log("All pending/in-progress deliveries:", allDeliveries.rows);
+
       // Count manually in JavaScript for better debugging
       const countMap = {};
-      const manilaDateStr = new Date(manila_date).toISOString().split('T')[0];
-      console.log('Target Manila Date:', manilaDateStr);
-      
-      allDeliveries.rows.forEach(delivery => {
-        const deliveryDateStr = new Date(delivery.manila_created_date).toISOString().split('T')[0];
-        
+      const manilaDateStr = new Date(manila_date).toISOString().split("T")[0];
+      console.log("Target Manila Date:", manilaDateStr);
+
+      allDeliveries.rows.forEach((delivery) => {
+        const deliveryDateStr = new Date(delivery.manila_created_date)
+          .toISOString()
+          .split("T")[0];
+
         if (deliveryDateStr === manilaDateStr) {
           const hkId = delivery.housekeeper_id;
           countMap[hkId] = (countMap[hkId] || 0) + 1;
         }
       });
-      
-      console.log('Final count map:', countMap);
 
-      candidates.forEach(c => {
+      console.log("Final count map:", countMap);
+
+      candidates.forEach((c) => {
         const count = countMap[c.id] || 0;
         console.log(`${c.name} (${c.id}): ${count} deliveries`);
       });
-      
+
       candidates.sort((a, b) => {
         const countA = countMap[a.id] || 0;
         const countB = countMap[b.id] || 0;
@@ -310,12 +326,14 @@ router.post("/borrow", authorization, async (req, res) => {
         return countA - countB;
       });
 
-      console.log('Sorted candidates:', candidates.map(c => c.name));
+      console.log(
+        "Sorted candidates:",
+        candidates.map((c) => c.name)
+      );
 
       const selectedHk = candidates[0];
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
-      
     }
 
     // Reduce item quantity
@@ -335,9 +353,9 @@ router.post("/borrow", authorization, async (req, res) => {
         item.name,
         quantity,
         item.price * quantity,
-        'pending_delivery',
+        "pending_delivery",
         assignedHousekeeperId,
-        room_id  // Added room_id here
+        room_id, // Added room_id here
       ]
     );
 
@@ -366,6 +384,36 @@ router.post("/borrow", authorization, async (req, res) => {
           `New delivery task: Deliver ${quantity} ${item.name}(s) to ${guestName} in Room ${room_number}.`,
         ]
       );
+
+      const hkEmailInfo = await pool.query(
+        `SELECT email, first_name FROM users WHERE id = $1`,
+        [assignedHousekeeperId]
+      );
+
+      if (hkEmailInfo.rows.length > 0) {
+        try {
+          await sendTaskAssignmentEmail(
+            hkEmailInfo.rows[0].email,
+            hkEmailInfo.rows[0].first_name,
+            {
+              type: "delivery",
+              itemName: item.name,
+              quantity: quantity,
+              roomNumber: room_number,
+              guestName: guestName,
+            }
+          );
+          console.log(
+            "✓ Delivery assignment email sent to:",
+            hkEmailInfo.rows[0].email
+          );
+        } catch (emailError) {
+          console.error(
+            "Failed to send delivery assignment email:",
+            emailError
+          );
+        }
+      }
 
       // Notify guest
       await pool.query(
@@ -413,7 +461,7 @@ router.get("/borrowed", authorization, async (req, res) => {
       let query;
       let params;
 
-      if (role === 'superadmin') {
+      if (role === "superadmin") {
         query = `
           SELECT 
             b.id, b.item_name, b.quantity, b.charge_amount, b.created_at, b.is_paid,
@@ -479,7 +527,7 @@ router.get("/pending", authorization, async (req, res) => {
     let query;
     let params;
 
-    if (role === 'superadmin') {
+    if (role === "superadmin") {
       query = `
         SELECT 
           b.id, 
@@ -638,7 +686,7 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
     res.json({
       message: `All borrowed items for user ID ${userId} marked as paid.`,
       updated_count: result.rowCount,
-      invoice_number: invoice_number.trim()
+      invoice_number: invoice_number.trim(),
     });
   } catch (err) {
     console.error("Error marking all as paid:", err.message);
