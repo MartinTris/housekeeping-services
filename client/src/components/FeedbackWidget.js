@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Star } from "lucide-react";
+import { Star, Clock } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -25,7 +25,24 @@ const FeedbackWidget = () => {
 
   useEffect(() => {
     fetchRecentCompleted();
+    
+    // Refresh every minute to update time remaining
+    const interval = setInterval(fetchRecentCompleted, 60000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Calculate time remaining
+  const getTimeRemaining = (hoursSince) => {
+    const hours = parseFloat(hoursSince);
+    if (isNaN(hours)) return 'N/A';
+    
+    const hoursLeft = Math.max(0, 24 - hours);
+    if (hoursLeft < 1) {
+      const minutesLeft = Math.round(hoursLeft * 60);
+      return `${minutesLeft}m`;
+    }
+    return `${Math.floor(hoursLeft)}h`;
+  };
 
   // 📤 Submit feedback
   const handleSubmitFeedback = async () => {
@@ -45,9 +62,21 @@ const FeedbackWidget = () => {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to submit feedback");
-
       const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 400 && data.error === "Feedback period expired") {
+          alert("Sorry, the 24-hour feedback period has expired for this service.");
+          setFeedbackModal({ show: false, requestId: null });
+          setRating(0);
+          setHover(0);
+          setComment("");
+          fetchRecentCompleted();
+          return;
+        }
+        throw new Error(data.error || "Failed to submit feedback");
+      }
+
       if (data && data.id) {
         alert("Feedback submitted successfully!");
         setFeedbackModal({ show: false, requestId: null });
@@ -110,7 +139,10 @@ const FeedbackWidget = () => {
       <h3 className="text-lg text-green-900 sm:text-xl font-semibold mb-3 sm:mb-4">Recently Completed Services</h3>
 
       {recentCompleted.length === 0 ? (
-        <p className="text-gray-600 text-sm sm:text-base">No completed services available for feedback.</p>
+        <div className="text-center py-8">
+          <p className="text-gray-600 text-sm sm:text-base mb-2">No completed services available for feedback.</p>
+          <p className="text-gray-500 text-xs sm:text-sm">Feedback must be submitted within 24 hours of service completion.</p>
+        </div>
       ) : (
         <>
           {/* Desktop Table View */}
@@ -122,6 +154,7 @@ const FeedbackWidget = () => {
                   <th className="p-2 border text-sm">Service Type</th>
                   <th className="p-2 border text-sm">Date</th>
                   <th className="p-2 border text-sm">Time</th>
+                  <th className="p-2 border text-sm">Expires In</th>
                   <th className="p-2 border text-sm text-center">Action</th>
                 </tr>
               </thead>
@@ -134,6 +167,14 @@ const FeedbackWidget = () => {
                       {new Date(s.preferred_date).toLocaleDateString()}
                     </td>
                     <td className="p-2 border text-sm">{s.preferred_time}</td>
+                    <td className="p-2 border text-sm">
+                      <div className="flex items-center gap-1 text-orange-600">
+                        <Clock size={14} />
+                        <span className="font-medium">
+                          {getTimeRemaining(s.hours_since_completion)}
+                        </span>
+                      </div>
+                    </td>
                     <td className="p-2 border text-center">
                       <button
                         onClick={() => setFeedbackModal({ show: true, requestId: s.id })}
@@ -177,6 +218,15 @@ const FeedbackWidget = () => {
                     </div>
                   </div>
 
+                  <div className="pt-2 border-t">
+                    <div className="flex items-center gap-2 text-orange-600">
+                      <Clock size={16} />
+                      <span className="text-sm font-medium">
+                        Expires in {getTimeRemaining(s.hours_since_completion)}
+                      </span>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => setFeedbackModal({ show: true, requestId: s.id })}
                     className="w-full mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 active:bg-green-800 text-sm font-medium"
@@ -186,6 +236,13 @@ const FeedbackWidget = () => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Info message */}
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs sm:text-sm text-blue-800">
+              <span className="font-semibold">Note:</span> Feedback can only be submitted within 24 hours of service completion.
+            </p>
           </div>
         </>
       )}

@@ -13,11 +13,25 @@ router.post("/", authorization, async (req, res) => {
 
     if (request_id) {
       const historyCheck = await pool.query(
-        "SELECT id FROM service_history WHERE id = $1",
+        `SELECT id, 
+                preferred_date,
+                EXTRACT(EPOCH FROM (NOW() - preferred_date)) / 3600 AS hours_since_completion
+         FROM service_history 
+         WHERE id = $1`,
         [request_id]
       );
 
       if (historyCheck.rows.length > 0) {
+        const hoursSince = historyCheck.rows[0].hours_since_completion;
+        
+        // Check if within 24 hours
+        if (hoursSince > 24) {
+          return res.status(400).json({ 
+            error: "Feedback period expired",
+            message: "Feedback can only be submitted within 24 hours of service completion" 
+          });
+        }
+        
         validRequestId = request_id;
       } else {
         const requestCheck = await pool.query(
@@ -57,7 +71,13 @@ router.get("/recent", authorization, async (req, res) => {
         r.room_number,
         st.name AS service_type,
         sh.preferred_date,
-        sh.preferred_time
+        sh.preferred_time,
+        ROUND((EXTRACT(EPOCH FROM (NOW() - sh.preferred_date)) / 3600)::numeric, 2) AS hours_since_completion,
+        CASE 
+          WHEN EXTRACT(EPOCH FROM (NOW() - sh.preferred_date)) / 3600 > 24 
+          THEN true 
+          ELSE false 
+        END AS is_expired
       FROM service_history sh
       JOIN rooms r ON r.id = sh.room_id
       LEFT JOIN service_types st ON sh.service_type_id = st.id
@@ -66,12 +86,19 @@ router.get("/recent", authorization, async (req, res) => {
         AND NOT EXISTS (
           SELECT 1 FROM feedback f WHERE f.request_id = sh.id
         )
+        AND EXTRACT(EPOCH FROM (NOW() - sh.preferred_date)) / 3600 <= 24
       ORDER BY sh.preferred_date DESC
       `,
       [userId]
     );
 
-    res.json(result.rows);
+    // Convert numeric values to proper numbers
+    const formattedRows = result.rows.map(row => ({
+      ...row,
+      hours_since_completion: parseFloat(row.hours_since_completion)
+    }));
+
+    res.json(formattedRows);
   } catch (err) {
     console.error("Error fetching recent completed requests:", err);
     res.status(500).json({
@@ -93,7 +120,6 @@ router.get("/admin", authorization, async (req, res) => {
     let params;
 
     if (role === 'superadmin') {
-      // Superadmin sees ALL service feedback from ALL facilities
       sql = `
         SELECT
           f.id,
@@ -128,7 +154,6 @@ router.get("/admin", authorization, async (req, res) => {
       `;
       params = [];
     } else {
-      // Regular admin sees only their facility
       sql = `
         SELECT
           f.id,
@@ -171,7 +196,7 @@ router.get("/admin", authorization, async (req, res) => {
   }
 });
 
-// System feedback endpoint (superadmin only)
+// System feedback
 router.get("/admin/system", authorization, async (req, res) => {
   try {
     const { role } = req.user;
@@ -279,7 +304,6 @@ router.get("/admin/housekeeper-ratings", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
 
-    // Allow both admin and superadmin
     if (role !== "admin" && role !== "superadmin") {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -288,7 +312,6 @@ router.get("/admin/housekeeper-ratings", authorization, async (req, res) => {
     let params;
 
     if (role === 'superadmin') {
-      // Superadmin sees all housekeepers from both facilities
       sql = `
         SELECT 
           hk.id AS housekeeper_id,
@@ -307,7 +330,6 @@ router.get("/admin/housekeeper-ratings", authorization, async (req, res) => {
       `;
       params = [];
     } else {
-      // Regular admin sees only their facility
       sql = `
         SELECT 
           hk.id AS housekeeper_id,

@@ -6,15 +6,11 @@ const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 const apiKey = apiInstance.authentications['apiKey'];
 apiKey.apiKey = process.env.BREVO_API_KEY;
 
-console.log('✅ Brevo API client initialized');
-console.log('📧 Sender Email:', process.env.SENDER_EMAIL);
-console.log('📧 API Key present:', process.env.BREVO_API_KEY ? 'Yes' : 'No');
-
 // Send verification email using Brevo API
 async function sendVerificationEmail(email, token, firstName) {
   const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
   
-  console.log('📤 Attempting to send verification email via Brevo API...');
+  console.log('Attempting to send verification email via Brevo API...');
   console.log('   To:', email);
   console.log('   From:', process.env.SENDER_EMAIL);
   console.log('   Token:', token.substring(0, 10) + '...');

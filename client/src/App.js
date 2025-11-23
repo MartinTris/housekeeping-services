@@ -43,6 +43,7 @@ import HousekeeperLayout from "./pages/housekeeper/HousekeeperLayout";
 import HousekeeperDashboard from "./pages/housekeeper/Dashboard";
 import HousekeeperTasks from "./pages/housekeeper/HousekeeperTasks";
 import HousekeeperProfile from "./pages/housekeeper/HousekeeperProfile";
+import HousekeeperFeedbackPage from './pages/housekeeper/HousekeeperFeedbackPage';
 
 // Auth
 import Login from "./components/Login";
@@ -267,6 +268,7 @@ function App() {
             <Route index element={<ProtectedRoute pageKey="dashboard"><HousekeeperDashboard setAuth={setAuth} /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute pageKey="profile"><HousekeeperProfile /></ProtectedRoute>} />
             <Route path="tasks" element={<ProtectedRoute pageKey="tasks"><HousekeeperTasks /></ProtectedRoute>} />
+            <Route path="feedback" element={<HousekeeperFeedbackPage />} />
           </Route>
 
           {/* ================= DEFAULT ROUTE ================= */}

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const HousekeeperFeedbackWidget = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const fetchFeedbacks = async () => {
     try {
@@ -26,6 +28,9 @@ const HousekeeperFeedbackWidget = () => {
     const interval = setInterval(fetchFeedbacks, 300000);
     return () => clearInterval(interval);
   }, []);
+
+  // Limit to 3 feedbacks
+  const displayedFeedbacks = feedbacks.slice(0, 3);
 
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100">
@@ -49,7 +54,7 @@ const HousekeeperFeedbackWidget = () => {
 
       {loading ? (
         <p className="text-gray-600 text-sm sm:text-base">Loading feedback...</p>
-      ) : feedbacks.length === 0 ? (
+      ) : displayedFeedbacks.length === 0 ? (
         <p className="text-gray-600 text-sm sm:text-base">No feedback assigned to you yet.</p>
       ) : (
         <>
@@ -67,7 +72,7 @@ const HousekeeperFeedbackWidget = () => {
                 </tr>
               </thead>
               <tbody>
-                {feedbacks.map((f, index) => (
+                {displayedFeedbacks.map((f, index) => (
                   <tr 
                     key={f.id} 
                     className={`${
@@ -94,7 +99,7 @@ const HousekeeperFeedbackWidget = () => {
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
-            {feedbacks.map((f) => (
+            {displayedFeedbacks.map((f) => (
               <div 
                 key={f.id} 
                 className="border border-gray-200 rounded-lg p-3 bg-gradient-to-br from-white to-gray-50 shadow-sm"
@@ -146,6 +151,18 @@ const HousekeeperFeedbackWidget = () => {
               </div>
             ))}
           </div>
+
+          {/* View More Button */}
+          {feedbacks.length > 3 && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => navigate('/housekeeper/feedback')}
+                className="px-4 sm:px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 text-sm sm:text-base"
+              >
+                View More Feedback
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

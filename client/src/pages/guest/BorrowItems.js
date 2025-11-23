@@ -11,6 +11,53 @@ const BorrowItems = () => {
   const [borrowQty, setBorrowQty] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [userFacility, setUserFacility] = useState("");
+  const [isWithinOperatingHours, setIsWithinOperatingHours] = useState(true);
+  const [nextOpenTime, setNextOpenTime] = useState("");
+
+  // Function to check if current time is within operating hours
+  const checkOperatingHours = (facility) => {
+    if (!facility) return { isOpen: false, nextOpen: "" };
+
+    // Get current time in Philippine timezone
+    const phTime = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Manila",
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const [hours, minutes] = phTime.split(":").map(Number);
+    const currentMinutes = hours * 60 + minutes;
+
+    let openMinutes, closeMinutes, openTime, closeTime;
+
+    if (facility === "RCC") {
+      openMinutes = 8 * 60; // 8:00 AM
+      closeMinutes = 17 * 60; // 5:00 PM
+      openTime = "8:00 AM";
+      closeTime = "5:00 PM";
+    } else if (facility === "Hotel Rafael") {
+      openMinutes = 6 * 60; // 6:00 AM
+      closeMinutes = 18 * 60; // 6:00 PM
+      openTime = "6:00 AM";
+      closeTime = "6:00 PM";
+    } else {
+      return { isOpen: false, nextOpen: "" };
+    }
+
+    const isOpen = currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+    
+    let nextOpen = "";
+    if (!isOpen) {
+      if (currentMinutes < openMinutes) {
+        nextOpen = `Opens today at ${openTime}`;
+      } else {
+        nextOpen = `Opens tomorrow at ${openTime}`;
+      }
+    }
+
+    return { isOpen, nextOpen, openTime, closeTime };
+  };
 
   const fetchUserFacility = async () => {
     try {
@@ -20,51 +67,86 @@ const BorrowItems = () => {
       if (!res.ok) throw new Error("Failed to fetch user info");
       const user = await res.json();
       setUserFacility(user.facility || "");
+      
+      // Check operating hours
+      const { isOpen, nextOpen } = checkOperatingHours(user.facility);
+      setIsWithinOperatingHours(isOpen);
+      setNextOpenTime(nextOpen);
     } catch (err) {
       console.error("Error fetching user facility:", err);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.token;
-    if (token) {
-      const decoded = jwtDecode(token);
-      setUserFacility(decoded.facility || "");
-    }
-    fetchUserFacility();
+    const initializeFacility = async () => {
+      const token = localStorage.token;
+      let facilityToCheck = "";
+      
+      if (token) {
+        try {
+          const decoded = jwtDecode(token);
+          facilityToCheck = decoded.facility || "";
+          setUserFacility(facilityToCheck);
+          
+          // Check operating hours on mount
+          const { isOpen, nextOpen } = checkOperatingHours(facilityToCheck);
+          setIsWithinOperatingHours(isOpen);
+          setNextOpenTime(nextOpen);
+        } catch (err) {
+          console.error("Error decoding token:", err);
+        }
+      }
+      
+      await fetchUserFacility();
+    };
+
+    initializeFacility();
+
+    // Check operating hours every minute
+    const interval = setInterval(() => {
+      if (userFacility) {
+        const { isOpen, nextOpen } = checkOperatingHours(userFacility);
+        setIsWithinOperatingHours(isOpen);
+        setNextOpenTime(nextOpen);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-  const handler = async () => {
-    console.log("Facility updated event received in BorrowItems");
-    
-    // Small delay to ensure token is written
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Refetch user facility from server with current token
-    try {
-      const res = await fetch(`${API_URL}/users/me`, {
-        headers: { token: localStorage.getItem("token") },
-      });
-      if (!res.ok) throw new Error("Failed to fetch user info");
-      const user = await res.json();
-      console.log("Updated user data:", user);
-      setUserFacility(user.facility || "");
+    const handler = async () => {
+      console.log("Facility updated event received in BorrowItems");
       
-      // Wait a bit then fetch items
-      setTimeout(() => {
-        if (user.facility) {
-          fetchItems();
-        }
-      }, 300);
-    } catch (err) {
-      console.error("Error in facility update handler:", err);
-    }
-  };
-  
-  window.addEventListener("userFacilityUpdated", handler);
-  return () => window.removeEventListener("userFacilityUpdated", handler);
-}, []);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      try {
+        const res = await fetch(`${API_URL}/users/me`, {
+          headers: { token: localStorage.getItem("token") },
+        });
+        if (!res.ok) throw new Error("Failed to fetch user info");
+        const user = await res.json();
+        console.log("Updated user data:", user);
+        setUserFacility(user.facility || "");
+        
+        // Check operating hours for new facility
+        const { isOpen, nextOpen } = checkOperatingHours(user.facility);
+        setIsWithinOperatingHours(isOpen);
+        setNextOpenTime(nextOpen);
+        
+        setTimeout(() => {
+          if (user.facility && isOpen) {
+            fetchItems();
+          }
+        }, 300);
+      } catch (err) {
+        console.error("Error in facility update handler:", err);
+      }
+    };
+    
+    window.addEventListener("userFacilityUpdated", handler);
+    return () => window.removeEventListener("userFacilityUpdated", handler);
+  }, []);
 
   const fetchItems = async () => {
     try {
@@ -83,39 +165,52 @@ const BorrowItems = () => {
   };
 
   const handleBorrow = async (e) => {
-  e.preventDefault();
-  if (!borrowQty || borrowQty <= 0) {
-    toast.error("Please enter a valid quantity.");
-    return;
-  }
+    e.preventDefault();
+    
+    // Double-check operating hours before allowing borrow
+    const { isOpen } = checkOperatingHours(userFacility);
+    if (!isOpen) {
+      toast.error("Borrowing is currently outside operating hours.");
+      setShowModal(false);
+      return;
+    }
 
-  try {
-    const res = await fetch(`${API_URL}/items/borrow`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        token: localStorage.getItem("token"), // Changed
-      },
-      body: JSON.stringify({
-        item_id: selectedItem.id,
-        quantity: borrowQty,
-      }),
-    });
+    if (!borrowQty || borrowQty <= 0) {
+      toast.error("Please enter a valid quantity.");
+      return;
+    }
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    toast.success("Item borrowed successfully!");
-    setShowModal(false);
-    setBorrowQty("");
-    fetchItems();
-  } catch (err) {
-    toast.error(err.message || "Error borrowing item.");
-  }
-};
+    try {
+      const res = await fetch(`${API_URL}/items/borrow`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          token: localStorage.getItem("token"),
+        },
+        body: JSON.stringify({
+          item_id: selectedItem.id,
+          quantity: borrowQty,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success("Item borrowed successfully!");
+      setShowModal(false);
+      setBorrowQty("");
+      fetchItems();
+    } catch (err) {
+      toast.error(err.message || "Error borrowing item.");
+    }
+  };
 
   useEffect(() => {
-    if (userFacility) fetchItems();
-  }, [userFacility]);
+    if (userFacility && isWithinOperatingHours) {
+      fetchItems();
+    } else if (userFacility && !isWithinOperatingHours) {
+      setLoading(false);
+    }
+  }, [userFacility, isWithinOperatingHours]);
 
   if (!userFacility) {
     return (
@@ -128,11 +223,49 @@ const BorrowItems = () => {
     );
   }
 
+  // Get operating hours for display
+  const { openTime, closeTime } = checkOperatingHours(userFacility);
+
+  if (!isWithinOperatingHours) {
+    return (
+      <div className="p-6">
+        <h2 className="text-green-900 text-2xl font-bold mb-4 font-poppins">
+          Available Items for Borrowing
+        </h2>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">
+                Borrowing is Currently Unavailable
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>
+                  Item borrowing for <strong>{userFacility}</strong> is only available between{" "}
+                  <strong>{openTime}</strong> and <strong>{closeTime}</strong> (Philippine Time).
+                </p>
+                <p className="mt-1">{nextOpenTime}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 relative min-h-screen">
       <h2 className="text-green-900 text-2xl font-bold mb-4 font-poppins">
         Available Items for Borrowing
       </h2>
+
+      <div className="mb-4 text-sm text-gray-600">
+        Operating Hours: <strong>{openTime} - {closeTime}</strong> (Philippine Time)
+      </div>
 
       {loading ? (
         <p>Loading items...</p>
