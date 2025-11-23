@@ -52,29 +52,31 @@ const Register = () => {
 };
 
   return (
-    <div className="flex min-h-screen">
-      <div className="w-1/2 relative">
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      {/* Image Section */}
+      <div className="w-full lg:w-1/2 relative h-64 lg:h-screen">
         <img
           src="/images/rotonda-image.jpg"
           alt="Rotonda"
-          className="w-full h-screen object-cover"
+          className="w-full h-full object-cover"
         />
-        <div className="absolute top-0 left-0 w-full h-full bg-green-900 bg-opacity-50 flex">
-          <h1 className="text-white text-4xl font-bold p-6 px-4">
+        <div className="absolute top-0 left-0 w-full h-full bg-green-900 bg-opacity-50 flex items-start lg:items-start">
+          <h1 className="text-white text-2xl sm:text-3xl lg:text-4xl font-bold p-4 sm:p-6">
             DLSU-D <br />
             Housekeeping Services
           </h1>
         </div>
       </div>
 
-      <div className="w-1/2 flex flex-col justify-center items-center bg-gray-100">
-        <div className="w-3/4 max-w-md p-8 bg-white shadow-lg rounded-lg">
-          <h2 className="text-2xl font-bold text-green-900 mb-6 text-center">
+      {/* Form Section */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center bg-gray-100 p-4 sm:p-6 lg:p-8">
+        <div className="w-full max-w-md p-6 sm:p-8 bg-white shadow-lg rounded-lg">
+          <h2 className="text-xl sm:text-2xl font-bold text-green-900 mb-4 sm:mb-6 text-center">
             Guest Registration
           </h2>
 
-          <form onSubmit={onSubmitForm} className="flex flex-col gap-4">
-            <div className="flex gap-2">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 name="first_name"
@@ -82,7 +84,7 @@ const Register = () => {
                 value={first_name}
                 onChange={onChange}
                 required
-                className="w-1/2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="w-full sm:w-1/2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
               />
               <input
                 type="text"
@@ -91,7 +93,7 @@ const Register = () => {
                 value={last_name}
                 onChange={onChange}
                 required
-                className="w-1/2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+                className="w-full sm:w-1/2 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
               />
             </div>
 
@@ -102,7 +104,7 @@ const Register = () => {
               value={email}
               onChange={onChange}
               required
-              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
             />
 
             <input
@@ -112,18 +114,18 @@ const Register = () => {
               value={password}
               onChange={onChange}
               required
-              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700"
+              className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
             />
 
             <button
-              type="submit"
-              className="bg-green-800 text-white py-2 rounded font-semibold hover:bg-green-900 transition"
+              onClick={onSubmitForm}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-full font-semibold hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg text-sm sm:text-base"
             >
               Register
             </button>
-          </form>
+          </div>
 
-          <p className="mt-4 text-center text-gray-600">
+          <p className="mt-4 text-center text-gray-600 text-sm sm:text-base">
             Already have an account?{" "}
             <a
               href="/login"

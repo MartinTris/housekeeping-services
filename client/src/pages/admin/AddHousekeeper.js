@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const ScheduleModal = ({ show, onClose, housekeeper, schedule, onSave }) => {
   const [localSchedule, setLocalSchedule] = useState({
@@ -38,7 +38,10 @@ const ScheduleModal = ({ show, onClose, housekeeper, schedule, onSave }) => {
             className="border rounded-lg px-3 py-2 w-full"
             value={localSchedule.shift_time_in || ""}
             onChange={(e) =>
-              setLocalSchedule({ ...localSchedule, shift_time_in: e.target.value })
+              setLocalSchedule({
+                ...localSchedule,
+                shift_time_in: e.target.value,
+              })
             }
           />
         </div>
@@ -52,7 +55,10 @@ const ScheduleModal = ({ show, onClose, housekeeper, schedule, onSave }) => {
             className="border rounded-lg px-3 py-2 w-full"
             value={localSchedule.shift_time_out || ""}
             onChange={(e) =>
-              setLocalSchedule({ ...localSchedule, shift_time_out: e.target.value })
+              setLocalSchedule({
+                ...localSchedule,
+                shift_time_out: e.target.value,
+              })
             }
           />
         </div>
@@ -153,12 +159,9 @@ const AddHousekeeper = () => {
 
   const getSchedules = async () => {
     try {
-      const res = await fetch(
-        `${API_URL}/housekeepers/all-schedules`,
-        {
-          headers: { token: localStorage.getItem("token") },
-        }
-      );
+      const res = await fetch(`${API_URL}/housekeepers/all-schedules`, {
+        headers: { token: localStorage.getItem("token") },
+      });
       const data = await res.json();
       setSchedules(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -180,7 +183,7 @@ const AddHousekeeper = () => {
       };
 
       // Only add facility if superadmin
-      if (role === 'superadmin' && inputs.facility) {
+      if (role === "superadmin" && inputs.facility) {
         payload.facility = inputs.facility;
       }
 
@@ -230,13 +233,10 @@ const AddHousekeeper = () => {
 
   const toggleStatus = async (id) => {
     try {
-      const res = await fetch(
-        `${API_URL}/housekeepers/${id}/toggle-status`,
-        {
-          method: "PUT",
-          headers: { token: localStorage.getItem("token") },
-        }
-      );
+      const res = await fetch(`${API_URL}/housekeepers/${id}/toggle-status`, {
+        method: "PUT",
+        headers: { token: localStorage.getItem("token") },
+      });
       const data = await res.json();
 
       setHousekeepers((prev) =>
@@ -306,20 +306,20 @@ const AddHousekeeper = () => {
   });
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-poppins font-bold text-green-900 mb-6">
+    <div className="p-4 sm:p-6">
+      <h2 className="text-xl sm:text-2xl font-poppins font-bold text-green-900 mb-4 sm:mb-6">
         Add / Remove Housekeeper {role !== "superadmin" && `(${facility})`}
       </h2>
 
       {/* Add Form */}
-      <div className="flex flex-col gap-4 max-w-md mx-auto mb-10">
+      <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto mb-8 sm:mb-10">
         <input
           type="text"
           name="first_name"
           value={inputs.first_name}
           onChange={onChange}
           placeholder="First Name"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
         <input
           type="text"
@@ -327,7 +327,7 @@ const AddHousekeeper = () => {
           value={inputs.last_name}
           onChange={onChange}
           placeholder="Last Name"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
         <input
           type="email"
@@ -335,7 +335,7 @@ const AddHousekeeper = () => {
           value={inputs.email}
           onChange={onChange}
           placeholder="Email"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
         <input
           type="password"
@@ -343,7 +343,7 @@ const AddHousekeeper = () => {
           value={inputs.password}
           onChange={onChange}
           placeholder="Password"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
 
         {/* Facility selector for superadmin */}
@@ -352,7 +352,7 @@ const AddHousekeeper = () => {
             name="facility"
             value={inputs.facility}
             onChange={onChange}
-            className="border rounded-lg px-3 py-2"
+            className="border rounded-lg px-3 py-2 text-sm sm:text-base"
             required
           >
             <option value="">Select Facility</option>
@@ -363,7 +363,7 @@ const AddHousekeeper = () => {
 
         <button
           onClick={handleAddHousekeeper}
-          className="bg-green-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700"
+          className="bg-green-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 text-sm sm:text-base"
         >
           Add Housekeeper
         </button>
@@ -371,12 +371,14 @@ const AddHousekeeper = () => {
 
       {/* Facility Filter for Superadmin */}
       {role === "superadmin" && (
-        <div className="mb-6 flex justify-center gap-4">
-          <label className="font-medium">Filter by Facility:</label>
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
+          <label className="font-medium text-sm sm:text-base">
+            Filter by Facility:
+          </label>
           <select
             value={facilityFilter}
             onChange={(e) => setFacilityFilter(e.target.value)}
-            className="border rounded-lg px-3 py-1"
+            className="border rounded-lg px-3 py-1 w-full sm:w-auto text-sm sm:text-base"
           >
             <option value="all">All Facilities</option>
             <option value="RCC">RCC</option>
@@ -385,117 +387,220 @@ const AddHousekeeper = () => {
         </div>
       )}
 
-      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
+      <h3 className="text-lg sm:text-xl font-poppins font-bold text-green-900 mb-3 sm:mb-4">
         Active Housekeepers
       </h3>
-      <table className="table-auto w-full border-collapse border border-gray-300 text-left mb-8">
-        <thead>
-          <tr className="bg-gray-100">
-            {role === "superadmin" && <th className="border px-4 py-2">Facility</th>}
-            <th className="border px-4 py-2">Name</th>
-            <th className="border px-4 py-2">Email</th>
-            <th className="border px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredHousekeepers
-            .filter((hk) => hk.is_active)
-            .map((hk) => (
-              <tr key={hk.id}>
-                {role === "superadmin" && (
+
+      {/* Mobile Card View */}
+      <div className="block sm:hidden space-y-3 mb-8">
+        {filteredHousekeepers
+          .filter((hk) => hk.is_active)
+          .map((hk) => (
+            <div key={hk.id} className="border rounded-lg p-4 bg-white shadow">
+              {role === "superadmin" && (
+                <div className="mb-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      hk.facility === "RCC"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {hk.facility}
+                  </span>
+                </div>
+              )}
+              <p className="font-semibold text-base mb-1 break-words">
+                {hk.name}
+              </p>
+              <p className="text-sm text-gray-600 mb-3 break-all">{hk.email}</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => openScheduleModal(hk)}
+                  className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-500 text-sm w-full"
+                >
+                  Edit Schedule
+                </button>
+                <button
+                  onClick={() => toggleStatus(hk.id)}
+                  className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-500 text-sm w-full"
+                >
+                  Disable
+                </button>
+              </div>
+            </div>
+          ))}
+        {filteredHousekeepers.filter((hk) => hk.is_active).length === 0 && (
+          <p className="text-center py-4 text-gray-500 text-sm">
+            No active housekeepers.
+          </p>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden sm:block overflow-x-auto mb-8">
+        <table className="table-auto w-full border-collapse border border-gray-300 text-left">
+          <thead>
+            <tr className="bg-gray-100">
+              {role === "superadmin" && (
+                <th className="border px-4 py-2">Facility</th>
+              )}
+              <th className="border px-4 py-2">Name</th>
+              <th className="border px-4 py-2">Email</th>
+              <th className="border px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredHousekeepers
+              .filter((hk) => hk.is_active)
+              .map((hk) => (
+                <tr key={hk.id}>
+                  {role === "superadmin" && (
+                    <td className="border px-4 py-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold ${
+                          hk.facility === "RCC"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {hk.facility}
+                      </span>
+                    </td>
+                  )}
+                  <td className="border px-4 py-2">{hk.name}</td>
+                  <td className="border px-4 py-2">{hk.email}</td>
                   <td className="border px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        hk.facility === "RCC"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {hk.facility}
-                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openScheduleModal(hk)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-500"
+                      >
+                        Edit Schedule
+                      </button>
+                      <button
+                        onClick={() => toggleStatus(hk.id)}
+                        className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
+                      >
+                        Disable
+                      </button>
+                    </div>
                   </td>
-                )}
-                <td className="border px-4 py-2">{hk.name}</td>
-                <td className="border px-4 py-2">{hk.email}</td>
-                <td className="border px-4 py-2">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openScheduleModal(hk)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-500"
-                    >
-                      Edit Schedule
-                    </button>
-                    <button
-                      onClick={() => toggleStatus(hk.id)}
-                      className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
-                    >
-                      Disable
-                    </button>
-                  </div>
+                </tr>
+              ))}
+            {filteredHousekeepers.filter((hk) => hk.is_active).length === 0 && (
+              <tr>
+                <td
+                  colSpan={role === "superadmin" ? "4" : "3"}
+                  className="text-center py-4 text-gray-500"
+                >
+                  No active housekeepers.
                 </td>
               </tr>
-            ))}
-          {filteredHousekeepers.filter((hk) => hk.is_active).length === 0 && (
-            <tr>
-              <td colSpan={role === "superadmin" ? "4" : "3"} className="text-center py-4 text-gray-500">
-                No active housekeepers.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
+      <h3 className="text-lg sm:text-xl font-poppins font-bold text-green-900 mb-3 sm:mb-4">
         Disabled Housekeepers
       </h3>
-      <table className="table-auto w-full border-collapse border border-gray-300 text-left">
-        <thead>
-          <tr className="bg-gray-100">
-            {role === "superadmin" && <th className="border px-4 py-2">Facility</th>}
-            <th className="border px-4 py-2">Name</th>
-            <th className="border px-4 py-2">Email</th>
-            <th className="border px-4 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredHousekeepers
-            .filter((hk) => !hk.is_active)
-            .map((hk) => (
-              <tr key={hk.id}>
-                {role === "superadmin" && (
-                  <td className="border px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        hk.facility === "RCC"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {hk.facility}
-                    </span>
-                  </td>
-                )}
-                <td className="border px-4 py-2">{hk.name}</td>
-                <td className="border px-4 py-2">{hk.email}</td>
-                <td className="border px-4 py-2">
-                  <button
-                    onClick={() => toggleStatus(hk.id)}
-                    className="bg-green-700 text-white px-3 py-1 rounded-lg hover:bg-green-600"
+
+      {/* Mobile Card View */}
+      <div className="block sm:hidden space-y-3">
+        {filteredHousekeepers
+          .filter((hk) => !hk.is_active)
+          .map((hk) => (
+            <div key={hk.id} className="border rounded-lg p-4 bg-white shadow">
+              {role === "superadmin" && (
+                <div className="mb-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      hk.facility === "RCC"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
                   >
-                    Enable
-                  </button>
+                    {hk.facility}
+                  </span>
+                </div>
+              )}
+              <p className="font-semibold text-base mb-1 break-words">
+                {hk.name}
+              </p>
+              <p className="text-sm text-gray-600 mb-3 break-all">{hk.email}</p>
+              <button
+                onClick={() => toggleStatus(hk.id)}
+                className="bg-green-700 text-white px-3 py-2 rounded-lg hover:bg-green-600 text-sm w-full"
+              >
+                Enable
+              </button>
+            </div>
+          ))}
+        {filteredHousekeepers.filter((hk) => !hk.is_active).length === 0 && (
+          <p className="text-center py-4 text-gray-500 text-sm">
+            No disabled housekeepers.
+          </p>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="table-auto w-full border-collapse border border-gray-300 text-left">
+          <thead>
+            <tr className="bg-gray-100">
+              {role === "superadmin" && (
+                <th className="border px-4 py-2">Facility</th>
+              )}
+              <th className="border px-4 py-2">Name</th>
+              <th className="border px-4 py-2">Email</th>
+              <th className="border px-4 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredHousekeepers
+              .filter((hk) => !hk.is_active)
+              .map((hk) => (
+                <tr key={hk.id}>
+                  {role === "superadmin" && (
+                    <td className="border px-4 py-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold ${
+                          hk.facility === "RCC"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {hk.facility}
+                      </span>
+                    </td>
+                  )}
+                  <td className="border px-4 py-2">{hk.name}</td>
+                  <td className="border px-4 py-2">{hk.email}</td>
+                  <td className="border px-4 py-2">
+                    <button
+                      onClick={() => toggleStatus(hk.id)}
+                      className="bg-green-700 text-white px-3 py-1 rounded-lg hover:bg-green-600"
+                    >
+                      Enable
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            {filteredHousekeepers.filter((hk) => !hk.is_active).length ===
+              0 && (
+              <tr>
+                <td
+                  colSpan={role === "superadmin" ? "4" : "3"}
+                  className="text-center py-4 text-gray-500"
+                >
+                  No disabled housekeepers.
                 </td>
               </tr>
-            ))}
-          {filteredHousekeepers.filter((hk) => !hk.is_active).length === 0 && (
-            <tr>
-              <td colSpan={role === "superadmin" ? "4" : "3"} className="text-center py-4 text-gray-500">
-                No disabled housekeepers.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <ScheduleModal
         show={showScheduleModal}

@@ -129,15 +129,15 @@ const ManageAdmins = () => {
     return admin.facility === facilityFilter;
   });
 
-  return (
-    <div className="p-6">
-      <h2 className="text-2xl font-poppins font-bold text-green-900 mb-6">
+    return (
+    <div className="p-4 sm:p-6">
+      <h2 className="text-xl sm:text-2xl font-poppins font-bold text-green-900 mb-4 sm:mb-6">
         Manage Facility Admins
       </h2>
 
       {/* Add Form */}
-      <div className="flex flex-col gap-4 max-w-md mx-auto mb-10 bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold text-green-800">Add New Admin</h3>
+      <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto mb-8 sm:mb-10 bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <h3 className="text-base sm:text-lg font-semibold text-green-800">Add New Admin</h3>
         
         <input
           type="text"
@@ -145,7 +145,7 @@ const ManageAdmins = () => {
           value={inputs.first_name}
           onChange={onChange}
           placeholder="First Name"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
         <input
           type="text"
@@ -153,7 +153,7 @@ const ManageAdmins = () => {
           value={inputs.last_name}
           onChange={onChange}
           placeholder="Last Name"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
         <input
           type="email"
@@ -161,7 +161,7 @@ const ManageAdmins = () => {
           value={inputs.email}
           onChange={onChange}
           placeholder="Email"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
         <input
           type="password"
@@ -169,7 +169,7 @@ const ManageAdmins = () => {
           value={inputs.password}
           onChange={onChange}
           placeholder="Password"
-          className="border rounded-lg px-3 py-2"
+          className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
 
         <div>
@@ -180,7 +180,7 @@ const ManageAdmins = () => {
             name="facility"
             value={inputs.facility}
             onChange={onChange}
-            className="border rounded-lg px-3 py-2 w-full"
+            className="border rounded-lg px-3 py-2 w-full text-sm sm:text-base"
             required
           >
             <option value="">Select Facility</option>
@@ -191,19 +191,19 @@ const ManageAdmins = () => {
 
         <button
           onClick={handleAddAdmin}
-          className="bg-green-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition"
+          className="bg-green-900 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition text-sm sm:text-base"
         >
           Add Admin
         </button>
       </div>
 
       {/* Facility Filter */}
-      <div className="mb-6 flex justify-center gap-4">
-        <label className="font-medium">Filter by Facility:</label>
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
+        <label className="font-medium text-sm sm:text-base">Filter by Facility:</label>
         <select
           value={facilityFilter}
           onChange={(e) => setFacilityFilter(e.target.value)}
-          className="border rounded-lg px-3 py-1"
+          className="border rounded-lg px-3 py-1 w-full sm:w-auto text-sm sm:text-base"
         >
           <option value="all">All Facilities</option>
           <option value="RCC">RCC</option>
@@ -211,109 +211,72 @@ const ManageAdmins = () => {
         </select>
       </div>
 
-      {/* Active Admins Table */}
-      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
-        Active Admins
+      {/* Admins List - Mobile Card View */}
+      <h3 className="text-lg sm:text-xl font-poppins font-bold text-green-900 mb-3 sm:mb-4">
+        Facility Admins
       </h3>
-      <div className="overflow-x-auto mb-8">
-        <table className="table-auto w-full border-collapse border border-gray-300 text-left bg-white shadow-sm">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border px-4 py-2">Facility</th>
-              <th className="border px-4 py-2">Name</th>
-              <th className="border px-4 py-2">Email</th>
-              <th className="border px-4 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAdmins
-              .filter((admin) => admin.is_active)
-              .map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50">
-                  <td className="border px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        admin.facility === "RCC"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {admin.facility}
-                    </span>
-                  </td>
-                  <td className="border px-4 py-2">
-                    {admin.first_name} {admin.last_name}
-                  </td>
-                  <td className="border px-4 py-2">{admin.email}</td>
-                  <td className="border px-4 py-2">
-                    <button
-                      onClick={() => toggleStatus(admin.id)}
-                      className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500 transition"
-                    >
-                      Disable
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            {filteredAdmins.filter((admin) => admin.is_active).length === 0 && (
-              <tr>
-                <td colSpan="4" className="text-center py-4 text-gray-500">
-                  No active admins found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      
+      <div className="block sm:hidden space-y-3">
+        {filteredAdmins.map((admin) => (
+          <div key={admin.id} className="border rounded-lg p-4 bg-white shadow">
+            <div className="mb-2">
+              <span
+                className={`px-2 py-1 rounded text-xs font-semibold ${
+                  admin.facility === "RCC"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-blue-100 text-blue-800"
+                }`}
+              >
+                {admin.facility}
+              </span>
+            </div>
+            <p className="font-semibold text-base mb-1 break-words">
+              {admin.first_name} {admin.last_name}
+            </p>
+            <p className="text-sm text-gray-600 break-all">{admin.email}</p>
+          </div>
+        ))}
+        {filteredAdmins.length === 0 && (
+          <p className="text-center py-4 text-gray-500 text-sm">
+            No admins found.
+          </p>
+        )}
       </div>
 
-      {/* Disabled Admins Table */}
-      <h3 className="text-xl font-poppins font-bold text-green-900 mb-4">
-        Disabled Admins
-      </h3>
-      <div className="overflow-x-auto">
+      {/* Admins List - Desktop Table View */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="table-auto w-full border-collapse border border-gray-300 text-left bg-white shadow-sm">
           <thead>
             <tr className="bg-gray-100">
               <th className="border px-4 py-2">Facility</th>
               <th className="border px-4 py-2">Name</th>
               <th className="border px-4 py-2">Email</th>
-              <th className="border px-4 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredAdmins
-              .filter((admin) => !admin.is_active)
-              .map((admin) => (
-                <tr key={admin.id} className="hover:bg-gray-50">
-                  <td className="border px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        admin.facility === "RCC"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {admin.facility}
-                    </span>
-                  </td>
-                  <td className="border px-4 py-2">
-                    {admin.first_name} {admin.last_name}
-                  </td>
-                  <td className="border px-4 py-2">{admin.email}</td>
-                  <td className="border px-4 py-2">
-                    <button
-                      onClick={() => toggleStatus(admin.id)}
-                      className="bg-green-700 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition"
-                    >
-                      Enable
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            {filteredAdmins.filter((admin) => !admin.is_active).length === 0 && (
+            {filteredAdmins.map((admin) => (
+              <tr key={admin.id} className="hover:bg-gray-50">
+                <td className="border px-4 py-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-semibold ${
+                      admin.facility === "RCC"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {admin.facility}
+                  </span>
+                </td>
+                <td className="border px-4 py-2">
+                  {admin.first_name} {admin.last_name}
+                </td>
+                <td className="border px-4 py-2">{admin.email}</td>
+              </tr>
+            ))}
+            {filteredAdmins.length === 0 && (
               <tr>
-                <td colSpan="4" className="text-center py-4 text-gray-500">
-                  No disabled admins found.
+                <td colSpan="3" className="text-center py-4 text-gray-500">
+                  No admins found.
                 </td>
               </tr>
             )}

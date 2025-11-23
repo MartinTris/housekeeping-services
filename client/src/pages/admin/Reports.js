@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
+import { Printer } from "lucide-react";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const Reports = () => {
   const [days, setDays] = useState(7);
@@ -26,12 +27,9 @@ const Reports = () => {
 
   const fetchHousekeepers = async () => {
     try {
-      const res = await fetch(
-        `${API_URL}/api/admin/reports/housekeepers`,
-        {
-          headers: { token: localStorage.token },
-        }
-      );
+      const res = await fetch(`${API_URL}/api/admin/reports/housekeepers`, {
+        headers: { token: localStorage.token },
+      });
       const data = await res.json();
       setHousekeepers(data);
     } catch (err) {
@@ -138,7 +136,13 @@ const Reports = () => {
 
   useEffect(() => {
     fetchReports();
-  }, [days, selectedHousekeeper, selectedServiceType, reportType, paymentFilter]);
+  }, [
+    days,
+    selectedHousekeeper,
+    selectedServiceType,
+    reportType,
+    paymentFilter,
+  ]);
 
   // Filter reports by facility for superadmin
   const displayedReports = reports.filter((report) => {
@@ -236,10 +240,16 @@ const Reports = () => {
             }
             ${
               reportType === "borrowed" && paymentFilter !== "all"
-                ? `<p><strong>Payment Status:</strong> ${paymentFilter === "paid" ? "Paid" : "Unpaid"}</p>`
+                ? `<p><strong>Payment Status:</strong> ${
+                    paymentFilter === "paid" ? "Paid" : "Unpaid"
+                  }</p>`
                 : ""
             }
-            ${role === 'superadmin' && facilityFilter !== 'all' ? `<p><strong>Filtered by:</strong> ${facilityFilter}</p>` : ''}
+            ${
+              role === "superadmin" && facilityFilter !== "all"
+                ? `<p><strong>Filtered by:</strong> ${facilityFilter}</p>`
+                : ""
+            }
             <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
           </div>
           ${printContent}
@@ -253,32 +263,34 @@ const Reports = () => {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-2 text-green-700">
+    <div className="p-4 sm:p-6">
+      <h1 className="text-xl sm:text-2xl font-semibold mb-2 text-green-700">
         {reportType === "housekeeping"
           ? "Housekeeping Reports"
           : "Borrowed Items Reports"}
       </h1>
 
       {facility && (
-        <p className="text-gray-600 mb-4">
+        <p className="text-sm sm:text-base text-gray-600 mb-4">
           Facility: <span className="font-medium">{facility}</span>
         </p>
       )}
 
       {/* Report Filters */}
-      <div className="flex flex-wrap gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 mb-4">
         {/* Report Type Selector */}
-        <div>
-          <label className="mr-2 font-medium">Select Report Type:</label>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <label className="font-medium text-sm sm:text-base">
+            Select Report Type:
+          </label>
           <select
             value={reportType}
             onChange={(e) => {
               setReportType(e.target.value);
-              setSelectedServiceType(""); // Reset service type filter
-              setPaymentFilter("all"); // Reset payment filter
+              setSelectedServiceType("");
+              setPaymentFilter("all");
             }}
-            className="border rounded px-3 py-1"
+            className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
           >
             <option value="housekeeping">Housekeeping</option>
             <option value="borrowed">Borrowed Items</option>
@@ -286,12 +298,14 @@ const Reports = () => {
         </div>
 
         {/* Date Range Selector */}
-        <div>
-          <label className="mr-2 font-medium">Select Report Range:</label>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <label className="font-medium text-sm sm:text-base">
+            Select Report Range:
+          </label>
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            className="border rounded px-3 py-1"
+            className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
           >
             <option value="7">Last 7 Days</option>
             <option value="14">Last 14 Days</option>
@@ -301,12 +315,14 @@ const Reports = () => {
 
         {/* Facility Filter (only for superadmin) */}
         {role === "superadmin" && (
-          <div>
-            <label className="mr-2 font-medium">Facility:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <label className="font-medium text-sm sm:text-base">
+              Facility:
+            </label>
             <select
               value={facilityFilter}
               onChange={(e) => setFacilityFilter(e.target.value)}
-              className="border rounded px-3 py-1"
+              className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
             >
               <option value="all">All Facilities</option>
               <option value="RCC">RCC</option>
@@ -317,12 +333,14 @@ const Reports = () => {
 
         {/* Service Type Filter (only for housekeeping) */}
         {reportType === "housekeeping" && (
-          <div>
-            <label className="mr-2 font-medium">Service Type:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <label className="font-medium text-sm sm:text-base">
+              Service Type:
+            </label>
             <select
               value={selectedServiceType}
               onChange={(e) => setSelectedServiceType(e.target.value)}
-              className="border rounded px-3 py-1"
+              className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
             >
               <option value="">All Service Types</option>
               {serviceTypes.map((type) => (
@@ -336,17 +354,20 @@ const Reports = () => {
 
         {/* Housekeeper Filter (only for housekeeping) */}
         {reportType === "housekeeping" && (
-          <div>
-            <label className="mr-2 font-medium">Housekeeper:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <label className="font-medium text-sm sm:text-base">
+              Housekeeper:
+            </label>
             <select
               value={selectedHousekeeper}
               onChange={(e) => setSelectedHousekeeper(e.target.value)}
-              className="border rounded px-3 py-1"
+              className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
             >
               <option value="">All Housekeepers</option>
               {housekeepers.map((hk) => (
                 <option key={hk.id} value={hk.id}>
-                  {hk.name} {role === 'superadmin' && hk.facility && `(${hk.facility})`}
+                  {hk.name}{" "}
+                  {role === "superadmin" && hk.facility && `(${hk.facility})`}
                 </option>
               ))}
             </select>
@@ -355,12 +376,14 @@ const Reports = () => {
 
         {/* Payment Status Filter (only for borrowed items) */}
         {reportType === "borrowed" && (
-          <div>
-            <label className="mr-2 font-medium">Payment Status:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <label className="font-medium text-sm sm:text-base">
+              Payment Status:
+            </label>
             <select
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
-              className="border rounded px-3 py-1"
+              className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
             >
               <option value="all">All</option>
               <option value="paid">Paid</option>
@@ -372,36 +395,289 @@ const Reports = () => {
 
       <div ref={printRef}>
         {loading ? (
-          <p>Loading reports...</p>
+          <p className="text-sm sm:text-base">Loading reports...</p>
         ) : error ? (
-          <p className="text-red-500">{error}</p>
+          <p className="text-red-500 text-sm sm:text-base">{error}</p>
         ) : displayedReports.length === 0 ? (
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm sm:text-base">
             No records found for the selected filters.
           </p>
         ) : (
           <>
             {reportType === "housekeeping" && (
-              <div className="overflow-x-auto shadow rounded-lg">
-                <table className="min-w-full border border-gray-200">
-                  <thead className="bg-green-100 text-green-900">
-                    <tr>
-                      {role === "superadmin" && <th className="p-3 text-left border-b">Facility</th>}
-                      <th className="p-3 text-left border-b">Guest Name</th>
-                      <th className="p-3 text-left border-b">Service Type</th>
-                      <th className="p-3 text-left border-b">Housekeeper</th>
-                      <th className="p-3 text-left border-b">Room</th>
-                      <th className="p-3 text-left border-b">Date</th>
-                      <th className="p-3 text-left border-b">Time</th>
-                      <th className="p-3 text-left border-b">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedReports.map((r, i) => {
-                      const duration = getServiceDuration(r.service_type);
-                      const endTime = calculateEndTime(r.time, duration);
+              <>
+                {/* Mobile Card View */}
+                <div className="block lg:hidden space-y-3">
+                  {displayedReports.map((r, i) => {
+                    const duration = getServiceDuration(r.service_type);
+                    const endTime = calculateEndTime(r.time, duration);
 
-                      return (
+                    return (
+                      <div
+                        key={i}
+                        className="bg-white border rounded-lg p-4 shadow hover:shadow-md transition"
+                      >
+                        {role === "superadmin" && (
+                          <div className="mb-2">
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-semibold ${
+                                r.facility === "RCC"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {r.facility}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase">
+                              Guest Name
+                            </span>
+                            <p className="font-semibold text-sm break-words">
+                              {r.guest_name || "N/A"}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-xs text-gray-500 uppercase">
+                                Service Type
+                              </span>
+                              <p className="text-sm capitalize break-words">
+                                {r.service_type}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500 uppercase">
+                                Status
+                              </span>
+                              <p className="text-sm capitalize">{r.status}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-xs text-gray-500 uppercase">
+                                Housekeeper
+                              </span>
+                              <p className="text-sm break-words">
+                                {r.housekeeper_name || "Unassigned"}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500 uppercase">
+                                Room
+                              </span>
+                              <p className="text-sm">
+                                {r.room_number || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-xs text-gray-500 uppercase">
+                                Date
+                              </span>
+                              <p className="text-sm">{r.date}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500 uppercase">
+                                Time
+                              </span>
+                              <p className="text-sm">
+                                {r.time} - {endTime}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
+                  <table className="min-w-full border border-gray-200">
+                    <thead className="bg-green-100 text-green-900">
+                      <tr>
+                        {role === "superadmin" && (
+                          <th className="p-3 text-left border-b">Facility</th>
+                        )}
+                        <th className="p-3 text-left border-b">Guest Name</th>
+                        <th className="p-3 text-left border-b">Service Type</th>
+                        <th className="p-3 text-left border-b">Housekeeper</th>
+                        <th className="p-3 text-left border-b">Room</th>
+                        <th className="p-3 text-left border-b">Date</th>
+                        <th className="p-3 text-left border-b">Time</th>
+                        <th className="p-3 text-left border-b">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedReports.map((r, i) => {
+                        const duration = getServiceDuration(r.service_type);
+                        const endTime = calculateEndTime(r.time, duration);
+
+                        return (
+                          <tr key={i} className="hover:bg-gray-50">
+                            {role === "superadmin" && (
+                              <td className="p-3 border-b">
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-semibold ${
+                                    r.facility === "RCC"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-blue-100 text-blue-800"
+                                  }`}
+                                >
+                                  {r.facility}
+                                </span>
+                              </td>
+                            )}
+                            <td className="p-3 border-b">
+                              {r.guest_name || "N/A"}
+                            </td>
+                            <td className="p-3 border-b capitalize">
+                              {r.service_type}
+                            </td>
+                            <td className="p-3 border-b">
+                              {r.housekeeper_name || "Unassigned"}
+                            </td>
+                            <td className="p-3 border-b">
+                              {r.room_number || "N/A"}
+                            </td>
+                            <td className="p-3 border-b">{r.date}</td>
+                            <td className="p-3 border-b">
+                              {r.time} - {endTime}
+                            </td>
+                            <td className="p-3 border-b capitalize">
+                              {r.status}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {reportType === "borrowed" && (
+              <>
+                {/* Mobile Card View */}
+                <div className="block lg:hidden space-y-3">
+                  {displayedReports.map((r, i) => (
+                    <div
+                      key={i}
+                      className="bg-white border rounded-lg p-4 shadow hover:shadow-md transition"
+                    >
+                      {role === "superadmin" && (
+                        <div className="mb-2">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-semibold ${
+                              r.facility === "RCC"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {r.facility}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-xs text-gray-500 uppercase">
+                            Guest Name
+                          </span>
+                          <p className="font-semibold text-sm break-words">
+                            {r.guest_name || "N/A"}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase">
+                              Room
+                            </span>
+                            <p className="text-sm">{r.room_number || "N/A"}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase">
+                              Quantity
+                            </span>
+                            <p className="text-sm">{r.quantity}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-xs text-gray-500 uppercase">
+                            Item Name
+                          </span>
+                          <p className="text-sm break-words">{r.item_name}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase">
+                              Amount
+                            </span>
+                            <p className="text-sm font-semibold">
+                              {r.total_amount ? `₱${r.total_amount}` : "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-500 uppercase">
+                              Payment Status
+                            </span>
+                            <span
+                              className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
+                                r.is_paid
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {r.is_paid ? "Paid" : "Unpaid"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-xs text-gray-500 uppercase">
+                            Date Borrowed
+                          </span>
+                          <p className="text-sm">{r.borrowed_date || "—"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
+                  <table className="min-w-full border border-gray-200">
+                    <thead className="bg-green-100 text-green-900">
+                      <tr>
+                        {role === "superadmin" && (
+                          <th className="p-3 text-left border-b">Facility</th>
+                        )}
+                        <th className="p-3 text-left border-b">Guest Name</th>
+                        <th className="p-3 text-left border-b">Room</th>
+                        <th className="p-3 text-left border-b">Item Name</th>
+                        <th className="p-3 text-left border-b">Quantity</th>
+                        <th className="p-3 text-left border-b">Amount (₱)</th>
+                        <th className="p-3 text-left border-b">
+                          Date Borrowed
+                        </th>
+                        <th className="p-3 text-left border-b">
+                          Payment Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayedReports.map((r, i) => (
                         <tr key={i} className="hover:bg-gray-50">
                           {role === "superadmin" && (
                             <td className="p-3 border-b">
@@ -419,106 +695,50 @@ const Reports = () => {
                           <td className="p-3 border-b">
                             {r.guest_name || "N/A"}
                           </td>
-                          <td className="p-3 border-b capitalize">
-                            {r.service_type}
-                          </td>
-                          <td className="p-3 border-b">
-                            {r.housekeeper_name || "Unassigned"}
-                          </td>
                           <td className="p-3 border-b">
                             {r.room_number || "N/A"}
                           </td>
-                          <td className="p-3 border-b">{r.date}</td>
+                          <td className="p-3 border-b">{r.item_name}</td>
+                          <td className="p-3 border-b">{r.quantity}</td>
                           <td className="p-3 border-b">
-                            {r.time} - {endTime}
+                            {r.total_amount ? `₱${r.total_amount}` : "—"}
                           </td>
-                          <td className="p-3 border-b capitalize">
-                            {r.status}
+                          <td className="p-3 border-b">
+                            {r.borrowed_date || "—"}
                           </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {reportType === "borrowed" && (
-              <div className="overflow-x-auto shadow rounded-lg">
-                <table className="min-w-full border border-gray-200">
-                  <thead className="bg-green-100 text-green-900">
-                    <tr>
-                      {role === "superadmin" && <th className="p-3 text-left border-b">Facility</th>}
-                      <th className="p-3 text-left border-b">Guest Name</th>
-                      <th className="p-3 text-left border-b">Room</th>
-                      <th className="p-3 text-left border-b">Item Name</th>
-                      <th className="p-3 text-left border-b">Quantity</th>
-                      <th className="p-3 text-left border-b">Amount (₱)</th>
-                      <th className="p-3 text-left border-b">Date Borrowed</th>
-                      <th className="p-3 text-left border-b">Payment Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedReports.map((r, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        {role === "superadmin" && (
                           <td className="p-3 border-b">
                             <span
                               className={`px-2 py-1 rounded text-xs font-semibold ${
-                                r.facility === "RCC"
+                                r.is_paid
                                   ? "bg-green-100 text-green-800"
-                                  : "bg-blue-100 text-blue-800"
+                                  : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {r.facility}
+                              {r.is_paid ? "Paid" : "Unpaid"}
                             </span>
                           </td>
-                        )}
-                        <td className="p-3 border-b">
-                          {r.guest_name || "N/A"}
-                        </td>
-                        <td className="p-3 border-b">
-                          {r.room_number || "N/A"}
-                        </td>
-                        <td className="p-3 border-b">{r.item_name}</td>
-                        <td className="p-3 border-b">{r.quantity}</td>
-                        <td className="p-3 border-b">
-                          {r.total_amount ? `₱${r.total_amount}` : "—"}
-                        </td>
-                        <td className="p-3 border-b">
-                          {r.borrowed_date || "—"}
-                        </td>
-                        <td className="p-3 border-b">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-semibold ${
-                              r.is_paid
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {r.is_paid ? "Paid" : "Unpaid"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </>
         )}
       </div>
 
       {!loading && displayedReports.length > 0 && (
-        <div className="mt-6 flex justify-between items-center">
-          <p className="text-gray-600">
+        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <p className="text-sm sm:text-base text-gray-600">
             Showing {displayedReports.length} of {reports.length} records
           </p>
           <button
             onClick={handlePrint}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2.5 rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 text-sm sm:text-base font-medium"
           >
-            Print Report
+            <Printer size={18} />
+            <span>Print Report</span>
           </button>
         </div>
       )}

@@ -37,35 +37,39 @@ const AdminProfile = () => {
   }, []);
 
   return (
-    <div className="p-8">
-      <h2 className="text-3xl font-poppins font-bold text-green-900 mb-6">
+    <div className="p-4 sm:p-8">
+      <h2 className="text-2xl sm:text-3xl font-poppins font-bold text-green-900 mb-4 sm:mb-6">
         Admin Profile
       </h2>
 
       {loading ? (
-        <p>Loading profile…</p>
+        <p className="text-sm sm:text-base">Loading profile…</p>
       ) : !profile ? (
-        <p className="text-red-600">Unable to load profile.</p>
+        <p className="text-red-600 text-sm sm:text-base">Unable to load profile.</p>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-3xl">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 max-w-3xl">
 
           {/* Top Section */}
-          <div className="flex items-start gap-6">
-            <div className="flex-1">
-              <p className="text-2xl font-semibold text-gray-900">
+          <div className="flex items-start gap-4 sm:gap-6">
+            <div className="flex-1 min-w-0">
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900 break-words">
                 {profile.first_name} {profile.last_name}
               </p>
-              <p className="text-sm text-gray-600">{profile.email}</p>
+              <p className="text-xs sm:text-sm text-gray-600 break-all mt-1">
+                {profile.email}
+              </p>
 
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <div className="p-4 rounded-lg border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-4 sm:mt-6">
+                <div className="p-3 sm:p-4 rounded-lg border">
                   <p className="text-xs text-gray-500 uppercase">Role</p>
-                  <p className="text-lg font-medium">{profile.role}</p>
+                  <p className="text-base sm:text-lg font-medium break-words">
+                    {profile.role}
+                  </p>
                 </div>
 
-                <div className="p-4 rounded-lg border">
+                <div className="p-3 sm:p-4 rounded-lg border">
                   <p className="text-xs text-gray-500 uppercase">Facility</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-base sm:text-lg font-medium break-words">
                     {profile.facility || "No facility assigned"}
                   </p>
                 </div>
@@ -74,10 +78,10 @@ const AdminProfile = () => {
           </div>
 
           {/* Reset Password Button */}
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
             <button
               onClick={() => setShowResetModal(true)}
-              className="px-4 py-2 bg-green-700 text-white rounded-lg shadow hover:bg-green-800 transition"
+              className="w-full sm:w-auto px-4 py-2 bg-green-700 text-white rounded-lg shadow hover:bg-green-800 transition text-sm sm:text-base"
             >
               Reset Password
             </button>

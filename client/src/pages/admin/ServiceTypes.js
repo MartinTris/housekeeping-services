@@ -150,29 +150,26 @@ const ServiceTypes = () => {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold text-green-800 mb-6">
+    <div className="p-4 sm:p-8">
+      <h1 className="text-2xl sm:text-3xl font-bold text-green-800 mb-4 sm:mb-6">
         Manage Service Types
         {userRole === "superadmin" && (
-          <span className="text-lg font-normal text-gray-600 ml-2">
+          <span className="block sm:inline text-base sm:text-lg font-normal text-gray-600 sm:ml-2 mt-1 sm:mt-0">
             (All Facilities)
           </span>
         )}
       </h1>
 
       {/* Add new service type form */}
-      <form
-        onSubmit={handleAdd}
-        className="bg-white p-6 rounded-xl shadow-lg mb-8 max-w-xl"
-      >
-        <h2 className="text-xl font-semibold mb-4">Add New Service Type</h2>
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6 sm:mb-8 max-w-xl">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4">Add New Service Type</h2>
 
         {/* Facility Selector for Superadmin */}
         {userRole === "superadmin" && (
           <div className="mb-4">
-            <label className="block font-medium mb-1">Facility *</label>
+            <label className="block font-medium mb-1 text-sm sm:text-base">Facility *</label>
             <select
-              className="w-full p-2 border rounded-lg"
+              className="w-full p-2 border rounded-lg text-sm sm:text-base"
               value={form.facility}
               onChange={(e) =>
                 setForm({ ...form, facility: e.target.value })
@@ -187,10 +184,10 @@ const ServiceTypes = () => {
         )}
 
         <div className="mb-4">
-          <label className="block font-medium mb-1">Name</label>
+          <label className="block font-medium mb-1 text-sm sm:text-base">Name</label>
           <input
             type="text"
-            className="w-full p-2 border rounded-lg"
+            className="w-full p-2 border rounded-lg text-sm sm:text-base"
             value={form.name}
             onChange={(e) =>
               setForm({ ...form, name: e.target.value })
@@ -200,10 +197,10 @@ const ServiceTypes = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block font-medium mb-1">Duration (minutes)</label>
+          <label className="block font-medium mb-1 text-sm sm:text-base">Duration (minutes)</label>
           <input
             type="number"
-            className="w-full p-2 border rounded-lg"
+            className="w-full p-2 border rounded-lg text-sm sm:text-base"
             value={form.duration}
             min="1"
             onChange={(e) =>
@@ -213,19 +210,22 @@ const ServiceTypes = () => {
           />
         </div>
 
-        <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+        <button 
+          onClick={handleAdd}
+          className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm sm:text-base"
+        >
           Add Service Type
         </button>
-      </form>
+      </div>
 
       {/* Service type list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {serviceTypes.map((type) => (
           <div
             key={type.id}
-            className="bg-white rounded-xl shadow-md p-5 flex justify-between items-center"
+            className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-3"
           >
-            <div>
+            <div className="flex-1 min-w-0">
               {userRole === "superadmin" && type.facility && (
                 <span
                   className={`inline-block px-2 py-1 text-xs font-semibold rounded mb-2 ${
@@ -237,7 +237,7 @@ const ServiceTypes = () => {
                   {type.facility}
                 </span>
               )}
-              <h3 className="text-lg font-bold text-green-900">
+              <h3 className="text-base sm:text-lg font-bold text-green-900 break-words">
                 {type.name}
                 {isCheckout(type.name) && (
                   <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
@@ -245,20 +245,20 @@ const ServiceTypes = () => {
                   </span>
                 )}
               </h3>
-              <p className="text-gray-700">
+              <p className="text-sm sm:text-base text-gray-700">
                 Duration: {type.duration} minutes
               </p>
-              <p className="text-sm text-gray-400">
+              <p className="text-xs sm:text-sm text-gray-400">
                 Created: {new Date(type.created_at).toLocaleString()}
               </p>
             </div>
 
             {/* Only show edit/delete for regular admin */}
             {userRole === "admin" && (
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3 justify-end sm:justify-start flex-shrink-0">
                 <button
                   onClick={() => setEditData(type)}
-                  className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="px-3 py-1.5 sm:py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
                 >
                   Edit
                 </button>
@@ -266,7 +266,7 @@ const ServiceTypes = () => {
                 {!isCheckout(type.name) && (
                   <button
                     onClick={() => handleDelete(type.id, type.name)}
-                    className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                    className="px-3 py-1.5 sm:py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
                   >
                     Delete
                   </button>
@@ -279,14 +279,14 @@ const ServiceTypes = () => {
 
       {/* Edit Modal - Only for admin */}
       {editData && userRole === "admin" && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-md">
 
-            <h2 className="text-xl font-bold mb-4">Edit Service Type</h2>
+            <h2 className="text-lg sm:text-xl font-bold mb-4">Edit Service Type</h2>
 
-            <form onSubmit={handleEditSubmit}>
+            <div>
               <div className="mb-4">
-                <label className="block font-medium mb-1">
+                <label className="block font-medium mb-1 text-sm sm:text-base">
                   Name
                   {isCheckout(editData.name) && (
                     <span className="ml-2 text-xs text-gray-500">
@@ -296,7 +296,7 @@ const ServiceTypes = () => {
                 </label>
                 <input
                   type="text"
-                  className={`w-full p-2 border rounded-lg ${
+                  className={`w-full p-2 border rounded-lg text-sm sm:text-base ${
                     isCheckout(editData.name)
                       ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                       : ""
@@ -316,12 +316,12 @@ const ServiceTypes = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block font-medium mb-1">
+                <label className="block font-medium mb-1 text-sm sm:text-base">
                   Duration (minutes)
                 </label>
                 <input
                   type="number"
-                  className="w-full p-2 border rounded-lg"
+                  className="w-full p-2 border rounded-lg text-sm sm:text-base"
                   value={editData.duration}
                   min="1"
                   onChange={(e) =>
@@ -334,23 +334,24 @@ const ServiceTypes = () => {
                 />
               </div>
 
-              <div className="flex justify-end gap-4">
+              <div className="flex justify-end gap-2 sm:gap-4">
                 <button
                   type="button"
-                  className="px-4 py-2 bg-gray-400 text-white rounded-lg"
+                  className="px-3 sm:px-4 py-2 bg-gray-400 text-white rounded-lg text-sm sm:text-base"
                   onClick={() => setEditData(null)}
                 >
                   Cancel
                 </button>
 
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  type="button"
+                  onClick={handleEditSubmit}
+                  className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
                 >
                   Save Changes
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

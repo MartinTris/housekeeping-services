@@ -457,7 +457,7 @@ const AdminDashboard = () => {
 
 return (
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
-      <main className="flex-1 p-4 sm:p-8 lg:ml-64">
+      <main className="flex-1 p-4 sm:p-8">
         <DashboardToggle view={view} setView={setView} />
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">

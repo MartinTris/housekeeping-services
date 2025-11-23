@@ -142,66 +142,129 @@ const ItemList = () => {
     fetchItems();
   }, []);
 
-  return (
-    <div className="p-6 relative min-h-screen">
-      <h2 className="text-green-900 text-2xl font-bold mb-4 font">
+return (
+    <div className="p-4 sm:p-6 relative min-h-screen">
+      <h2 className="text-green-900 text-xl sm:text-2xl font-bold mb-4">
         Borrowable Items
       </h2>
 
       {loading ? (
-        <p>Loading items...</p>
+        <p className="text-sm sm:text-base">Loading items...</p>
       ) : items.length === 0 ? (
-        <p>No items added yet.</p>
+        <p className="text-sm sm:text-base">No items added yet.</p>
       ) : (
-        <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
-          <thead>
-            <tr className="bg-gray-100 text-left">
-              {userRole === "superadmin" && <th className="p-2 border">Facility</th>}
-              <th className="p-2 border">Item Name</th>
-              <th className="p-2 border">Quantity</th>
-              <th className="p-2 border">Price</th>
-              {userRole === "admin" && <th className="p-2 border text-center w-24">Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          {/* Mobile Card View */}
+          <div className="block lg:hidden space-y-3">
             {items.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50">
+              <div key={item.id} className="border border-gray-300 rounded-lg p-4 bg-white shadow hover:bg-gray-50">
                 {userRole === "superadmin" && (
-                  <td className="p-2 border">
+                  <div className="mb-2">
                     <span
-                      className={`font-semibold ${
+                      className={`px-2 py-1 rounded text-xs font-semibold ${
                         item.facility === "RCC"
-                          ? "text-green-600"
-                          : "text-blue-600"
+                          ? "bg-green-100 text-green-600"
+                          : "bg-blue-100 text-blue-600"
                       }`}
                     >
                       {item.facility}
                     </span>
-                  </td>
+                  </div>
                 )}
-                <td className="p-2 border">{item.name}</td>
-                <td className="p-2 border">{item.quantity}</td>
-                <td className="p-2 border">₱{item.price}</td>
-                {userRole === "admin" && (
-                  <td className="p-2 border text-center space-x-3">
-                    <button
-                      onClick={() => handleEditItem(item)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteItem(item.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                )}
-              </tr>
+                
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase">Item Name</span>
+                    <p className="font-semibold text-base break-words">{item.name}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase">Quantity</span>
+                      <p className="text-sm">{item.quantity}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase">Price</span>
+                      <p className="text-sm">₱{item.price}</p>
+                    </div>
+                  </div>
+
+                  {userRole === "admin" && (
+                    <div className="flex gap-3 pt-2 justify-end">
+                      <button
+                        onClick={() => handleEditItem(item)}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        <Pencil size={16} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="flex items-center gap-1 text-red-600 hover:text-red-800 text-sm"
+                      >
+                        <Trash2 size={16} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  {userRole === "superadmin" && <th className="p-2 border">Facility</th>}
+                  <th className="p-2 border">Item Name</th>
+                  <th className="p-2 border">Quantity</th>
+                  <th className="p-2 border">Price</th>
+                  {userRole === "admin" && <th className="p-2 border text-center w-24">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    {userRole === "superadmin" && (
+                      <td className="p-2 border">
+                        <span
+                          className={`font-semibold ${
+                            item.facility === "RCC"
+                              ? "text-green-600"
+                              : "text-blue-600"
+                          }`}
+                        >
+                          {item.facility}
+                        </span>
+                      </td>
+                    )}
+                    <td className="p-2 border">{item.name}</td>
+                    <td className="p-2 border">{item.quantity}</td>
+                    <td className="p-2 border">₱{item.price}</td>
+                    {userRole === "admin" && (
+                      <td className="p-2 border text-center space-x-3">
+                        <button
+                          onClick={() => handleEditItem(item)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Add Button - Only for admin */}
@@ -218,12 +281,12 @@ const ItemList = () => {
 
       {/* Add Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-xl font-bold mb-4 text-green-900">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-md">
+            <h3 className="text-lg sm:text-xl font-bold mb-4 text-green-900">
               Add New Item
             </h3>
-            <form onSubmit={handleAddItem} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <input
                 type="text"
                 placeholder="Item Name"
@@ -231,7 +294,7 @@ const ItemList = () => {
                 onChange={(e) =>
                   setNewItem({ ...newItem, name: e.target.value })
                 }
-                className="border p-2 rounded"
+                className="border p-2 rounded text-sm sm:text-base"
               />
               <input
                 type="number"
@@ -241,7 +304,7 @@ const ItemList = () => {
                   setNewItem({ ...newItem, quantity: e.target.value })
                 }
                 min="1"
-                className="border p-2 rounded"
+                className="border p-2 rounded text-sm sm:text-base"
               />
               <input
                 type="number"
@@ -251,37 +314,38 @@ const ItemList = () => {
                   setNewItem({ ...newItem, price: e.target.value })
                 }
                 min="1"
-                className="border p-2 rounded"
+                className="border p-2 rounded text-sm sm:text-base"
               />
 
-              <div className="flex justify-end gap-3 mt-4">
+              <div className="flex justify-end gap-2 sm:gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded border border-gray-400"
+                  className="px-3 sm:px-4 py-2 rounded border border-gray-400 text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+                  type="button"
+                  onClick={handleAddItem}
+                  className="px-3 sm:px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 text-sm sm:text-base"
                 >
                   Add
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* Edit Modal */}
       {editModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96">
-            <h3 className="text-xl font-bold mb-4 text-green-900">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-md">
+            <h3 className="text-lg sm:text-xl font-bold mb-4 text-green-900 break-words">
               Edit Item: {selectedItem.name}
             </h3>
-            <form onSubmit={handleUpdateItem} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
               <input
                 type="number"
                 placeholder="Quantity"
@@ -290,7 +354,7 @@ const ItemList = () => {
                   setEditData({ ...editData, quantity: e.target.value })
                 }
                 min="1"
-                className="border p-2 rounded"
+                className="border p-2 rounded text-sm sm:text-base"
               />
               <input
                 type="number"
@@ -300,25 +364,26 @@ const ItemList = () => {
                   setEditData({ ...editData, price: e.target.value })
                 }
                 min="1"
-                className="border p-2 rounded"
+                className="border p-2 rounded text-sm sm:text-base"
               />
 
-              <div className="flex justify-end gap-3 mt-4">
+              <div className="flex justify-end gap-2 sm:gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => setEditModal(false)}
-                  className="px-4 py-2 rounded border border-gray-400"
+                  className="px-3 sm:px-4 py-2 rounded border border-gray-400 text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+                  type="button"
+                  onClick={handleUpdateItem}
+                  className="px-3 sm:px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 text-sm sm:text-base"
                 >
                   Save Changes
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
