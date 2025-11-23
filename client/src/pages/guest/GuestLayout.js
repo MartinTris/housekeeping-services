@@ -24,15 +24,16 @@ const GuestLayout = ({ setAuth, role }) => {
     fetchUser();
   }, []);
 
-  return (
+   return (
     <div className="flex min-h-screen bg-gray-50">
       <Menu setAuth={setAuth} role={role} />
 
-      <div className="flex-1 ml-64 flex flex-col">
+      {/* Main wrapper - responsive margin */}
+      <div className="flex-1 lg:ml-64 flex flex-col">
         {/* Header Bar */}
-        <header className="flex justify-between items-center px-8 py-4 bg-white border-b shadow-sm">
-          <h1 className="text-2xl font-poppins font-semibold text-green-900">
-            DLSU-D Housekeeping Services
+        <header className="flex justify-between items-center px-4 sm:px-8 py-4 bg-white border-b shadow-sm">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-poppins font-semibold text-green-900">
+            DLSU-D Housekeeping
           </h1>
 
           {/* Notification Bell aligned to top-right */}
@@ -42,11 +43,11 @@ const GuestLayout = ({ setAuth, role }) => {
         </header>
 
         {/* Main content */}
-        <main className="flex-1 p-8 bg-gray-50 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-8 bg-gray-50 overflow-y-auto">
           <Outlet />
         </main>
       </div>
-    </div>
+    </div>  
   );
 };
 

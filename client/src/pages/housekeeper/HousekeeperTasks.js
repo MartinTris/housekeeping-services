@@ -126,29 +126,85 @@ const HousekeeperTasks = () => {
   };
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
       {/* HOUSEKEEPING TASKS SECTION */}
       <div>
-        <h2 className="text-green-900 text-2xl font-poppins font-bold mb-4">
+        <h2 className="text-green-900 text-xl sm:text-2xl font-poppins font-bold mb-3 sm:mb-4">
           Housekeeping Tasks
         </h2>
 
         {housekeepingTasks.length === 0 ? (
-          <p className="text-gray-500">No housekeeping tasks assigned.</p>
+          <p className="text-gray-500 text-sm sm:text-base">No housekeeping tasks assigned.</p>
         ) : (
-          <table className="w-full border border-gray-300">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 border">Guest</th>
-                <th className="p-2 border">Room</th>
-                <th className="p-2 border">Service Type</th>
-                <th className="p-2 border">Preferred Date</th>
-                <th className="p-2 border">Preferred Time</th>
-                <th className="p-2 border">Status</th>
-                <th className="p-2 border">Action</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border text-sm">Guest</th>
+                    <th className="p-2 border text-sm">Room</th>
+                    <th className="p-2 border text-sm">Service Type</th>
+                    <th className="p-2 border text-sm">Preferred Date</th>
+                    <th className="p-2 border text-sm">Preferred Time</th>
+                    <th className="p-2 border text-sm">Status</th>
+                    <th className="p-2 border text-sm">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {housekeepingTasks.map((task) => {
+                    const now = new Date();
+                    const startTimeStr = task.preferred_time.split(" - ")[0];
+                    const taskStart = parsePreferredTime(
+                      task.preferred_date,
+                      startTimeStr
+                    );
+
+                    const canMarkDone = now >= taskStart;
+
+                    return (
+                      <tr key={task.id} className="text-center">
+                        <td className="p-2 border text-sm">{task.guest_name}</td>
+                        <td className="p-2 border text-sm">{task.room_number}</td>
+                        <td className="p-2 border capitalize text-sm">{task.service_type}</td>
+                        <td className="p-2 border text-sm">
+                          {new Date(task.preferred_date).toLocaleDateString()}
+                        </td>
+                        <td className="p-2 border text-sm">{task.preferred_time}</td>
+                        <td className="p-2 border capitalize text-sm">{task.status}</td>
+                        <td className="p-2 border">
+                          {task.status === "approved" ? (
+                            <button
+                              onClick={() => handleAcknowledge(task.id)}
+                              className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                            >
+                              Acknowledge Task
+                            </button>
+                          ) : task.status === "in_progress" ? (
+                            <button
+                              onClick={() => handleMarkDone(task.id)}
+                              disabled={!canMarkDone}
+                              className={`px-3 py-1 rounded text-white text-sm ${
+                                canMarkDone
+                                  ? "bg-green-600 hover:bg-green-700"
+                                  : "bg-gray-400 cursor-not-allowed"
+                              }`}
+                            >
+                              Mark as Done
+                            </button>
+                          ) : (
+                            <span className="text-gray-500 text-sm">Completed</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
               {housekeepingTasks.map((task) => {
                 const now = new Date();
                 const startTimeStr = task.preferred_time.split(" - ")[0];
@@ -160,87 +216,159 @@ const HousekeeperTasks = () => {
                 const canMarkDone = now >= taskStart;
 
                 return (
-                  <tr key={task.id} className="text-center">
-                    <td className="p-2 border">{task.guest_name}</td>
-                    <td className="p-2 border">{task.room_number}</td>
-                    <td className="p-2 border capitalize">{task.service_type}</td>
-                    <td className="p-2 border">
-                      {new Date(task.preferred_date).toLocaleDateString()}
-                    </td>
-                    <td className="p-2 border">{task.preferred_time}</td>
-                    <td className="p-2 border capitalize">{task.status}</td>
-                    <td className="p-2 border">
-                      {task.status === "approved" ? (
-                        <button
-                          onClick={() => handleAcknowledge(task.id)}
-                          className="px-3 py-1 bg-blue-600 text-white rounded"
-                        >
-                          Acknowledge Task
-                        </button>
-                      ) : task.status === "in_progress" ? (
-                        <button
-                          onClick={() => handleMarkDone(task.id)}
-                          disabled={!canMarkDone}
-                          className={`px-3 py-1 rounded text-white ${
-                            canMarkDone
-                              ? "bg-green-600 hover:bg-green-700"
-                              : "bg-gray-400 cursor-not-allowed"
-                          }`}
-                        >
-                          Mark as Done
-                        </button>
-                      ) : (
-                        <span className="text-gray-500">Completed</span>
-                      )}
-                    </td>
-                  </tr>
+                  <div key={task.id} className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Guest</p>
+                          <p className="font-medium">{task.guest_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 uppercase">Room</p>
+                          <p className="font-medium">{task.room_number}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Service Type</p>
+                          <p className="text-sm capitalize">{task.service_type}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Status</p>
+                          <p className="text-sm capitalize">{task.status}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t">
+                        <p className="text-xs text-gray-500 uppercase">Preferred Date & Time</p>
+                        <p className="text-sm">
+                          {new Date(task.preferred_date).toLocaleDateString()} • {task.preferred_time}
+                        </p>
+                      </div>
+
+                      <div className="pt-3">
+                        {task.status === "approved" ? (
+                          <button
+                            onClick={() => handleAcknowledge(task.id)}
+                            className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                          >
+                            Acknowledge Task
+                          </button>
+                        ) : task.status === "in_progress" ? (
+                          <button
+                            onClick={() => handleMarkDone(task.id)}
+                            disabled={!canMarkDone}
+                            className={`w-full px-4 py-2 rounded text-white text-sm font-medium ${
+                              canMarkDone
+                                ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
+                                : "bg-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            Mark as Done
+                          </button>
+                        ) : (
+                          <span className="block text-center text-gray-500 text-sm py-2">Completed</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* ITEM DELIVERY TASKS SECTION */}
       <div>
-        <h2 className="text-green-900 text-2xl font-poppins font-bold mb-4">
+        <h2 className="text-green-900 text-xl sm:text-2xl font-poppins font-bold mb-3 sm:mb-4">
           Item Deliveries
         </h2>
 
         {deliveryTasks.length === 0 ? (
-          <p className="text-gray-500">No delivery tasks pending.</p>
+          <p className="text-gray-500 text-sm sm:text-base">No delivery tasks pending.</p>
         ) : (
-          <table className="w-full border border-gray-300">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 border">Guest</th>
-                <th className="p-2 border">Room</th>
-                <th className="p-2 border">Item</th>
-                <th className="p-2 border">Quantity</th>
-                <th className="p-2 border">Charge Amount</th>
-                <th className="p-2 border">Action</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 border text-sm">Guest</th>
+                    <th className="p-2 border text-sm">Room</th>
+                    <th className="p-2 border text-sm">Item</th>
+                    <th className="p-2 border text-sm">Quantity</th>
+                    <th className="p-2 border text-sm">Charge Amount</th>
+                    <th className="p-2 border text-sm">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deliveryTasks.map((task) => (
+                    <tr key={task.id} className="text-center hover:bg-gray-50">
+                      <td className="p-2 border text-sm">{task.guest_name}</td>
+                      <td className="p-2 border text-sm">{task.room_number || "N/A"}</td>
+                      <td className="p-2 border text-sm">{task.item_name}</td>
+                      <td className="p-2 border text-sm">{task.quantity}</td>
+                      <td className="p-2 border text-sm">₱{task.charge_amount}</td>
+                      <td className="p-2 border">
+                        <button
+                          onClick={() => handleItemDelivered(task.id)}
+                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                        >
+                          Item Delivered
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
               {deliveryTasks.map((task) => (
-                <tr key={task.id} className="text-center hover:bg-gray-50">
-                  <td className="p-2 border">{task.guest_name}</td>
-                  <td className="p-2 border">{task.room_number || "N/A"}</td>
-                  <td className="p-2 border">{task.item_name}</td>
-                  <td className="p-2 border">{task.quantity}</td>
-                  <td className="p-2 border">₱{task.charge_amount}</td>
-                  <td className="p-2 border">
-                    <button
-                      onClick={() => handleItemDelivered(task.id)}
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                    >
-                      Item Delivered
-                    </button>
-                  </td>
-                </tr>
+                <div key={task.id} className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Guest</p>
+                        <p className="font-medium">{task.guest_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 uppercase">Room</p>
+                        <p className="font-medium">{task.room_number || "N/A"}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Item</p>
+                        <p className="text-sm">{task.item_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Qty</p>
+                        <p className="text-sm">{task.quantity}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 uppercase">Charge</p>
+                        <p className="text-sm font-medium">₱{task.charge_amount}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-3">
+                      <button
+                        onClick={() => handleItemDelivered(task.id)}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 active:bg-green-800 text-sm font-medium"
+                      >
+                        Item Delivered
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
     </div>

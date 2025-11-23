@@ -9,7 +9,7 @@ import AdminServiceRequest from "../../components/AdminServiceRequest.js";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements.js";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -67,12 +67,12 @@ const AdminDashboard = () => {
         method: "GET",
         headers: { token: localStorage.token },
       });
-      
+
       if (response.status === 401 || response.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       const parseRes = await response.json();
       setName(parseRes.name);
       setFacility(parseRes.facility);
@@ -88,12 +88,12 @@ const AdminDashboard = () => {
       const res = await fetch(`${API_URL}/housekeepers`, {
         headers: { token: localStorage.token },
       });
-      
+
       if (res.status === 401 || res.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       const data = await res.json();
 
       setHousekeepers(data);
@@ -120,12 +120,12 @@ const AdminDashboard = () => {
       const res = await fetch(`${API_URL}/rooms`, {
         headers: { token: localStorage.token },
       });
-      
+
       if (res.status === 401 || res.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       const data = await res.json();
 
       setRooms(data);
@@ -156,18 +156,15 @@ const AdminDashboard = () => {
 
   async function fetchTotalRequests() {
     try {
-      const res = await fetch(
-        `${API_URL}/housekeeping-requests/admin/total`,
-        {
-          headers: { token: localStorage.token },
-        }
-      );
-      
+      const res = await fetch(`${API_URL}/housekeeping-requests/admin/total`, {
+        headers: { token: localStorage.token },
+      });
+
       if (res.status === 401 || res.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       const data = await res.json();
       if (res.ok) {
         setTotalRequests(data.count);
@@ -195,12 +192,12 @@ const AdminDashboard = () => {
       const res = await fetch(`${API_URL}/feedback/admin`, {
         headers: { token: localStorage.token },
       });
-      
+
       if (res.status === 401 || res.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       const data = await res.json();
 
       if (Array.isArray(data) && data.length > 0) {
@@ -241,17 +238,17 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchAdminFeedback = async () => {
       if (!isAuthenticated) return;
-      
+
       try {
         const res = await fetch(`${API_URL}/feedback/admin`, {
           headers: { token: localStorage.token },
         });
-        
+
         if (res.status === 401 || res.status === 403) {
           navigate("/login", { replace: true });
           return;
         }
-        
+
         const data = await res.json();
         console.log("Admin feedback:", data);
         setAdminFeedback(data);
@@ -332,7 +329,7 @@ const AdminDashboard = () => {
       })
       .then((data) => {
         if (!data) return;
-        
+
         if (data.error) {
           alert(data.error || "Failed to post announcement.");
         } else {
@@ -359,14 +356,14 @@ const AdminDashboard = () => {
       const res = await fetch(`${API_URL}/announcements/admin`, {
         headers: { token: localStorage.token },
       });
-      
+
       if (res.status === 401 || res.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       const data = await res.json();
-      
+
       // Always ensure we set an array
       if (Array.isArray(data)) {
         setMyAnnouncements(data);
@@ -387,12 +384,12 @@ const AdminDashboard = () => {
         method: "DELETE",
         headers: { token: localStorage.token },
       });
-      
+
       if (res.status === 401 || res.status === 403) {
         navigate("/login", { replace: true });
         return;
       }
-      
+
       if (res.ok) {
         setMyAnnouncements(myAnnouncements.filter((a) => a.id !== id));
       } else {
@@ -422,7 +419,7 @@ const AdminDashboard = () => {
       })
       .then((data) => {
         if (!data) return;
-        
+
         if (data.error) {
           alert(data.error || "Failed to update announcement");
         } else {
@@ -455,7 +452,7 @@ const AdminDashboard = () => {
     );
   }
 
-return (
+  return (
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-4 sm:p-8">
         <DashboardToggle view={view} setView={setView} />
@@ -712,7 +709,9 @@ return (
                           onChange={() => handleFacilityChange("RCC")}
                           className="accent-green-500"
                         />
-                        <span className="font-medium text-gray-700 text-sm sm:text-base">RCC</span>
+                        <span className="font-medium text-gray-700 text-sm sm:text-base">
+                          RCC
+                        </span>
                       </label>
                       <label className="flex items-center gap-2">
                         <input

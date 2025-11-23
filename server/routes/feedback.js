@@ -35,7 +35,7 @@ router.post("/", authorization, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO feedback (user_id, rating, comment, type, request_id)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
+       RETURNING *, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as created_at_manila`,
       [user_id, rating, comment, feedbackType, validRequestId]
     );
 
@@ -99,7 +99,7 @@ router.get("/admin", authorization, async (req, res) => {
           f.id,
           f.rating,
           f.comment,
-          f.created_at,
+          f.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as created_at,
           f.type,
           COALESCE(
             NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
@@ -134,7 +134,7 @@ router.get("/admin", authorization, async (req, res) => {
           f.id,
           f.rating,
           f.comment,
-          f.created_at,
+          f.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as created_at,
           COALESCE(
             NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
             u.email,
@@ -185,7 +185,7 @@ router.get("/admin/system", authorization, async (req, res) => {
         f.id,
         f.rating,
         f.comment,
-        f.created_at,
+        f.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as created_at,
         COALESCE(
           NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
           u.email,
@@ -217,7 +217,7 @@ router.get("/housekeeper", authorization, async (req, res) => {
         f.id,
         f.rating,
         f.comment,
-        f.created_at,
+        f.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as created_at,
         COALESCE(
           NULLIF(TRIM(u.first_name || ' ' || COALESCE(u.last_name, '')), ''),
           u.email,

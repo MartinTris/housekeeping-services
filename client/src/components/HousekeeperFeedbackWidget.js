@@ -28,8 +28,8 @@ const HousekeeperFeedbackWidget = () => {
   }, []);
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
-      <h3 className="text-xl font-semibold text-green-900 mb-4 flex items-center gap-2">
+    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100">
+      <h3 className="text-lg sm:text-xl font-semibold text-green-900 mb-3 sm:mb-4 flex items-center gap-2">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="w-5 h-5 text-green-700"
@@ -48,47 +48,105 @@ const HousekeeperFeedbackWidget = () => {
       </h3>
 
       {loading ? (
-        <p className="text-gray-600">Loading feedback...</p>
+        <p className="text-gray-600 text-sm sm:text-base">Loading feedback...</p>
       ) : feedbacks.length === 0 ? (
-        <p className="text-gray-600">No feedback assigned to you yet.</p>
+        <p className="text-gray-600 text-sm sm:text-base">No feedback assigned to you yet.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gradient-to-r from-green-50 to-emerald-50 text-left">
-                <th className="p-3 border border-gray-200 font-semibold text-green-800">Guest</th>
-                <th className="p-3 border border-gray-200 font-semibold text-green-800">Room</th>
-                <th className="p-3 border border-gray-200 font-semibold text-green-800">Service Type</th>
-                <th className="p-3 border border-gray-200 font-semibold text-green-800">Rating</th>
-                <th className="p-3 border border-gray-200 font-semibold text-green-800">Comment</th>
-                <th className="p-3 border border-gray-200 font-semibold text-green-800">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feedbacks.map((f, index) => (
-                <tr 
-                  key={f.id} 
-                  className={`${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                  } hover:bg-green-50 transition-colors`}
-                >
-                  <td className="p-3 border border-gray-200 text-gray-700">{f.guest_name || "N/A"}</td>
-                  <td className="p-3 border border-gray-200 text-gray-700">{f.room_number || "—"}</td>
-                  <td className="p-3 border border-gray-200 capitalize text-gray-700">{f.service_type || "—"}</td>
-                  <td className="p-3 border border-gray-200 text-center">
-                    <span className="inline-flex items-center gap-1 font-semibold text-yellow-600">
-                      {f.rating} ⭐
-                    </span>
-                  </td>
-                  <td className="p-3 border border-gray-200 text-gray-700">{f.comment || "No comment"}</td>
-                  <td className="p-3 border border-gray-200 text-gray-600 text-sm">
-                    {new Date(f.created_at).toLocaleDateString()}
-                  </td>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gradient-to-r from-green-50 to-emerald-50 text-left">
+                  <th className="p-3 border border-gray-200 font-semibold text-green-800 text-sm">Guest</th>
+                  <th className="p-3 border border-gray-200 font-semibold text-green-800 text-sm">Room</th>
+                  <th className="p-3 border border-gray-200 font-semibold text-green-800 text-sm">Service Type</th>
+                  <th className="p-3 border border-gray-200 font-semibold text-green-800 text-sm">Rating</th>
+                  <th className="p-3 border border-gray-200 font-semibold text-green-800 text-sm">Comment</th>
+                  <th className="p-3 border border-gray-200 font-semibold text-green-800 text-sm">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {feedbacks.map((f, index) => (
+                  <tr 
+                    key={f.id} 
+                    className={`${
+                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    } hover:bg-green-50 transition-colors`}
+                  >
+                    <td className="p-3 border border-gray-200 text-gray-700 text-sm">{f.guest_name || "N/A"}</td>
+                    <td className="p-3 border border-gray-200 text-gray-700 text-sm">{f.room_number || "—"}</td>
+                    <td className="p-3 border border-gray-200 capitalize text-gray-700 text-sm">{f.service_type || "—"}</td>
+                    <td className="p-3 border border-gray-200 text-center">
+                      <span className="inline-flex items-center gap-1 font-semibold text-yellow-600 text-sm">
+                        {f.rating} ⭐
+                      </span>
+                    </td>
+                    <td className="p-3 border border-gray-200 text-gray-700 text-sm">{f.comment || "No comment"}</td>
+                    <td className="p-3 border border-gray-200 text-gray-600 text-sm">
+                      {new Date(f.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {feedbacks.map((f) => (
+              <div 
+                key={f.id} 
+                className="border border-gray-200 rounded-lg p-3 bg-gradient-to-br from-white to-gray-50 shadow-sm"
+              >
+                <div className="space-y-2">
+                  {/* Header: Guest and Rating */}
+                  <div className="flex justify-between items-start gap-2 pb-2 border-b border-gray-200">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-500 uppercase">Guest</p>
+                      <p className="font-semibold text-gray-800 text-sm truncate">
+                        {f.guest_name || "N/A"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="font-bold text-yellow-600 text-base">{f.rating}</span>
+                      <span className="text-yellow-500 text-lg">⭐</span>
+                    </div>
+                  </div>
+
+                  {/* Room and Service Details */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Room</p>
+                      <p className="text-sm text-gray-700">{f.room_number || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Service Type</p>
+                      <p className="text-sm text-gray-700 capitalize truncate">
+                        {f.service_type || "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Comment */}
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 uppercase mb-1">Comment</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {f.comment || "No comment"}
+                    </p>
+                  </div>
+
+                  {/* Date */}
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">
+                      {new Date(f.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

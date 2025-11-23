@@ -154,6 +154,7 @@ router.get("/borrowed-items", authorization, async (req, res) => {
         LEFT JOIN rooms r ON bi.room_id = r.id
         WHERE bi.created_at >= NOW() - INTERVAL '${range} days'
           AND (u.facility IN ('RCC', 'Hotel Rafael') OR r.facility IN ('RCC', 'Hotel Rafael'))
+          AND bi.delivery_status = 'delivered'
           ${paymentFilter}
         ORDER BY COALESCE(u.facility, r.facility), bi.created_at DESC
       `;
@@ -173,6 +174,7 @@ router.get("/borrowed-items", authorization, async (req, res) => {
         LEFT JOIN rooms r ON bi.room_id = r.id
         WHERE bi.created_at >= NOW() - INTERVAL '${range} days'
           AND (u.facility = $1 OR r.facility = $1)
+          AND bi.delivery_status = 'delivered'
           ${paymentFilter}
         ORDER BY bi.created_at DESC
       `;

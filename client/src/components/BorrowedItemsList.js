@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 import { Printer } from "lucide-react";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const BorrowedItemsList = () => {
   const [items, setItems] = useState([]);
@@ -65,20 +65,20 @@ const BorrowedItemsList = () => {
 
   const formatDateTime = () => {
     const now = new Date();
-    return now.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+    return now.toLocaleString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     });
   };
 
   const handlePrint = () => {
-    const printContent = document.getElementById('print-content');
+    const printContent = document.getElementById("print-content");
     const printWindow = window.open("", "", "width=800,height=600");
-    
+
     printWindow.document.write(`
       <html>
         <head>
@@ -169,7 +169,7 @@ const BorrowedItemsList = () => {
         </body>
       </html>
     `);
-    
+
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
@@ -183,7 +183,7 @@ const BorrowedItemsList = () => {
   return (
     <div className="bg-white p-4 rounded-xl shadow-md w-full flex flex-col h-[400px]">
       {/* Print content - hidden on screen */}
-      <div id="print-content" style={{ display: 'none' }}>
+      <div id="print-content" style={{ display: "none" }}>
         <div className="receipt-header">
           <div className="receipt-title">BORROWED ITEMS RECEIPT</div>
           <div className="receipt-info">Date & Time: {formatDateTime()}</div>
@@ -202,11 +202,15 @@ const BorrowedItemsList = () => {
               <tr key={item.id}>
                 <td>{item.item_name}</td>
                 <td className="text-center">{item.quantity}</td>
-                <td className="text-right">₱{Number(item.charge_amount || 0).toFixed(2)}</td>
+                <td className="text-right">
+                  ₱{Number(item.charge_amount || 0).toFixed(2)}
+                </td>
               </tr>
             ))}
             <tr className="total-row">
-              <td colSpan="2" className="text-right">TOTAL DUE:</td>
+              <td colSpan="2" className="text-right">
+                TOTAL DUE:
+              </td>
               <td className="text-right">₱{total.toFixed(2)}</td>
             </tr>
           </tbody>
@@ -238,7 +242,14 @@ const BorrowedItemsList = () => {
                   </p>
                   {user?.role === "superadmin" && item.facility && (
                     <p className="text-xs text-gray-500">
-                      Facility: <span className={`font-semibold ${item.facility === 'RCC' ? 'text-green-600' : 'text-blue-600'}`}>
+                      Facility:{" "}
+                      <span
+                        className={`font-semibold ${
+                          item.facility === "RCC"
+                            ? "text-green-600"
+                            : "text-blue-600"
+                        }`}
+                      >
                         {item.facility}
                       </span>
                     </p>
@@ -283,7 +294,7 @@ const BorrowedItemsList = () => {
           <div className="text-center">
             <button
               onClick={() => navigate("/admin/pending-payments")}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              className="p-2 w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 mb-4 text-sm sm:text-base"
             >
               View More Details
             </button>

@@ -335,19 +335,19 @@ const HousekeepingTrends = () => {
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg mt-6">
-      <h2 className="text-green-900 font-bold text-xl mb-4">
+    <div className="bg-white/90 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg mt-4 sm:mt-6">
+      <h2 className="text-green-900 font-bold text-lg sm:text-xl mb-3 sm:mb-4">
         Housekeeping Service Trends
       </h2>
 
-      <div className="flex items-center gap-4 mb-6 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         {userRole === 'superadmin' && (
-          <label className="text-gray-700 font-medium text-sm">
-            Facility:
+          <label className="text-gray-700 font-medium text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <span>Facility:</span>
             <select
               value={selectedFacility}
               onChange={(e) => setSelectedFacility(e.target.value)}
-              className="ml-2 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 w-full sm:w-auto"
             >
               <option value="all">All Facilities</option>
               <option value="RCC">RCC</option>
@@ -356,12 +356,12 @@ const HousekeepingTrends = () => {
           </label>
         )}
 
-        <label className="text-gray-700 font-medium text-sm">
-          Service Type:
+        <label className="text-gray-700 font-medium text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <span>Service Type:</span>
           <select
             value={selectedServiceType}
             onChange={(e) => setSelectedServiceType(e.target.value)}
-            className="ml-2 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 w-full sm:w-auto"
           >
             <option value="all">All Service Types</option>
             {serviceTypes.map((type) => (
@@ -372,12 +372,12 @@ const HousekeepingTrends = () => {
           </select>
         </label>
 
-        <label className="text-gray-700 font-medium text-sm">
-          View Type:
+        <label className="text-gray-700 font-medium text-sm flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <span>View Type:</span>
           <select
             value={granularity}
             onChange={(e) => setGranularity(e.target.value)}
-            className="ml-2 px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 w-full sm:w-auto"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -387,16 +387,27 @@ const HousekeepingTrends = () => {
         </label>
       </div>
 
-      <div className="w-full h-96">
+      <div className="w-full h-64 sm:h-80 md:h-96">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            margin={{ 
+              top: 20, 
+              right: 10, 
+              left: 0, 
+              bottom: 5 
+            }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="period" tick={{ fill: "#374151", fontSize: 12 }} />
+            <XAxis 
+              dataKey="period" 
+              tick={{ fill: "#374151", fontSize: 10 }} 
+              angle={-45}
+              textAnchor="end"
+              height={60}
+            />
             <YAxis
-              tick={{ fill: "#374151", fontSize: 12 }}
+              tick={{ fill: "#374151", fontSize: 10 }}
               allowDecimals={false}
             />
             <Tooltip
@@ -404,9 +415,13 @@ const HousekeepingTrends = () => {
                 backgroundColor: "#f9fafb",
                 borderRadius: "0.5rem",
                 border: "none",
+                fontSize: "12px"
               }}
             />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Legend 
+              wrapperStyle={{ fontSize: 11 }} 
+              iconSize={10}
+            />
             
             {getServiceTypeKeys().map((key) => (
               <Bar

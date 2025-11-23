@@ -494,6 +494,7 @@ router.get("/pending", authorization, async (req, res) => {
         FROM borrowed_items b
         JOIN users u ON b.user_id = u.id
         WHERE b.is_paid = false
+        AND b.delivery_status = 'delivered'
         AND u.facility IN ('RCC', 'Hotel Rafael')
         ORDER BY u.facility, b.created_at DESC
       `;
@@ -512,6 +513,7 @@ router.get("/pending", authorization, async (req, res) => {
         FROM borrowed_items b
         JOIN users u ON b.user_id = u.id
         WHERE b.is_paid = false
+        AND b.delivery_status = 'delivered'
         AND u.facility = $1
         ORDER BY b.created_at DESC
       `;

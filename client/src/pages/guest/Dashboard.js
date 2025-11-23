@@ -364,24 +364,24 @@ const GuestDashboard = () => {
 
   return (
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-4 sm:p-8">
         <DashboardToggle view={view} setView={setView} />
 
         {view === "dashboard" && (
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
             {/* Left Side - Welcome Box and Main Content */}
-            <div className="flex-1">
-              <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 mb-6 shadow-md border border-green-100">
-                <h2 className="text-3xl font-poppins font-bold text-green-800 mb-2">
+            <div className="flex-1 w-full">
+              <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-4 sm:p-8 mb-4 sm:mb-6 shadow-md border border-green-100">
+                <h2 className="text-2xl sm:text-3xl font-poppins font-bold text-green-800 mb-2">
                   Welcome, {name}
                 </h2>
-                <p className="font-poppins text-base text-green-700 mb-6">
+                <p className="font-poppins text-sm sm:text-base text-green-700 mb-4 sm:mb-6">
                   {profile?.facility || "No facility assigned"}
                 </p>
 
                 {!profile?.facility && (
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                    <p className="text-yellow-700">
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-4">
+                    <p className="text-yellow-700 text-sm sm:text-base">
                       ⚠️ You are not assigned to a room yet.
                     </p>
                   </div>
@@ -390,13 +390,13 @@ const GuestDashboard = () => {
                 <button
                   onClick={() => setShowModal(true)}
                   disabled={!profile?.facility || !profile?.current_booking?.room_id}
-                  className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-sm sm:text-base"
                 >
                   Request a Service
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <Information
                   infoName="Total Service Requests"
                   value={totalRequests}
@@ -409,21 +409,22 @@ const GuestDashboard = () => {
                 />
               </div>
 
-              <div className="mt-8">
+              <div className="mt-6 sm:mt-8">
                 <FeedbackWidget />
               </div>
             </div>
 
-            <div className="w-96 flex-shrink-0 space-y-4">
+            {/* Right Sidebar */}
+            <div className="w-full lg:w-96 lg:flex-shrink-0 space-y-4">
               {/* Remaining Balance Widget */}
-              <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-6 rounded-xl shadow-md border border-green-100">
-                <div className="flex items-center gap-4">
-                  <div className="p-4 bg-white rounded-xl shadow-sm">
-                    <Wallet className="text-green-600" size={32} />
+              <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-4 sm:p-6 rounded-xl shadow-md border border-green-100">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 bg-white rounded-xl shadow-sm">
+                    <Wallet className="text-green-600" size={28} />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-green-700 mb-1">Remaining Balance</p>
-                    <p className="text-3xl font-bold text-green-800">₱{remainingBalance.toFixed(2)}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-green-700 mb-1">Remaining Balance</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-green-800 break-words">₱{remainingBalance.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -438,21 +439,21 @@ const GuestDashboard = () => {
       </main>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h3 className="text-xl font-bold mb-4">Request Service</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg sm:text-xl font-bold mb-4">Request Service</h3>
 
-            {error && <p className="text-red-500 mb-2">{error}</p>}
+            {error && <p className="text-red-500 mb-2 text-sm sm:text-base">{error}</p>}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Service Type
                 </label>
                 <select
                   value={serviceType}
                   onChange={(e) => setServiceType(e.target.value)}
-                  className="mt-1 block w-full border rounded p-2"
+                  className="mt-1 block w-full border rounded p-2 text-sm sm:text-base"
                   required
                 >
                   <option value="">Select a service</option>
@@ -465,14 +466,14 @@ const GuestDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Service Date (Today)
                 </label>
                 <input
                   type="date"
                   value={preferredDate}
                   onChange={(e) => {}}
-                  className="mt-1 block w-full border rounded p-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+                  className="mt-1 block w-full border rounded p-2 bg-gray-100 text-gray-700 cursor-not-allowed text-sm sm:text-base"
                   min={preferredDate}
                   max={preferredDate}
                   readOnly
@@ -481,13 +482,13 @@ const GuestDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Preferred Time
                 </label>
                 <select
                   value={preferredTime}
                   onChange={(e) => setPreferredTime(e.target.value)}
-                  className="mt-1 block w-full border rounded p-2"
+                  className="mt-1 block w-full border rounded p-2 text-sm sm:text-base"
                   required
                 >
                   <option value="">Select a time</option>
@@ -506,22 +507,23 @@ const GuestDashboard = () => {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-200 rounded"
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 text-white rounded"
+                  type="button"
+                  onClick={handleSubmit}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-full hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg text-sm sm:text-base"
                 >
                   Submit
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
