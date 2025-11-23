@@ -55,6 +55,11 @@ const ForceChangePassword = () => {
       if (response.ok) {
         alert("Password updated successfully!");
 
+        if (parseRes.token) {
+          localStorage.setItem("token", parseRes.token);
+        }
+        localStorage.setItem("first_login", "false");
+        
         // Redirect based on role
         if (role === "admin") navigate("/admin");
         else if (role === "housekeeper") navigate("/housekeeper");

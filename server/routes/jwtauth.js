@@ -278,7 +278,8 @@ router.put("/change-password", authorization, async (req, res) => {
 
     res.json({ 
       message: "Password updated successfully",
-      token: newToken
+      token: newToken,
+      first_login: false
     });
   } catch (err) {
     console.error(err.message);

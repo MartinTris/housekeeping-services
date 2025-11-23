@@ -507,13 +507,14 @@ const ManageGuests = () => {
                     <div className="mt-2 flex flex-col sm:flex-row justify-center gap-2">
                       <button
                         className="px-2 sm:px-3 py-1 bg-yellow-500 text-white rounded text-xs sm:text-sm"
-                        onClick={() =>
+                        onClick={() => {
+                          const checkoutTime = room.booking.time_out
+                            ? new Date(room.booking.time_out).toLocaleString()
+                            : "Open-ended";
                           alert(
-                            `Guest: ${room.booking.guest_name}\nEmail: ${
-                              room.booking.guest_email || "N/A"
-                            }`
-                          )
-                        }
+                            `Guest: ${room.booking.guest_name}\nCheckout Time: ${checkoutTime}`
+                          );
+                        }}
                       >
                         View
                       </button>
