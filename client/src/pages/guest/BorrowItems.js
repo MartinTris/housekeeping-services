@@ -267,6 +267,11 @@ const BorrowItems = () => {
         Operating Hours: <strong>{openTime} - {closeTime}</strong> (Philippine Time)
       </div>
 
+      <div className="bg-green-50 border-l-4 border-green-400 p-3 sm:p-4 mb-4">
+                    <p className="italic text-green-700 text-sm sm:text-base">
+                      Note: Please be patient as delivery of borrowed item(s) may take some time. Our housekeepers may be handling multiple requests and will deliver your item as soon as they can.
+                    </p>
+                  </div>
       {loading ? (
         <p>Loading items...</p>
       ) : items.length === 0 ? (

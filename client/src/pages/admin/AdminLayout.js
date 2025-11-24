@@ -31,7 +31,7 @@ const AdminLayout = ({ setAuth, role }) => {
       {/* Remove ml-64 and add lg:ml-64 instead */}
       <div className="flex-1 lg:ml-64 flex flex-col">
         <header className="flex justify-between items-center px-4 sm:px-8 py-4 bg-white border-b shadow-sm">
-          <h1 className="text-xl sm:text-2xl font-poppins font-semibold text-green-900">
+          <h1 className="ml-11 text-xl sm:text-2xl font-poppins font-semibold text-green-900">
             DLSU-D Housekeeping {role === "superadmin" ? "Superadmin" : "Admin"}
           </h1>
 
