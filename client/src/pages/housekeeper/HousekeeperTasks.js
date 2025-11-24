@@ -27,8 +27,8 @@ const HousekeeperTasks = () => {
     }
   };
 
-  // Acknowledge housekeeping task
-  const handleAcknowledge = async (taskId) => {
+  // Mark as In Progress (replaces acknowledge)
+  const handleMarkInProgress = async (taskId) => {
     try {
       const res = await fetch(
         `${API_URL}/housekeepers/tasks/${taskId}/acknowledge`,
@@ -42,9 +42,9 @@ const HousekeeperTasks = () => {
       );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to acknowledge task");
+      if (!res.ok) throw new Error(data.error || "Failed to mark as in progress");
 
-      toast.success("Task acknowledged.");
+      toast.success("Task marked as in progress.");
       setHousekeepingTasks((prev) =>
         prev.map((t) =>
           t.id === taskId ? { ...t, status: "in_progress" } : t
@@ -52,7 +52,7 @@ const HousekeeperTasks = () => {
       );
     } catch (err) {
       console.error(err);
-      toast.error("Error acknowledging task.");
+      toast.error(err.message || "Error marking task as in progress.");
     }
   };
 
@@ -77,7 +77,7 @@ const HousekeeperTasks = () => {
       setHousekeepingTasks((prev) => prev.filter((t) => t.id !== taskId));
     } catch (err) {
       console.error(err);
-      toast.error("Error completing task.");
+      toast.error(err.message || "Error completing task.");
     }
   };
 
@@ -160,7 +160,7 @@ const HousekeeperTasks = () => {
                       startTimeStr
                     );
 
-                    const canMarkDone = now >= taskStart;
+                    const canStartTask = now >= taskStart;
 
                     return (
                       <tr key={task.id} className="text-center">
@@ -175,20 +175,20 @@ const HousekeeperTasks = () => {
                         <td className="p-2 border">
                           {task.status === "approved" ? (
                             <button
-                              onClick={() => handleAcknowledge(task.id)}
-                              className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                              onClick={() => handleMarkInProgress(task.id)}
+                              disabled={!canStartTask}
+                              className={`px-3 py-1 rounded text-white text-sm ${
+                                canStartTask
+                                  ? "bg-blue-600 hover:bg-blue-700"
+                                  : "bg-gray-400 cursor-not-allowed"
+                              }`}
                             >
-                              Acknowledge Task
+                              Mark as In Progress
                             </button>
                           ) : task.status === "in_progress" ? (
                             <button
                               onClick={() => handleMarkDone(task.id)}
-                              disabled={!canMarkDone}
-                              className={`px-3 py-1 rounded text-white text-sm ${
-                                canMarkDone
-                                  ? "bg-green-600 hover:bg-green-700"
-                                  : "bg-gray-400 cursor-not-allowed"
-                              }`}
+                              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
                             >
                               Mark as Done
                             </button>
@@ -213,7 +213,7 @@ const HousekeeperTasks = () => {
                   startTimeStr
                 );
 
-                const canMarkDone = now >= taskStart;
+                const canStartTask = now >= taskStart;
 
                 return (
                   <div key={task.id} className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
@@ -250,20 +250,20 @@ const HousekeeperTasks = () => {
                       <div className="pt-3">
                         {task.status === "approved" ? (
                           <button
-                            onClick={() => handleAcknowledge(task.id)}
-                            className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                            onClick={() => handleMarkInProgress(task.id)}
+                            disabled={!canStartTask}
+                            className={`w-full px-4 py-2 rounded text-white text-sm font-medium ${
+                              canStartTask
+                                ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+                                : "bg-gray-400 cursor-not-allowed"
+                            }`}
                           >
-                            Acknowledge Task
+                            Mark as In Progress
                           </button>
                         ) : task.status === "in_progress" ? (
                           <button
                             onClick={() => handleMarkDone(task.id)}
-                            disabled={!canMarkDone}
-                            className={`w-full px-4 py-2 rounded text-white text-sm font-medium ${
-                              canMarkDone
-                                ? "bg-green-600 hover:bg-green-700 active:bg-green-800"
-                                : "bg-gray-400 cursor-not-allowed"
-                            }`}
+                            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded text-sm font-medium"
                           >
                             Mark as Done
                           </button>

@@ -19,12 +19,13 @@ const Menu = ({ setAuth, role }) => {
     "/admin/item-list": "item_list",
     "/admin/service-types": "service_types",
     "/admin/reports": "reports",
-    "/admin/manage-admins": "manage_admins", // Superadmin only
-    "/admin/page-access": "page_access", // Superadmin only
+    "/admin/manage-admins": "manage_admins",
+    "/admin/page-access": "page_access",
     
     // Guest pages
     "/guest": "dashboard",
     "/guest/profile": "profile",
+    "/guest/my-requests": "my_requests",
     "/guest/borrow-items": "borrow_items",
     "/guest/system-feedback": "system_feedback",
     
@@ -32,6 +33,7 @@ const Menu = ({ setAuth, role }) => {
     "/housekeeper": "dashboard",
     "/housekeeper/profile": "profile",
     "/housekeeper/tasks": "tasks",
+    "/housekeeper/task-history": "task_history",
   };
 
   const adminItems = [
@@ -61,6 +63,7 @@ const Menu = ({ setAuth, role }) => {
   const guestItems = [
     { name: "Dashboard", path: "/guest", pageKey: "dashboard" },
     { name: "My Profile", path: "/guest/profile", pageKey: "profile" },
+    { name: "My Requests", path: "/guest/my-requests", pageKey: "my_requests" },
     { name: "Borrow Items", path: "/guest/borrow-items", pageKey: "borrow_items" },
     { name: "System Feedback", path: "/guest/system-feedback", pageKey: "system_feedback" },
   ];
@@ -69,6 +72,7 @@ const Menu = ({ setAuth, role }) => {
     { name: "Dashboard", path: "/housekeeper", pageKey: "dashboard" },
     { name: "My Profile", path: "/housekeeper/profile", pageKey: "profile" },
     { name: "Tasks", path: "/housekeeper/tasks", pageKey: "tasks" },
+    { name: "Task History", path: "/housekeeper/task-history", pageKey: "task_history" },
   ];
 
   let items = [];

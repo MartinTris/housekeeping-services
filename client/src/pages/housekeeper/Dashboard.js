@@ -3,8 +3,9 @@ import Information from "../../components/Information";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements";
 import HousekeeperFeedbackWidget from "../../components/HousekeeperFeedbackWidget.js";
+import HousekeeperPersonalTrends from "../../components/HousekeeperPersonalTrends.js";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const HousekeeperDashboard = () => {
   const [view, setView] = useState("dashboard");
@@ -45,10 +46,9 @@ const HousekeeperDashboard = () => {
 
   async function getAverageFeedback() {
     try {
-      const response = await fetch(
-        `${API_URL}/feedback/housekeeper/average`,
-        { headers: { token: localStorage.token } }
-      );
+      const response = await fetch(`${API_URL}/feedback/housekeeper/average`, {
+        headers: { token: localStorage.token },
+      });
       const data = await response.json();
       setAverageFeedback(data.averageRating);
     } catch (err) {
@@ -77,7 +77,6 @@ const HousekeeperDashboard = () => {
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-8">
         <DashboardToggle view={view} setView={setView} />
-
         <div className="flex gap-6">
           {/* Left Side - Welcome Box and Main Content */}
           <div className="flex-1">
@@ -89,22 +88,25 @@ const HousekeeperDashboard = () => {
                 {facility}
               </p>
             </div>
+            <div className="flex-1">
+              <HousekeeperPersonalTrends />
 
-            <div className="grid grid-cols-2 md:grid-cols-2 gap-6 mb-8">
-              <Information 
-                infoName="Total Tasks Done" 
-                value={totalDone}
-                className="glass-card"
-              />
-              <Information 
-                infoName="Average Feedback" 
-                value={`${averageFeedback}/5`}
-                className="glass-card"
-              />
-            </div>
+              <div className="grid grid-cols-2 mt-4 md:grid-cols-2 gap-6 mb-8">
+                <Information
+                  infoName="Total Tasks Done"
+                  value={totalDone}
+                  className="glass-card"
+                />
+                <Information
+                  infoName="Average Feedback"
+                  value={`${averageFeedback}/5`}
+                  className="glass-card"
+                />
+              </div>
 
-            <div className="mt-8">
-              <HousekeeperFeedbackWidget />
+              <div className="mt-8">
+                <HousekeeperFeedbackWidget />
+              </div>
             </div>
           </div>
         </div>

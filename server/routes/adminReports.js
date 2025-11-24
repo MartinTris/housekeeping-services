@@ -2,7 +2,6 @@ const router = require("express").Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 
-// Main reports endpoint - for housekeeping requests (completed only from service_history)
 router.get("/", authorization, async (req, res) => {
   try {
     const { facility: adminFacility, role } = req.user;

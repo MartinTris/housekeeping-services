@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
+import { useLocation } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -9,6 +10,7 @@ const PendingPayments = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState("");
+  const location = useLocation();
   
   // Invoice modal states
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -50,6 +52,21 @@ const PendingPayments = () => {
   useEffect(() => {
     fetchPendingPayments();
   }, []);
+
+  // Scroll to highlighted guest section when URL has guest parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const guestId = params.get('guest');
+    
+    if (guestId && items.length > 0) {
+      setTimeout(() => {
+        const element = document.getElementById(`guest-section-${guestId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [location.search, items]);
 
   const openInvoiceModal = (actionType, itemId = null, userId = null) => {
     setSelectedAction({ type: actionType, itemId, userId });
@@ -249,12 +266,16 @@ const PendingPayments = () => {
 
   const groupedByGuest = items.reduce((acc, item) => {
     const guest = item.borrower_name || "Unknown Guest";
-    const userId = item.user_id;
+    const userId = String(item.user_id); // Convert to string for consistent comparison
     const facility = item.facility;
     if (!acc[userId]) acc[userId] = { guest, facility, items: [] };
     acc[userId].items.push(item);
     return acc;
   }, {});
+
+  // Get highlighted guest from URL
+  const params = new URLSearchParams(location.search);
+  const highlightedGuestId = params.get('guest'); // This is a string from URL
 
   if (loading) return <p className="text-center mt-10">Loading...</p>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
@@ -294,10 +315,24 @@ const PendingPayments = () => {
             0
           );
 
+          const isHighlighted = highlightedGuestId === userId;
+
+          console.log('Checking highlight:', { 
+            highlightedGuestId, 
+            userId, 
+            isHighlighted,
+            guestName: guest 
+          });
+
           return (
             <div
               key={userId}
-              className="mb-4 sm:mb-6 border border-gray-300 rounded-lg p-3 sm:p-4 shadow-sm"
+              id={`guest-section-${userId}`}
+              className={`mb-4 sm:mb-6 border rounded-lg p-3 sm:p-4 shadow-sm transition-all duration-300 ${
+                isHighlighted 
+                  ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-300' 
+                  : 'border-gray-300'
+              }`}
             >
               <div id={`print-content-${userId}`} style={{ display: 'none' }}>
                 <div className="receipt-header">
@@ -352,6 +387,11 @@ const PendingPayments = () => {
                       >
                         {facility}
                       </span>
+                    </p>
+                  )}
+                  {isHighlighted && (
+                    <p className="text-xs sm:text-sm text-orange-600 font-semibold mt-1">
+                      ⚠ Guest has unsettled payment
                     </p>
                   )}
                 </div>

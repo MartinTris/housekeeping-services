@@ -83,7 +83,7 @@ router.post("/", authorization, async (req, res) => {
     const bcryptPassword = await bcrypt.hash(password, salt);
 
     // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationToken = crypto.randomBytes(32).toString("hex");
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     const newUser = await pool.query(
@@ -91,16 +91,27 @@ router.post("/", authorization, async (req, res) => {
                          email_verified, verification_token, verification_token_expires)
        VALUES ($1, $2, $3, $4, 'housekeeper', $5, TRUE, $6, $7, $8)
        RETURNING id, first_name, last_name, email, is_active, facility`,
-      [first_name, last_name, email, bcryptPassword, housekeeperFacility, 
-       false, verificationToken, tokenExpiry]
+      [
+        first_name,
+        last_name,
+        email,
+        bcryptPassword,
+        housekeeperFacility,
+        false,
+        verificationToken,
+        tokenExpiry,
+      ]
     );
 
     // Send verification email
     try {
       await sendVerificationEmail(email, verificationToken, first_name);
-      console.log('✓ Verification email sent to housekeeper:', email);
+      console.log("✓ Verification email sent to housekeeper:", email);
     } catch (emailError) {
-      console.error('Failed to send verification email to housekeeper:', emailError);
+      console.error(
+        "Failed to send verification email to housekeeper:",
+        emailError
+      );
       // Continue even if email fails
     }
 
@@ -111,7 +122,7 @@ router.post("/", authorization, async (req, res) => {
       email: hk.email,
       is_active: hk.is_active,
       facility: hk.facility,
-      message: "Housekeeper added successfully. Verification email sent."
+      message: "Housekeeper added successfully. Verification email sent.",
     });
   } catch (err) {
     console.error(err.message);
@@ -408,6 +419,31 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
+    // Check if task exists and get its time
+    const taskRes = await pool.query(
+      `SELECT preferred_date, preferred_time 
+       FROM housekeeping_requests 
+       WHERE id = $1 AND assigned_to = $2`,
+      [id, hkId]
+    );
+
+    if (taskRes.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ error: "Task not found or not assigned to you" });
+    }
+
+    const task = taskRes.rows[0];
+    const now = new Date();
+    const [startTimeStr] = task.preferred_time.split(" - ");
+    const serviceDateTime = new Date(`${task.preferred_date} ${startTimeStr}`);
+
+    if (now < serviceDateTime) {
+      return res.status(400).json({
+        error: `You can only mark this task as in progress at or after ${task.preferred_time} on ${task.preferred_date}.`,
+      });
+    }
+
     const updated = await pool.query(
       `UPDATE housekeeping_requests 
        SET status = 'in_progress' 
@@ -416,15 +452,9 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
       [id, hkId]
     );
 
-    if (updated.rowCount === 0)
-      return res
-        .status(404)
-        .json({ error: "Task not found or not assigned to you" });
-
     const guestId = updated.rows[0].user_id;
 
-    const message =
-      "Your housekeeping request has been acknowledged and is now in progress.";
+    const message = "Your housekeeping request is now in progress.";
     await pool.query(
       `INSERT INTO notifications (user_id, message, created_at)
        VALUES ($1, $2, NOW())`,
@@ -436,12 +466,11 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
         message,
         type: "info",
       });
-      console.log(`Sent real-time notification to user:${guestId}`);
     }
 
-    res.json({ message: "Task acknowledged." });
+    res.json({ message: "Task marked as in progress." });
   } catch (err) {
-    console.error("Error acknowledging task:", err.message);
+    console.error("Error marking task as in progress:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -587,6 +616,62 @@ router.put("/delivery/:id/confirm", authorization, async (req, res) => {
     res.json({ message: "Delivery confirmed and guest billed successfully." });
   } catch (err) {
     console.error("Error confirming delivery:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/task-history", authorization, async (req, res) => {
+  try {
+    const { id: housekeeperId, role } = req.user;
+    const { days } = req.query;
+
+    if (role !== "housekeeper") {
+      return res
+        .status(403)
+        .json({ error: "Access denied. Housekeeper only." });
+    }
+
+    const validDays = [7, 14, 30, 0]; // 0 represents "All Time"
+    const range = validDays.includes(Number(days)) ? Number(days) : 7;
+
+    // Build the date filter conditionally
+    const dateFilter =
+      range === 0
+        ? "" // No date filter for "All Time"
+        : `AND sh.assigned_at >= NOW() - INTERVAL '${range} days'`;
+
+    // Query from service_history table for this specific housekeeper
+    const historyQuery = `
+  SELECT 
+    CASE 
+      WHEN requester.role = 'guest' THEN CONCAT(requester.first_name, ' ', requester.last_name)
+      WHEN requester.role IN ('admin', 'superadmin') THEN CONCAT(requester.first_name, ' ', requester.last_name, ' (Admin)')
+      ELSE 'N/A'
+    END AS guest_name,
+    st.name AS service_type,
+    r.room_number,
+    sh.facility,
+    TO_CHAR(sh.preferred_date, 'YYYY-MM-DD') AS date,
+    TO_CHAR(sh.preferred_time, 'HH12:MI AM') AS time
+  FROM service_history sh
+  LEFT JOIN users requester ON sh.guest_id = requester.id
+  LEFT JOIN rooms r ON sh.room_id = r.id
+  LEFT JOIN service_types st ON sh.service_type_id = st.id
+  WHERE sh.housekeeper_id = $1
+    AND sh.status = 'completed'
+    ${dateFilter}
+  ORDER BY sh.preferred_date DESC, sh.preferred_time DESC
+`;
+
+    const { rows } = await pool.query(historyQuery, [housekeeperId]);
+
+    res.json({
+      range_days: range === 0 ? "all_time" : range,
+      total_records: rows.length,
+      data: rows,
+    });
+  } catch (err) {
+    console.error("Error fetching task history:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

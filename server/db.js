@@ -9,6 +9,7 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false
   },
+  options: '-c timezone=Asia/Manila',
   max: 20,                          
   min: 5,                           
   idleTimeoutMillis: 30000,         

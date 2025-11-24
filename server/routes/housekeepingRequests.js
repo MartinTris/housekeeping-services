@@ -1009,4 +1009,183 @@ router.get("/service-types", authorization, async (req, res) => {
   }
 });
 
+router.get("/user/my-requests", authorization, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Manila",
+    });
+
+    // Get active requests from housekeeping_requests
+    const activeRequests = await pool.query(
+      `
+      SELECT 
+        hr.id,
+        hr.preferred_date,
+        hr.preferred_time,
+        hr.status,
+        (hr.created_at AT TIME ZONE 'Asia/Manila') AS created_at,
+        st.name AS service_type,
+        st.duration,
+        r.room_number,
+        (hk.first_name || ' ' || hk.last_name) AS housekeeper_name,
+        'active' AS source
+      FROM housekeeping_requests hr
+      JOIN service_types st ON hr.service_type_id = st.id
+      JOIN rooms r ON hr.room_id = r.id
+      LEFT JOIN users hk ON hr.assigned_to = hk.id
+      WHERE hr.user_id = $1 
+        AND hr.preferred_date = $2
+        AND hr.archived = FALSE
+      ORDER BY hr.preferred_time ASC
+      `,
+      [userId, today]
+    );
+
+    // Get completed/historical requests from service_history
+    const historyRequests = await pool.query(
+      `
+      SELECT 
+        sh.id,
+        sh.preferred_date,
+        sh.preferred_time,
+        sh.status,
+        (sh.created_at AT TIME ZONE 'Asia/Manila') AS created_at,
+        st.name AS service_type,
+        st.duration,
+        r.room_number,
+        (hk.first_name || ' ' || hk.last_name) AS housekeeper_name,
+        'history' AS source
+      FROM service_history sh
+      JOIN service_types st ON sh.service_type_id = st.id
+      JOIN rooms r ON sh.room_id = r.id
+      LEFT JOIN users hk ON sh.housekeeper_id = hk.id
+      WHERE sh.guest_id = $1 
+        AND sh.preferred_date = $2
+      ORDER BY sh.preferred_time ASC
+      `,
+      [userId, today]
+    );
+
+    // Combine and format results
+    const allRequests = [...activeRequests.rows, ...historyRequests.rows].map(
+      (req) => {
+        // Calculate end time
+        const [hours, minutes] = req.preferred_time.split(":");
+        const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
+        const endMinutes = startMinutes + req.duration;
+        const endHours = Math.floor(endMinutes / 60) % 24;
+        const endMins = endMinutes % 60;
+        const endTime = `${String(endHours).padStart(2, "0")}:${String(
+          endMins
+        ).padStart(2, "0")}`;
+
+        return {
+          id: req.id,
+          roomNumber: req.room_number,
+          serviceType: req.service_type,
+          preferredDate: req.preferred_date,
+          preferredTime: req.preferred_time,
+          endTime: endTime,
+          status: req.status,
+          housekeeperName: req.housekeeper_name || "Not assigned yet",
+          createdAt: req.created_at,
+          source: req.source,
+        };
+      }
+    );
+
+    // Sort by preferred time
+    allRequests.sort((a, b) => a.preferredTime.localeCompare(b.preferredTime));
+
+    res.json({
+      requests: allRequests,
+      count: allRequests.length,
+      date: today,
+    });
+  } catch (err) {
+    console.error("Error fetching user requests:", err);
+    res.status(500).json({ error: "Server error fetching your requests" });
+  }
+});
+
+router.get("/user/history", authorization, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { filter } = req.query;
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Manila",
+    });
+
+    let dateFilter = "";
+    let params = [userId, today];
+
+    if (filter === "7days") {
+      dateFilter = "AND sh.preferred_date >= CURRENT_DATE - INTERVAL '7 days'";
+    } else if (filter === "30days") {
+      dateFilter = "AND sh.preferred_date >= CURRENT_DATE - INTERVAL '30 days'";
+    }
+    // For 'all', no date filter is applied
+
+    // Get historical requests from service_history (excluding today)
+    const historyRequests = await pool.query(
+      `
+      SELECT 
+        sh.id,
+        sh.preferred_date,
+        sh.preferred_time,
+        sh.status,
+        (sh.created_at AT TIME ZONE 'Asia/Manila') AS created_at,
+        st.name AS service_type,
+        st.duration,
+        r.room_number,
+        (hk.first_name || ' ' || hk.last_name) AS housekeeper_name
+      FROM service_history sh
+      JOIN service_types st ON sh.service_type_id = st.id
+      JOIN rooms r ON sh.room_id = r.id
+      LEFT JOIN users hk ON sh.housekeeper_id = hk.id
+      WHERE sh.guest_id = $1 
+        AND sh.preferred_date < $2
+        ${dateFilter}
+      ORDER BY sh.preferred_date DESC, sh.preferred_time DESC
+      `,
+      params
+    );
+
+    // Format results
+    const formattedHistory = historyRequests.rows.map((req) => {
+      // Calculate end time
+      const [hours, minutes] = req.preferred_time.split(":");
+      const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
+      const endMinutes = startMinutes + req.duration;
+      const endHours = Math.floor(endMinutes / 60) % 24;
+      const endMins = endMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, "0")}:${String(
+        endMins
+      ).padStart(2, "0")}`;
+
+      return {
+        id: req.id,
+        roomNumber: req.room_number,
+        serviceType: req.service_type,
+        preferredDate: req.preferred_date,
+        preferredTime: req.preferred_time,
+        endTime: endTime,
+        status: req.status,
+        housekeeperName: req.housekeeper_name || "Not assigned",
+        createdAt: req.created_at,
+      };
+    });
+
+    res.json({
+      requests: formattedHistory,
+      count: formattedHistory.length,
+      filter: filter,
+    });
+  } catch (err) {
+    console.error("Error fetching user history:", err);
+    res.status(500).json({ error: "Server error fetching history" });
+  }
+});
+
 module.exports = router;

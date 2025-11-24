@@ -37,6 +37,7 @@ import GuestDashboard from "./pages/guest/Dashboard";
 import UserProfile from "./pages/guest/UserProfile";
 import BorrowItems from "./pages/guest/BorrowItems";
 import SystemFeedback from "./pages/guest/SystemFeedback";
+import MyRequests from "./pages/guest/MyRequests";
 
 // Housekeeper pages
 import HousekeeperLayout from "./pages/housekeeper/HousekeeperLayout";
@@ -44,6 +45,7 @@ import HousekeeperDashboard from "./pages/housekeeper/Dashboard";
 import HousekeeperTasks from "./pages/housekeeper/HousekeeperTasks";
 import HousekeeperProfile from "./pages/housekeeper/HousekeeperProfile";
 import HousekeeperFeedbackPage from './pages/housekeeper/HousekeeperFeedbackPage';
+import TaskHistory from "./pages/housekeeper/TaskHistory";
 
 // Auth
 import Login from "./components/Login";
@@ -250,6 +252,7 @@ function App() {
             <Route path="profile" element={<ProtectedRoute pageKey="profile"><UserProfile /></ProtectedRoute>} />
             <Route path="borrow-items" element={<ProtectedRoute pageKey="borrow_items"><BorrowItems /></ProtectedRoute>} />
             <Route path="system-feedback" element={<ProtectedRoute pageKey="system_feedback"><SystemFeedback /></ProtectedRoute>} />
+            <Route path="my-requests" element={<ProtectedRoute pageKey="my_requests"><MyRequests /></ProtectedRoute>} />
           </Route>
 
           {/* ================= HOUSEKEEPER ROUTES ================= */}
@@ -268,7 +271,7 @@ function App() {
             <Route index element={<ProtectedRoute pageKey="dashboard"><HousekeeperDashboard setAuth={setAuth} /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute pageKey="profile"><HousekeeperProfile /></ProtectedRoute>} />
             <Route path="tasks" element={<ProtectedRoute pageKey="tasks"><HousekeeperTasks /></ProtectedRoute>} />
-            <Route path="feedback" element={<HousekeeperFeedbackPage />} />
+            <Route path="task-history" element={<ProtectedRoute pageKey="task_history"><TaskHistory /></ProtectedRoute>} />
           </Route>
 
           {/* ================= DEFAULT ROUTE ================= */}

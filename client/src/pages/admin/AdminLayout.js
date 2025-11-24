@@ -34,7 +34,6 @@ const AdminLayout = ({ setAuth, role }) => {
           <h1 className="ml-11 text-xl sm:text-2xl font-poppins font-semibold text-green-900">
             DLSU-D Housekeeping {role === "superadmin" ? "Superadmin" : "Admin"}
           </h1>
-
           <div className="flex items-center space-x-4">
             {userId && <NotificationBell userId={userId} />}
           </div>

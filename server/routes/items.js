@@ -194,15 +194,23 @@ router.post("/borrow", authorization, async (req, res) => {
 
     const { room_id, room_number } = bookingRes.rows[0];
 
+    // Get current Manila time info - SIMPLIFIED for TIMESTAMPTZ
     const timeCheckResult = await pool.query(`
       SELECT 
-        (NOW() AT TIME ZONE 'Asia/Manila')::time as manila_time,
-        ((NOW() AT TIME ZONE 'Asia/Manila')::timestamp)::date as manila_date,
-        TRIM(to_char((NOW() AT TIME ZONE 'Asia/Manila'), 'Day')) as current_day_name
+        CURRENT_TIME as current_time,
+        CURRENT_DATE as current_date,
+        TRIM(to_char(CURRENT_TIMESTAMP, 'Day')) as current_day_name,
+        CURRENT_TIMESTAMP as current_timestamp
     `);
 
-    const { manila_time, manila_date, current_day_name } =
+    const { current_time, current_date, current_day_name, current_timestamp } =
       timeCheckResult.rows[0];
+
+    console.log("\n=== TIMESTAMP DEBUG ===");
+    console.log("Current Date:", current_date);
+    console.log("Current Time:", current_time);
+    console.log("Current Day:", current_day_name);
+    console.log("Current Timestamp:", current_timestamp);
 
     // Query for available housekeepers
     const availableHk = await pool.query(
@@ -218,122 +226,140 @@ router.post("/borrow", authorization, async (req, res) => {
       WHERE u.role = 'housekeeper'
         AND u.is_active = TRUE
         AND u.facility = $1
-        -- Check if current day is NOT in their day_offs array
         AND NOT ($2 = ANY(s.day_offs))
-        -- Check if current Manila time is within shift hours
         AND $3::time BETWEEN s.shift_time_in AND s.shift_time_out
       `,
-      [facility, current_day_name, manila_time]
+      [facility, current_day_name, current_time]
     );
+
+    console.log("\n=== AVAILABLE HOUSEKEEPERS ===");
+    console.log("Count:", availableHk.rows.length);
+    availableHk.rows.forEach(hk => {
+      console.log(`- ID: ${hk.id}, Name: ${hk.name}, Shift: ${hk.shift_time_in}-${hk.shift_time_out}, Days Off: ${hk.day_offs}`);
+    });
 
     let assignedHousekeeperId;
     let assignedHousekeeperName;
 
     if (availableHk.rows.length === 0) {
-      console.log("No available housekeepers found for facility:", facility);
+      console.log("\n❌ No available housekeepers found for facility:", facility);
       assignedHousekeeperId = null;
       assignedHousekeeperName = null;
     } else {
-      console.log("=== CHECKING BUSY HOUSEKEEPERS ===");
-      // Exclude busy housekeepers with ongoing housekeeping tasks today (Manila date)
-      const busyHk = await pool.query(
+      console.log("\n=== CHECKING BUSY HOUSEKEEPERS ===");
+      
+      // Check for busy housekeepers with housekeeping tasks today
+      const busyHousekeeping = await pool.query(
         `
-        SELECT DISTINCT assigned_to, preferred_date
+        SELECT 
+          assigned_to,
+          status,
+          preferred_date,
+          preferred_date::date as pref_date_only
         FROM housekeeping_requests
         WHERE status IN ('approved', 'in_progress')
           AND archived = FALSE
           AND assigned_to IS NOT NULL
-          AND preferred_date = $1
-      `,
-        [manila_date]
+          AND preferred_date::date = CURRENT_DATE
+      `
       );
 
-      console.log("Busy housekeepers query result:", busyHk.rows);
-      console.log("Busy housekeepers count:", busyHk.rows.length);
+      console.log("\nBusy with housekeeping tasks today:");
+      busyHousekeeping.rows.forEach(row => {
+        console.log(`- Housekeeper ID: ${row.assigned_to}, Status: ${row.status}, Date: ${row.pref_date_only}`);
+      });
 
-      const busyIds = busyHk.rows.map((r) => String(r.assigned_to));
-      console.log("Busy IDs:", busyIds);
-
-      const freeHk = availableHk.rows.filter(
-        (hk) => !busyIds.includes(String(hk.id))
-      );
-
-      console.log(
-        "Free housekeepers after filtering busy ones:",
-        freeHk.length
-      );
-      console.log(
-        "Free housekeepers:",
-        freeHk.map((h) => ({ id: h.id, name: h.name }))
-      );
-
-      const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
-      console.log("Final candidates count:", candidates.length);
-      console.log(
-        "Candidates:",
-        candidates.map((c) => ({ id: c.id, name: c.name }))
-      );
-
-      // Count ongoing deliveries for fairness
-      console.log("=== CHECKING DELIVERY COUNTS ===");
-
-      // First check all deliveries
-      const allDeliveries = await pool.query(`
+      // Check for housekeepers with pending/in-progress deliveries today
+      const busyDeliveries = await pool.query(`
         SELECT 
-          id,
-          housekeeper_id, 
+          housekeeper_id,
           delivery_status,
           created_at,
-          created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' as manila_created_datetime,
-          (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date as manila_created_date
+          created_at::date as created_date
         FROM borrowed_items
         WHERE housekeeper_id IS NOT NULL
           AND delivery_status IN ('pending_delivery', 'in_progress')
+          AND created_at::date = CURRENT_DATE
       `);
 
-      console.log("All pending/in-progress deliveries:", allDeliveries.rows);
-
-      // Count manually in JavaScript for better debugging
-      const countMap = {};
-      const manilaDateStr = new Date(manila_date).toISOString().split("T")[0];
-      console.log("Target Manila Date:", manilaDateStr);
-
-      allDeliveries.rows.forEach((delivery) => {
-        const deliveryDateStr = new Date(delivery.manila_created_date)
-          .toISOString()
-          .split("T")[0];
-
-        if (deliveryDateStr === manilaDateStr) {
-          const hkId = delivery.housekeeper_id;
-          countMap[hkId] = (countMap[hkId] || 0) + 1;
-        }
+      console.log("\nBusy with deliveries today:");
+      busyDeliveries.rows.forEach(row => {
+        console.log(`- Housekeeper ID: ${row.housekeeper_id}, Status: ${row.delivery_status}, Date: ${row.created_date}`);
       });
 
-      console.log("Final count map:", countMap);
+      // Combine busy IDs
+      const busyFromHousekeeping = busyHousekeeping.rows.map(r => Number(r.assigned_to));
+      const busyFromDeliveries = busyDeliveries.rows.map(r => Number(r.housekeeper_id));
+      const allBusyIds = [...new Set([...busyFromHousekeeping, ...busyFromDeliveries])];
+      
+      console.log("\nAll busy housekeeper IDs:", allBusyIds);
 
-      candidates.forEach((c) => {
-        const count = countMap[c.id] || 0;
-        console.log(`${c.name} (${c.id}): ${count} deliveries`);
+      // Filter out busy housekeepers
+      const freeHk = availableHk.rows.filter(hk => !allBusyIds.includes(hk.id));
+
+      console.log("\n=== FREE HOUSEKEEPERS ===");
+      console.log("Count:", freeHk.length);
+      freeHk.forEach(hk => {
+        console.log(`- ID: ${hk.id}, Name: ${hk.name}`);
       });
 
+      // Use free housekeepers if available, otherwise use all available
+      const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
+      
+      if (freeHk.length === 0) {
+        console.log("\n⚠️ No free housekeepers! Using all available housekeepers.");
+      }
+
+      console.log("\n=== COUNTING DELIVERIES FOR LOAD BALANCING ===");
+
+      // Count ALL deliveries today (including completed ones)
+      const allDeliveriesToday = await pool.query(`
+        SELECT 
+          housekeeper_id,
+          COUNT(*) as delivery_count
+        FROM borrowed_items
+        WHERE housekeeper_id IS NOT NULL
+          AND created_at::date = CURRENT_DATE
+        GROUP BY housekeeper_id
+      `);
+
+      const deliveryCountMap = {};
+      allDeliveriesToday.rows.forEach(row => {
+        deliveryCountMap[row.housekeeper_id] = parseInt(row.delivery_count);
+      });
+
+      console.log("\nDelivery counts today:");
+      candidates.forEach(hk => {
+        const count = deliveryCountMap[hk.id] || 0;
+        console.log(`- ${hk.name} (ID: ${hk.id}): ${count} deliveries`);
+      });
+
+      // Sort candidates: first by delivery count (ascending), then by name
       candidates.sort((a, b) => {
-        const countA = countMap[a.id] || 0;
-        const countB = countMap[b.id] || 0;
-        if (countA === countB) {
-          const result = a.name.localeCompare(b.name);
-          return result;
+        const countA = deliveryCountMap[a.id] || 0;
+        const countB = deliveryCountMap[b.id] || 0;
+        
+        if (countA !== countB) {
+          return countA - countB; // Fewer deliveries = higher priority
         }
-        return countA - countB;
+        return a.name.localeCompare(b.name); // Alphabetical tiebreaker
       });
 
-      console.log(
-        "Sorted candidates:",
-        candidates.map((c) => c.name)
-      );
+      console.log("\n=== SORTED CANDIDATES (by priority) ===");
+      candidates.forEach((hk, index) => {
+        const count = deliveryCountMap[hk.id] || 0;
+        console.log(`${index + 1}. ${hk.name} (ID: ${hk.id}) - ${count} deliveries`);
+      });
 
+      // Select the first candidate (least busy)
       const selectedHk = candidates[0];
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
+      
+      console.log("\n✅ SELECTED HOUSEKEEPER:");
+      console.log(`- ID: ${assignedHousekeeperId}`);
+      console.log(`- Name: ${assignedHousekeeperName}`);
+      console.log(`- Current deliveries today: ${deliveryCountMap[assignedHousekeeperId] || 0}`);
     }
 
     // Reduce item quantity
@@ -355,9 +381,11 @@ router.post("/borrow", authorization, async (req, res) => {
         item.price * quantity,
         "pending_delivery",
         assignedHousekeeperId,
-        room_id, // Added room_id here
+        room_id,
       ]
     );
+
+    console.log("\n✅ Borrowed item created:", borrowed.rows[0].id);
 
     // Notify admin
     await pool.query(
@@ -403,15 +431,9 @@ router.post("/borrow", authorization, async (req, res) => {
               guestName: guestName,
             }
           );
-          console.log(
-            "✓ Delivery assignment email sent to:",
-            hkEmailInfo.rows[0].email
-          );
+          console.log("✓ Delivery assignment email sent to:", hkEmailInfo.rows[0].email);
         } catch (emailError) {
-          console.error(
-            "Failed to send delivery assignment email:",
-            emailError
-          );
+          console.error("Failed to send delivery assignment email:", emailError);
         }
       }
 
@@ -448,7 +470,7 @@ router.post("/borrow", authorization, async (req, res) => {
       });
     }
   } catch (err) {
-    console.error("Borrow error:", err);
+    console.error("\n❌ BORROW ERROR:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

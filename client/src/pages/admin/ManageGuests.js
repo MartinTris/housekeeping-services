@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { Trash2, Edit3, Check, X } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const ManageGuests = () => {
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -14,6 +16,7 @@ const ManageGuests = () => {
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [timeOut, setTimeOut] = useState("");
   const [role, setRole] = useState("");
+  const [guestsPendingPayments, setGuestsPendingPayments] = useState(new Set());
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,6 +54,9 @@ const ManageGuests = () => {
 
       const data = await res.json();
       setRooms(data || []);
+
+      // Fetch pending payments to check which guests have unsettled payments
+      await fetchPendingPaymentsForGuests(data);
     } catch (err) {
       console.error("Network error fetching rooms:", err);
       setRooms([]);
@@ -62,6 +68,31 @@ const ManageGuests = () => {
   useEffect(() => {
     fetchRooms();
   }, []);
+
+  // Fetch pending payments to determine which guests have unsettled bills
+  const fetchPendingPaymentsForGuests = async (roomsData) => {
+    try {
+      const res = await fetch(`${API_URL}/items/pending`, {
+        headers: { token: localStorage.token },
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch pending payments:", res.status);
+        return;
+      }
+
+      const pendingItems = await res.json();
+      
+      // Create a Set of user IDs who have pending payments
+      const guestsWithPending = new Set(
+        pendingItems.map(item => item.user_id)
+      );
+      
+      setGuestsPendingPayments(guestsWithPending);
+    } catch (err) {
+      console.error("Error fetching pending payments:", err);
+    }
+  };
 
   // Guest search
   useEffect(() => {
@@ -519,12 +550,26 @@ const ManageGuests = () => {
                         View
                       </button>
                       {role === "admin" && (
-                        <button
-                          className="px-2 sm:px-3 py-1 bg-red-600 text-white rounded text-xs sm:text-sm whitespace-nowrap"
-                          onClick={() => handleRemove(room)}
-                        >
-                          Remove Guest
-                        </button>
+                        <>
+                          {guestsPendingPayments.has(room.booking.guest_id) ? (
+                            <button
+                              className="px-2 sm:px-3 py-1 bg-orange-600 text-white rounded text-xs sm:text-sm whitespace-nowrap"
+                              onClick={() => {
+                                console.log('Navigating to pending payments for guest:', room.booking.guest_id);
+                                navigate(`/admin/pending-payments?guest=${room.booking.guest_id}`);
+                              }}
+                            >
+                              View Pending Payment(s)
+                            </button>
+                          ) : (
+                            <button
+                              className="px-2 sm:px-3 py-1 bg-red-600 text-white rounded text-xs sm:text-sm whitespace-nowrap"
+                              onClick={() => handleRemove(room)}
+                            >
+                              Remove Guest
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </>
