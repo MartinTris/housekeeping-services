@@ -51,7 +51,7 @@ const HousekeeperLayout = ({ setAuth, role }) => {
           </h1>
 
           <div className="flex items-center space-x-4 flex-shrink-0">
-            <span className="text-sm sm:text-base font-poppins text-green-900 opacity-80">
+            <span className="text-sm sm:text-base font-bold font-poppins text-green-900 opacity-80">
               {name}
             </span>
 
