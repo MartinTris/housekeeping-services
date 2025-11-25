@@ -11,7 +11,10 @@ import {
 
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "./context/NotificationContext";
-import { PermissionsProvider, usePermissions } from "./context/PermissionsContext";
+import {
+  PermissionsProvider,
+  usePermissions,
+} from "./context/PermissionsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Superadmin pages
@@ -44,21 +47,22 @@ import HousekeeperLayout from "./pages/housekeeper/HousekeeperLayout";
 import HousekeeperDashboard from "./pages/housekeeper/Dashboard";
 import HousekeeperTasks from "./pages/housekeeper/HousekeeperTasks";
 import HousekeeperProfile from "./pages/housekeeper/HousekeeperProfile";
-import HousekeeperFeedbackPage from './pages/housekeeper/HousekeeperFeedbackPage';
+import HousekeeperFeedbackPage from "./pages/housekeeper/HousekeeperFeedbackPage";
 import TaskHistory from "./pages/housekeeper/TaskHistory";
 
 // Auth
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ForceChangePassword from "./components/ForceChangePassword";
-import VerifyEmail from './pages/VerifyEmail';
+import VerifyEmail from "./pages/VerifyEmail";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const setAuth = (boolean) => {
     setIsAuthenticated(boolean);
   };
@@ -191,7 +195,7 @@ function App() {
               )
             }
           />
-          
+
           {/* ================= VERIFY EMAIL ================= */}
           <Route path="/verify-email" element={<VerifyEmail />} />
 
@@ -206,7 +210,7 @@ function App() {
               )
             }
           />
-
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           {/* ================= ADMIN ROUTES ================= */}
           <Route
             path="/admin/*"
@@ -221,18 +225,88 @@ function App() {
               )
             }
           >
-            <Route index element={<ProtectedRoute pageKey="dashboard"><AdminDashboard setAuth={setAuth} /></ProtectedRoute>} />
-            <Route path="housekeepers" element={<ProtectedRoute pageKey="housekeepers"><AddHousekeeper /></ProtectedRoute>} />
-            <Route path="profile" element={<ProtectedRoute pageKey="profile"><AdminProfile /></ProtectedRoute>} />
-            <Route path="guests" element={<ProtectedRoute pageKey="guests"><ManageGuests /></ProtectedRoute>} />
-            <Route path="requests" element={<ProtectedRoute pageKey="requests"><ServiceRequests /></ProtectedRoute>} />
-            <Route path="item-list" element={<ProtectedRoute pageKey="item_list"><ItemList /></ProtectedRoute>} />
-            <Route path="pending-payments" element={<ProtectedRoute pageKey="dashboard"><PendingPayments /></ProtectedRoute>} />
-            <Route path="service-types" element={<ProtectedRoute pageKey="service_types"><ServiceTypes /></ProtectedRoute>} />
-            <Route path="reports" element={<ProtectedRoute pageKey="reports"><Reports /></ProtectedRoute>} />
+            <Route
+              index
+              element={
+                <ProtectedRoute pageKey="dashboard">
+                  <AdminDashboard setAuth={setAuth} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="housekeepers"
+              element={
+                <ProtectedRoute pageKey="housekeepers">
+                  <AddHousekeeper />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute pageKey="profile">
+                  <AdminProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="guests"
+              element={
+                <ProtectedRoute pageKey="guests">
+                  <ManageGuests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="requests"
+              element={
+                <ProtectedRoute pageKey="requests">
+                  <ServiceRequests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="item-list"
+              element={
+                <ProtectedRoute pageKey="item_list">
+                  <ItemList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="pending-payments"
+              element={
+                <ProtectedRoute pageKey="dashboard">
+                  <PendingPayments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="service-types"
+              element={
+                <ProtectedRoute pageKey="service_types">
+                  <ServiceTypes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <ProtectedRoute pageKey="reports">
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
             <Route path="manage-admins" element={<ManageAdmins />} />
-            <Route path="feedback" element={<ProtectedRoute pageKey="dashboard"><FeedbackPage /></ProtectedRoute>} />
-            <Route path="page-access" element={<PageAccessControl /> } />
+            <Route
+              path="feedback"
+              element={
+                <ProtectedRoute pageKey="dashboard">
+                  <FeedbackPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="page-access" element={<PageAccessControl />} />
           </Route>
 
           {/* ================= GUEST ROUTES ================= */}
@@ -248,11 +322,46 @@ function App() {
               )
             }
           >
-            <Route index element={<ProtectedRoute pageKey="dashboard"><GuestDashboard setAuth={setAuth} /></ProtectedRoute>} />
-            <Route path="profile" element={<ProtectedRoute pageKey="profile"><UserProfile /></ProtectedRoute>} />
-            <Route path="borrow-items" element={<ProtectedRoute pageKey="borrow_items"><BorrowItems /></ProtectedRoute>} />
-            <Route path="system-feedback" element={<ProtectedRoute pageKey="system_feedback"><SystemFeedback /></ProtectedRoute>} />
-            <Route path="my-requests" element={<ProtectedRoute pageKey="my_requests"><MyRequests /></ProtectedRoute>} />
+            <Route
+              index
+              element={
+                <ProtectedRoute pageKey="dashboard">
+                  <GuestDashboard setAuth={setAuth} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute pageKey="profile">
+                  <UserProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="borrow-items"
+              element={
+                <ProtectedRoute pageKey="borrow_items">
+                  <BorrowItems />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="system-feedback"
+              element={
+                <ProtectedRoute pageKey="system_feedback">
+                  <SystemFeedback />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="my-requests"
+              element={
+                <ProtectedRoute pageKey="my_requests">
+                  <MyRequests />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           {/* ================= HOUSEKEEPER ROUTES ================= */}
@@ -268,10 +377,38 @@ function App() {
               )
             }
           >
-            <Route index element={<ProtectedRoute pageKey="dashboard"><HousekeeperDashboard setAuth={setAuth} /></ProtectedRoute>} />
-            <Route path="profile" element={<ProtectedRoute pageKey="profile"><HousekeeperProfile /></ProtectedRoute>} />
-            <Route path="tasks" element={<ProtectedRoute pageKey="tasks"><HousekeeperTasks /></ProtectedRoute>} />
-            <Route path="task-history" element={<ProtectedRoute pageKey="task_history"><TaskHistory /></ProtectedRoute>} />
+            <Route
+              index
+              element={
+                <ProtectedRoute pageKey="dashboard">
+                  <HousekeeperDashboard setAuth={setAuth} />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute pageKey="profile">
+                  <HousekeeperProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="tasks"
+              element={
+                <ProtectedRoute pageKey="tasks">
+                  <HousekeeperTasks />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="task-history"
+              element={
+                <ProtectedRoute pageKey="task_history">
+                  <TaskHistory />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           {/* ================= DEFAULT ROUTE ================= */}

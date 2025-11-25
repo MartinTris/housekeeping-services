@@ -5,7 +5,7 @@ const jwtGenerator = require("../utils/jwtGenerator");
 const validInfo = require("../middleware/validInfo");
 const { authorization, checkAdminOrSuperAdmin, checkSuperAdmin } = require("../middleware/authorization");
 const crypto = require("crypto");
-const { sendVerificationEmail } = require("../utils/emailService");
+const { sendVerificationEmail, sendPasswordResetEmail } = require("../utils/emailService");
 
 // REGISTER
 router.post("/register", validInfo, async (req, res) => {
@@ -166,6 +166,144 @@ router.post("/resend-verification", async (req, res) => {
   }
 });
 
+// REQUEST PASSWORD RESET
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Check if user exists
+    const user = await pool.query(
+      "SELECT id, email, first_name FROM users WHERE email = $1",
+      [email]
+    );
+
+    // Always return success to prevent email enumeration
+    if (user.rows.length === 0) {
+      return res.json({ 
+        message: "If an account exists with that email, a password reset link has been sent." 
+      });
+    }
+
+    const userData = user.rows[0];
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store token in database
+    await pool.query(
+      `UPDATE users 
+       SET password_reset_token = $1, password_reset_expires = $2 
+       WHERE id = $3`,
+      [resetToken, tokenExpiry, userData.id]
+    );
+
+    // Send email
+    try {
+      await sendPasswordResetEmail(userData.email, resetToken, userData.first_name);
+      console.log('✓ Password reset email sent to:', userData.email);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      return res.status(500).json({ 
+        message: "Failed to send password reset email. Please try again later." 
+      });
+    }
+
+    res.json({ 
+      message: "If an account exists with that email, a password reset link has been sent." 
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// VERIFY RESET TOKEN
+router.get("/verify-reset-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const result = await pool.query(
+      `SELECT id, email, first_name FROM users 
+       WHERE password_reset_token = $1 
+       AND password_reset_expires > NOW()`,
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ 
+        message: "Invalid or expired reset token",
+        valid: false 
+      });
+    }
+
+    res.json({ 
+      valid: true,
+      email: result.rows[0].email 
+    });
+  } catch (err) {
+    console.error('Verify reset token error:', err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// RESET PASSWORD
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    // Find user with valid token
+    const user = await pool.query(
+      `SELECT id, role, email FROM users 
+       WHERE password_reset_token = $1 
+       AND password_reset_expires > NOW()`,
+      [token]
+    );
+
+    if (user.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+
+    const userData = user.rows[0];
+
+    // Hash new password
+    const saltRound = 10;
+    const salt = await bcrypt.genSalt(saltRound);
+    const bcryptPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset token
+    await pool.query(
+      `UPDATE users 
+       SET password_hash = $1, 
+           password_reset_token = NULL, 
+           password_reset_expires = NULL,
+           first_login = false
+       WHERE id = $2`,
+      [bcryptPassword, userData.id]
+    );
+
+    res.json({ 
+      message: "Password has been reset successfully. You can now log in with your new password.",
+      success: true
+    });
+  } catch (err) {
+    console.error('Reset password error:', err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // LOGIN - Updated to check email verification
 router.post("/login", validInfo, async (req, res) => {
   try {
@@ -280,118 +418,6 @@ router.put("/change-password", authorization, async (req, res) => {
       message: "Password updated successfully",
       token: newToken,
       first_login: false
-    });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json("Server error");
-  }
-});
-
-// Login
-router.post("/login", validInfo, async (req, res) => {
-  try {
-    const { email, password, role } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ message: "Email required" });
-    }
-
-    // Query user by email first
-    const user = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
-    );
-
-    if (user.rows.length === 0) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    const userData = user.rows[0];
-
-    // Allow superadmin to login through admin button
-    if (role === "admin" && userData.role === "superadmin") {
-      // Superadmin can login through admin login
-      const validPassword = await bcrypt.compare(password, userData.password_hash);
-      
-      if (!validPassword) {
-        return res.status(401).json({ message: "Password incorrect" });
-      }
-
-      const token = jwtGenerator(userData);
-      return res.json({
-        token,
-        role: userData.role, // Return 'superadmin' not 'admin'
-        first_login: userData.first_login,
-      });
-    }
-
-    // For regular users, check if role matches
-    if (userData.role !== role) {
-      return res.status(401).json({ message: "User not found or role mismatch" });
-    }
-
-    const validPassword = await bcrypt.compare(password, userData.password_hash);
-    
-    if (!validPassword) {
-      return res.status(401).json({ message: "Password incorrect" });
-    }
-
-    const token = jwtGenerator(userData);
-    res.json({
-      token,
-      role: userData.role,
-      first_login: userData.first_login,
-    });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json("Server error");
-  }
-});
-
-// VERIFY TOKEN
-router.get("/is-verify", authorization, async (req, res) => {
-  try {
-    res.json(true);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json("Server error");
-  }
-});
-
-// Force password change on first login
-router.put("/change-password", authorization, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { newPassword } = req.body;
-
-    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
-
-    if (!newPassword || !passwordRegex.test(newPassword)) {
-      return res.status(400).json({
-        message:
-          "Password must be at least 6 characters long and include at least 1 number and 1 special character"
-      });
-    }
-
-    const saltRound = 10;
-    const salt = await bcrypt.genSalt(saltRound);
-    const bcryptPassword = await bcrypt.hash(newPassword, salt);
-
-    await pool.query(
-      "UPDATE users SET password_hash = $1, first_login = FALSE WHERE id = $2",
-      [bcryptPassword, userId]
-    );
-
-    const updatedUser = await pool.query(
-      "SELECT * FROM users WHERE id = $1",
-      [userId]
-    );
-
-    const newToken = jwtGenerator(updatedUser.rows[0]);
-
-    res.json({ 
-      message: "Password updated successfully",
-      token: newToken
     });
   } catch (err) {
     console.error(err.message);

@@ -219,4 +219,101 @@ async function sendTaskAssignmentEmail(email, firstName, taskDetails) {
   }
 }
 
-module.exports = { sendVerificationEmail, sendTaskAssignmentEmail };
+async function sendPasswordResetEmail(email, resetToken, firstName) {
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  
+  sendSmtpEmail.sender = {
+    name: "DLSU-D Housekeeping Services",
+    email: process.env.SENDER_EMAIL
+  };
+  
+  sendSmtpEmail.to = [{ email: email, name: firstName }];
+  
+  sendSmtpEmail.subject = "Password Reset Request - Housekeeping Services";
+  
+  const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+  
+  sendSmtpEmail.htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #087830; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
+        .button { 
+          display: inline-block; 
+          padding: 12px 30px; 
+          background-color: #087830; 
+          color: white; 
+          text-decoration: none; 
+          border-radius: 5px; 
+          margin: 20px 0;
+          font-weight: bold;
+        }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; padding: 20px; }
+        .warning { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1 style="margin: 0;">🔒 DLSU-D Housekeeping Services</h1>
+        </div>
+        <div class="content">
+          <h2 style="color: #087830;">Password Reset Request</h2>
+          <p>Hello ${firstName},</p>
+          <p>We received a request to reset your password for your Housekeeping Services account.</p>
+          <p>Click the button below to reset your password:</p>
+          
+          <div style="text-align: center;">
+            <a href="${resetUrl}" class="button">Reset Password</a>
+          </div>
+          
+          <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+          <p style="background: #f4f4f4; padding: 10px; word-break: break-all; font-size: 12px;">${resetUrl}</p>
+          
+          <div class="warning">
+            <p style="margin: 0;"><strong>⏰ This link will expire in 1 hour.</strong></p>
+          </div>
+          
+          <p style="color: #666; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+        </div>
+        <div class="footer">
+          <p>&copy; 2025 Housekeeping Services. All rights reserved.</p>
+          <p style="font-size: 11px; color: #999;">This is an automated email. Please do not reply.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  sendSmtpEmail.textContent = `
+    Password Reset Request - DLSU-D Housekeeping Services
+    
+    Hello ${firstName},
+    
+    We received a request to reset your password. Click the link below to reset it:
+    
+    ${resetUrl}
+    
+    This link will expire in 1 hour.
+    
+    If you didn't request this, please ignore this email.
+    
+    ---
+    DLSU-D Housekeeping Services
+  `;
+
+  try {
+    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log('✅ Password reset email sent successfully!');
+    return { success: true, messageId: data.messageId };
+  } catch (error) {
+    console.error('❌ Error sending password reset email:', error.message);
+    throw error;
+  }
+}
+
+module.exports = { sendVerificationEmail, sendTaskAssignmentEmail, sendPasswordResetEmail };

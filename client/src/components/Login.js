@@ -17,6 +17,11 @@ const Login = ({ setAuth, setUser }) => {
   // ✅ Add this new state for T&C modal
   const [showTerms, setShowTerms] = useState(false);
 
+  // ✅ Add forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMessage, setForgotMessage] = useState("");
+
   const navigate = useNavigate();
 
   const { email, password } = inputs;
@@ -27,6 +32,34 @@ const Login = ({ setAuth, setUser }) => {
 
   const onPopupChange = (e) => {
     setPopupInputs({ ...popupInputs, [e.target.name]: e.target.value });
+  };
+
+  // ✅ Add forgot password handler
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setForgotMessage("");
+
+    try {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      const data = await response.json();
+      setForgotMessage(data.message);
+      
+      if (response.ok) {
+        setTimeout(() => {
+          setShowForgotPassword(false);
+          setForgotEmail("");
+          setForgotMessage("");
+        }, 3000);
+      }
+    } catch (err) {
+      console.error(err.message);
+      setForgotMessage("Error sending reset email. Please try again.");
+    }
   };
 
   const handleLogin = async (e, loginRole, creds) => {
@@ -228,6 +261,19 @@ const Login = ({ setAuth, setUser }) => {
               </button>
             </p>
 
+            {/* ✅ Add Forgot Password button */}
+            <p className="mt-2 text-center text-gray-600 text-sm">
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setShowForgotPassword(true);
+                }}
+                className="text-blue-600 hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </p>
+
             <div className="mt-4 sm:mt-6 text-center flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
               <button
                 onClick={() => {
@@ -308,6 +354,73 @@ const Login = ({ setAuth, setUser }) => {
                 </button>
               </div>
             </div>
+
+            {/* ✅ Add Forgot Password button in staff modal too */}
+            <p className="mt-3 text-center text-gray-600 text-sm">
+              <button
+                onClick={() => {
+                  setPopupRole(null);
+                  setShowForgotPassword(true);
+                }}
+                className="text-blue-600 hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Add Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <h3 className="text-xl sm:text-2xl font-bold text-green-900 mb-4 text-center">
+              Reset Password
+            </h3>
+            <p className="text-gray-600 text-center mb-6 text-sm sm:text-base">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+            
+            {forgotMessage && (
+              <div className={`p-3 rounded-lg mb-4 text-center text-sm ${
+                forgotMessage.includes('error') || forgotMessage.includes('Failed') 
+                  ? 'bg-red-100 text-red-700' 
+                  : 'bg-green-100 text-green-700'
+              }`}>
+                {forgotMessage}
+              </div>
+            )}
+            
+            <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                required
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setForgotEmail("");
+                    setForgotMessage("");
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold hover:bg-gray-400 transition text-sm sm:text-base"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-900 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold hover:bg-green-800 transition text-sm sm:text-base"
+                >
+                  Send Reset Link
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
