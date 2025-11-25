@@ -269,6 +269,7 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ message: "Token and new password are required" });
     }
 
+    // Password validation
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
     
     if (!passwordRegex.test(newPassword)) {
@@ -280,7 +281,7 @@ router.post("/reset-password", async (req, res) => {
 
     // Find user with valid token
     const user = await pool.query(
-      `SELECT id, role, email FROM users 
+      `SELECT id, role, email, password_hash FROM users 
        WHERE password_reset_token = $1 
        AND password_reset_expires > NOW()`,
       [token]
@@ -292,6 +293,7 @@ router.post("/reset-password", async (req, res) => {
 
     const userData = user.rows[0];
 
+    // Check if new password is same as old password
     const isSamePassword = await bcrypt.compare(newPassword, userData.password_hash);
     if (isSamePassword) {
       return res.status(400).json({ 
