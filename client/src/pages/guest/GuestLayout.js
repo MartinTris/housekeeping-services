@@ -3,10 +3,26 @@ import { Outlet } from "react-router-dom";
 import NotificationBell from "../../components/NotificationBell";
 import { useEffect, useState } from "react";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const GuestLayout = ({ setAuth, role }) => {
   const [userId, setUserId] = useState(null);
+    const [name, setName] = useState("");
+  
+    async function getName() {
+      try {
+        const response = await fetch(`${API_URL}/dashboard/`, {
+          method: "GET",
+          headers: { token: localStorage.token },
+        });
+  
+        const parseRes = await response.json();
+  
+        setName(parseRes.name);
+      } catch (err) {
+        console.error(err.message);
+      }
+    }
 
   useEffect(() => {
     // Fetch current user to get ID for notifications
@@ -22,22 +38,26 @@ const GuestLayout = ({ setAuth, role }) => {
       }
     };
     fetchUser();
+    getName();
   }, []);
 
-   return (
+  return (
     <div className="flex min-h-screen bg-gray-50">
       <Menu setAuth={setAuth} role={role} />
 
       {/* Main wrapper - responsive margin */}
       <div className="flex-1 lg:ml-64 flex flex-col">
         {/* Header Bar */}
-        <header className="flex justify-between items-center px-4 sm:px-8 py-4 bg-white border-b shadow-sm">
-          <h1 className="ml-11 text-lg sm:text-xl lg:text-2xl font-poppins font-semibold text-green-900">
-            DLSU-D Housekeeping
+        <header className="flex justify-between items-center px-4 sm:px-6 md:px-8 py-3 sm:py-4 bg-white border-b shadow-sm w-full">
+          <h1 className="ml-11 text-base sm:text-lg md:text-xl lg:text-2xl font-poppins font-semibold text-green-900">
+            DLSU-D Housekeeping Services
           </h1>
 
-          {/* Notification Bell aligned to top-right */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 flex-shrink-0">
+            <span className="text-sm sm:text-base font-poppins text-green-900 opacity-80">
+              {name}
+            </span>
+
             {userId && <NotificationBell userId={userId} />}
           </div>
         </header>
@@ -47,7 +67,7 @@ const GuestLayout = ({ setAuth, role }) => {
           <Outlet />
         </main>
       </div>
-    </div>  
+    </div>
   );
 };
 
