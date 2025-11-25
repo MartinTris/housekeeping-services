@@ -566,7 +566,7 @@ const ManageGuests = () => {
                               className="px-2 sm:px-3 py-1 bg-red-600 text-white rounded text-xs sm:text-sm whitespace-nowrap"
                               onClick={() => handleRemove(room)}
                             >
-                              Remove Guest
+                              Check out Guest
                             </button>
                           )}
                         </>
@@ -580,7 +580,7 @@ const ManageGuests = () => {
                         className="mt-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded text-xs sm:text-sm w-full sm:w-auto"
                         onClick={() => openAssignModal(room)}
                       >
-                        Assign Guest
+                        Check in Guest
                       </button>
                     )}
                     {isAdminOffice && (

@@ -12,6 +12,15 @@ router.post("/register", validInfo, async (req, res) => {
   try {
     const { first_name, last_name, email, password, role, facility } = req.body;
 
+        const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
+    
+    if (!password || !passwordRegex.test(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 6 characters long and include at least 1 number and 1 special character"
+      });
+    }
+
     // Check if user already exists
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (user.rows.length !== 0) {
@@ -260,8 +269,13 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ message: "Token and new password are required" });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
+    
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 6 characters long and include at least 1 number and 1 special character (!@#$%^&*_)"
+      });
     }
 
     // Find user with valid token
@@ -277,6 +291,13 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const userData = user.rows[0];
+
+    const isSamePassword = await bcrypt.compare(newPassword, userData.password_hash);
+    if (isSamePassword) {
+      return res.status(400).json({ 
+        message: "New password must be different from your current password" 
+      });
+    }
 
     // Hash new password
     const saltRound = 10;
