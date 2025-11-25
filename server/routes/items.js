@@ -166,54 +166,67 @@ router.post("/borrow", authorization, async (req, res) => {
       "SELECT * FROM borrowable_items WHERE id = $1 AND facility = $2",
       [item_id, facility]
     );
+
+    if (itemRes.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "Item not found or not in your facility." });
+    }
+
     const item = itemRes.rows[0];
-    if (!item) return res.status(404).json({ error: "Item not found." });
 
     if (item.quantity < quantity) {
-      return res.status(400).json({ error: "Not enough stock available." });
+      return res.status(400).json({ error: "Not enough items available." });
     }
 
     const guestName = `${first_name} ${last_name}`;
 
-    // Get the guest's current room booking with room_id
-    const bookingRes = await pool.query(
-      `SELECT rb.room_id, r.room_number
+    // Get the guest's current room
+    const roomRes = await pool.query(
+      `SELECT r.id, r.room_number
        FROM room_bookings rb
        JOIN rooms r ON rb.room_id = r.id
        WHERE rb.guest_id = $1
          AND rb.time_in <= NOW()
          AND (rb.time_out IS NULL OR rb.time_out > NOW())
-       ORDER BY rb.time_in DESC
        LIMIT 1`,
       [user_id]
     );
 
-    if (bookingRes.rows.length === 0) {
-      return res.status(400).json({ error: "No active room booking found." });
+    let room_id = null;
+    let room_number = null;
+
+    if (roomRes.rows.length > 0) {
+      room_id = roomRes.rows[0].id;
+      room_number = roomRes.rows[0].room_number;
     }
 
-    const { room_id, room_number } = bookingRes.rows[0];
+    console.log("\n=== BORROW ITEM ASSIGNMENT ===");
+    console.log("Guest:", guestName);
+    console.log("Room:", room_number || "N/A");
+    console.log("Item:", item.name);
+    console.log("Quantity:", quantity);
+    console.log("Facility:", facility);
 
-    const timeCheckResult = await pool.query(`
-      SELECT 
-        (NOW() AT TIME ZONE 'Asia/Manila')::time as manila_time,
-        ((NOW() AT TIME ZONE 'Asia/Manila')::timestamp)::date as manila_date,
-        TRIM(to_char((NOW() AT TIME ZONE 'Asia/Manila'), 'Day')) as current_day_name
-    `);
+    // Get current Manila time
+    const manila_now = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Manila",
+    });
+    const manila_date_obj = new Date(manila_now);
+    const manila_date = manila_date_obj.toISOString().split("T")[0];
+    const manila_time = manila_date_obj.toTimeString().split(" ")[0];
+    const current_day_name = manila_date_obj.toLocaleDateString("en-US", {
+      weekday: "long",
+    });
 
-    const { manila_time, manila_date, current_day_name } =
-      timeCheckResult.rows[0];
+    console.log("Manila date:", manila_date);
+    console.log("Manila time:", manila_time);
+    console.log("Current day:", current_day_name);
 
-    console.log("=== TIMESTAMP DEBUG ===");
-    console.log("Manila Date:", manila_date);
-    console.log("Manila Time:", manila_time);
-    console.log("Current Day:", current_day_name);
-
-    // Query for available housekeepers
+    // Find available housekeepers
     const availableHk = await pool.query(
-      `
-      SELECT 
-        u.id,
+      `SELECT 
+        u.id, 
         (u.first_name || ' ' || u.last_name) AS name,
         s.shift_time_in,
         s.shift_time_out,
@@ -306,42 +319,45 @@ router.post("/borrow", authorization, async (req, res) => {
 
       console.log("All deliveries today:", allDeliveries.rows);
 
-      // Count deliveries per housekeeper
-      const countMap = {};
-      allDeliveries.rows.forEach((delivery) => {
-        const hkId = delivery.housekeeper_id;
-        countMap[hkId] = (countMap[hkId] || 0) + 1;
+      const deliveryCounts = {};
+      candidates.forEach((hk) => {
+        deliveryCounts[hk.id] = allDeliveries.rows.filter(
+          (d) => String(d.housekeeper_id) === String(hk.id)
+        ).length;
       });
 
-      console.log("Delivery count per housekeeper:", countMap);
+      console.log("Delivery counts per housekeeper:", deliveryCounts);
 
-      candidates.forEach((c) => {
-        const count = countMap[c.id] || 0;
-        console.log(`${c.name} (ID: ${c.id}): ${count} deliveries today`);
-      });
-
-      // Sort by delivery count (ascending), then by name
+      // ===== FIX STARTS HERE =====
+      // Sort by task count (ascending - least busy first)
       candidates.sort((a, b) => {
-        const countA = countMap[a.id] || 0;
-        const countB = countMap[b.id] || 0;
-        if (countA === countB) {
-          return a.name.localeCompare(b.name);
-        }
+        const countA = deliveryCounts[a.id] || 0;
+        const countB = deliveryCounts[b.id] || 0;
         return countA - countB;
       });
 
-      console.log("Sorted candidates:", candidates.map((c) => ({ 
-        name: c.name, 
-        id: c.id, 
-        count: countMap[c.id] || 0 
-      })));
+      // Get the minimum task count
+      const minCount = deliveryCounts[candidates[0].id] || 0;
 
-      const selectedHk = candidates[0];
+      // Filter all housekeepers with the minimum count
+      const leastBusyHousekeepers = candidates.filter(
+        (hk) => (deliveryCounts[hk.id] || 0) === minCount
+      );
+
+      console.log("Least busy housekeepers (count:", minCount, "):", leastBusyHousekeepers.map(h => h.name));
+
+      // Randomly select one from the least busy housekeepers
+      const randomIndex = Math.floor(Math.random() * leastBusyHousekeepers.length);
+      const selectedHk = leastBusyHousekeepers[randomIndex];
+      // ===== FIX ENDS HERE =====
+
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
-      
+
       console.log("=== SELECTED HOUSEKEEPER ===");
-      console.log("Selected:", { id: assignedHousekeeperId, name: assignedHousekeeperName });
+      console.log("ID:", assignedHousekeeperId);
+      console.log("Name:", assignedHousekeeperName);
+      console.log("Current delivery count:", deliveryCounts[assignedHousekeeperId] || 0);
     }
 
     // Reduce item quantity
