@@ -35,7 +35,7 @@ const BorrowItems = () => {
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else if (facility === "Hotel Rafael") {
-      openMinutes = 6 * 60;
+      openMinutes = 1 * 60;
       closeMinutes = 22 * 60; 
       openTime = "6:00 AM";
       closeTime = "6:00 PM";
