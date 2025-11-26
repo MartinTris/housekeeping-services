@@ -29,7 +29,6 @@ const HousekeeperFeedbackPage = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Header with Back Button */}
       <div className="flex items-center gap-3 mb-4 sm:mb-6">
         <button
           onClick={() => navigate('/housekeeper')}
@@ -51,7 +50,6 @@ const HousekeeperFeedbackPage = () => {
         </div>
       ) : (
         <>
-          {/* Summary Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
             <div className="bg-white rounded-xl p-4 shadow-md border border-gray-100">
               <p className="text-xs sm:text-sm text-gray-500 uppercase mb-1">Total Feedback</p>
@@ -71,7 +69,6 @@ const HousekeeperFeedbackPage = () => {
             </div>
           </div>
 
-          {/* Desktop Table View */}
           <div className="hidden md:block bg-white rounded-xl shadow-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
@@ -112,7 +109,6 @@ const HousekeeperFeedbackPage = () => {
             </div>
           </div>
 
-          {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
             {feedbacks.map((f) => (
               <div 
@@ -120,7 +116,6 @@ const HousekeeperFeedbackPage = () => {
                 className="border border-gray-200 rounded-lg p-3 bg-white shadow-sm"
               >
                 <div className="space-y-2">
-                  {/* Header: Guest and Rating */}
                   <div className="flex justify-between items-start gap-2 pb-2 border-b border-gray-200">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-500 uppercase">Guest</p>
@@ -134,7 +129,6 @@ const HousekeeperFeedbackPage = () => {
                     </div>
                   </div>
 
-                  {/* Room and Service Details */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Room</p>
@@ -148,7 +142,6 @@ const HousekeeperFeedbackPage = () => {
                     </div>
                   </div>
 
-                  {/* Comment */}
                   <div className="pt-2 border-t border-gray-200">
                     <p className="text-xs text-gray-500 uppercase mb-1">Comment</p>
                     <p className="text-sm text-gray-700 leading-relaxed">
@@ -156,7 +149,6 @@ const HousekeeperFeedbackPage = () => {
                     </p>
                   </div>
 
-                  {/* Date */}
                   <div className="pt-2 border-t border-gray-200">
                     <p className="text-xs text-gray-500">
                       {new Date(f.created_at).toLocaleDateString()}

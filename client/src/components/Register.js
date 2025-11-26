@@ -53,7 +53,6 @@ const Register = () => {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
-      {/* Image Section */}
       <div className="w-full lg:w-1/2 relative h-64 lg:h-screen">
         <img
           src="/images/rotonda-image.jpg"
@@ -68,7 +67,6 @@ const Register = () => {
         </div>
       </div>
 
-      {/* Form Section */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center bg-gray-100 p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-md p-6 sm:p-8 bg-white shadow-lg rounded-lg">
           <h2 className="text-xl sm:text-2xl font-bold text-green-900 mb-4 sm:mb-6 text-center">

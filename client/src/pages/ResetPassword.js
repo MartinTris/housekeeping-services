@@ -15,7 +15,6 @@ const ResetPassword = () => {
   const [validToken, setValidToken] = useState(false);
 
   useEffect(() => {
-    // Verify token on mount
     const verifyToken = async () => {
       try {
         const response = await fetch(`${API_URL}/auth/verify-reset-token/${token}`);

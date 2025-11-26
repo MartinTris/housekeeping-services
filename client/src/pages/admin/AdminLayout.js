@@ -44,7 +44,6 @@ const AdminLayout = ({ setAuth, role }) => {
     <div className="flex min-h-screen bg-gray-50">
       <Menu setAuth={setAuth} role={role} />
 
-      {/* Remove ml-64 and add lg:ml-64 instead */}
       <div className="flex-1 lg:ml-64 flex flex-col">
         <header className="flex justify-between items-center px-4 sm:px-6 md:px-8 py-3 sm:py-4 bg-white border-b shadow-sm w-full">
           <h1 className="ml-11 text-base sm:text-lg md:text-xl lg:text-2xl font-poppins font-semibold text-green-900">

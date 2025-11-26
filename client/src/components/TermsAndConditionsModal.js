@@ -6,7 +6,6 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white w-full max-w-4xl rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
-        {/* Header */}
         <div className="bg-green-900 text-white px-6 py-4">
           <h2 className="text-2xl font-bold font-poppins">
             Terms and Conditions
@@ -16,7 +15,6 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
           </p>
         </div>
 
-        {/* Tab Switcher */}
         <div className="flex border-b border-gray-200 bg-gray-50">
           <button
             className={`flex-1 px-6 py-4 font-semibold transition-all ${
@@ -41,7 +39,6 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
           </button>
         </div>
 
-        {/* Content Area - Scrollable */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           {activeTab === "Hotel Rafael" ? (
             <div className="prose prose-sm max-w-none">
@@ -264,7 +261,6 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept }) => {
           )}
         </div>
 
-        {/* Footer with Buttons */}
         <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex justify-between items-center">
           <p className="text-sm text-gray-600">
             By accepting, you agree to these terms and conditions

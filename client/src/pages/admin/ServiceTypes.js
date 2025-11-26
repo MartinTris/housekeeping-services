@@ -12,7 +12,7 @@ const ServiceTypes = () => {
   const [form, setForm] = useState({
     name: "",
     duration: "",
-    facility: "" // For superadmin
+    facility: ""
   });
 
   const [editData, setEditData] = useState(null);
@@ -49,16 +49,13 @@ const ServiceTypes = () => {
     fetchServiceTypes();
   }, []);
 
-  // Helper function to check if service type is Checkout
   const isCheckout = (name) => {
     return name && name.toLowerCase() === "checkout";
   };
 
-  // Add service type
   const handleAdd = async (e) => {
     e.preventDefault();
 
-    // Validate facility selection for superadmin
     if (userRole === "superadmin" && !form.facility) {
       alert("Please select a facility.");
       return;
@@ -87,7 +84,6 @@ const ServiceTypes = () => {
     }
   };
 
-  // Edit service type
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -109,7 +105,7 @@ const ServiceTypes = () => {
         setServiceTypes(
           serviceTypes.map((st) => (st.id === data.id ? data : st))
         );
-        setEditData(null); // close modal
+        setEditData(null);
       } else {
         alert(data.error || "Update failed.");
       }
@@ -118,9 +114,7 @@ const ServiceTypes = () => {
     }
   };
 
-  // Delete service type
   const handleDelete = async (id, name) => {
-    // Double check on frontend (backend also protects)
     if (isCheckout(name)) {
       alert("The 'Checkout' service type cannot be deleted as it is a system-required service.");
       return;
@@ -160,11 +154,9 @@ const ServiceTypes = () => {
         )}
       </h1>
 
-      {/* Add new service type form */}
       <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6 sm:mb-8 max-w-xl">
         <h2 className="text-lg sm:text-xl font-semibold mb-4">Add New Service Type</h2>
 
-        {/* Facility Selector for Superadmin */}
         {userRole === "superadmin" && (
           <div className="mb-4">
             <label className="block font-medium mb-1 text-sm sm:text-base">Facility *</label>
@@ -218,7 +210,6 @@ const ServiceTypes = () => {
         </button>
       </div>
 
-      {/* Service type list */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {serviceTypes.map((type) => (
           <div
@@ -253,7 +244,6 @@ const ServiceTypes = () => {
               </p>
             </div>
 
-            {/* Only show edit/delete for regular admin */}
             {userRole === "admin" && (
               <div className="flex gap-2 sm:gap-3 justify-end sm:justify-start flex-shrink-0">
                 <button
@@ -262,7 +252,6 @@ const ServiceTypes = () => {
                 >
                   Edit
                 </button>
-                {/* Hide delete button for Checkout */}
                 {!isCheckout(type.name) && (
                   <button
                     onClick={() => handleDelete(type.id, type.name)}
@@ -277,7 +266,6 @@ const ServiceTypes = () => {
         ))}
       </div>
 
-      {/* Edit Modal - Only for admin */}
       {editData && userRole === "admin" && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 w-full max-w-md">

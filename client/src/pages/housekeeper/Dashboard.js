@@ -78,7 +78,6 @@ const HousekeeperDashboard = () => {
       <main className="flex-1 p-8">
         <DashboardToggle view={view} setView={setView} />
         <div className="flex gap-6">
-          {/* Left Side - Welcome Box and Main Content */}
           <div className="flex-1">
             <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-8 mb-6 shadow-md border border-green-100">
               <h2 className="text-3xl font-poppins font-bold text-green-800 mb-2">

@@ -19,7 +19,6 @@ const Reports = () => {
   const [facilityFilter, setFacilityFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
 
-  // Get user role
   useEffect(() => {
     const userRole = localStorage.getItem("role");
     setRole(userRole);
@@ -74,7 +73,6 @@ const Reports = () => {
       const data = await res.json();
       let filteredReports = data.data || [];
 
-      // Filter by service type if selected
       if (reportType === "housekeeping" && selectedServiceType) {
         filteredReports = filteredReports.filter(
           (r) => r.service_type === selectedServiceType
@@ -91,25 +89,20 @@ const Reports = () => {
     }
   };
 
-  // Helper function to calculate end time
   const calculateEndTime = (startTime, serviceDuration) => {
     if (!startTime || !serviceDuration) return startTime;
 
     try {
-      // Parse the time (format: "HH:MM AM/PM")
       const [time, period] = startTime.split(" ");
       let [hours, minutes] = time.split(":").map(Number);
 
-      // Convert to 24-hour format
       if (period === "PM" && hours !== 12) hours += 12;
       if (period === "AM" && hours === 12) hours = 0;
 
-      // Add duration
       const totalMinutes = hours * 60 + minutes + serviceDuration;
       let endHours = Math.floor(totalMinutes / 60) % 24;
       const endMinutes = totalMinutes % 60;
 
-      // Convert back to 12-hour format
       const endPeriod = endHours >= 12 ? "PM" : "AM";
       if (endHours > 12) endHours -= 12;
       if (endHours === 0) endHours = 12;
@@ -123,7 +116,6 @@ const Reports = () => {
     }
   };
 
-  // Get service duration for a given service type
   const getServiceDuration = (serviceTypeName) => {
     const type = serviceTypes.find((t) => t.name === serviceTypeName);
     return type ? type.duration : 0;
@@ -144,7 +136,6 @@ const Reports = () => {
     paymentFilter,
   ]);
 
-  // Filter reports by facility for superadmin
   const displayedReports = reports.filter((report) => {
     if (role !== "superadmin" || facilityFilter === "all") return true;
     return report.facility === facilityFilter;
@@ -276,9 +267,7 @@ const Reports = () => {
         </p>
       )}
 
-      {/* Report Filters */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 mb-4">
-        {/* Report Type Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
           <label className="font-medium text-sm sm:text-base">
             Select Report Type:
@@ -297,7 +286,6 @@ const Reports = () => {
           </select>
         </div>
 
-        {/* Date Range Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
           <label className="font-medium text-sm sm:text-base">
             Select Report Range:
@@ -313,7 +301,6 @@ const Reports = () => {
           </select>
         </div>
 
-        {/* Facility Filter (only for superadmin) */}
         {role === "superadmin" && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
             <label className="font-medium text-sm sm:text-base">
@@ -331,7 +318,6 @@ const Reports = () => {
           </div>
         )}
 
-        {/* Service Type Filter (only for housekeeping) */}
         {reportType === "housekeeping" && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
             <label className="font-medium text-sm sm:text-base">
@@ -352,7 +338,6 @@ const Reports = () => {
           </div>
         )}
 
-        {/* Housekeeper Filter (only for housekeeping) */}
         {reportType === "housekeeping" && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
             <label className="font-medium text-sm sm:text-base">
@@ -374,7 +359,6 @@ const Reports = () => {
           </div>
         )}
 
-        {/* Payment Status Filter (only for borrowed items) */}
         {reportType === "borrowed" && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
             <label className="font-medium text-sm sm:text-base">
@@ -406,7 +390,6 @@ const Reports = () => {
           <>
             {reportType === "housekeeping" && (
               <>
-                {/* Mobile Card View */}
                 <div className="block lg:hidden space-y-3">
                   {displayedReports.map((r, i) => {
                     const duration = getServiceDuration(r.service_type);
@@ -499,7 +482,6 @@ const Reports = () => {
                   })}
                 </div>
 
-                {/* Desktop Table View */}
                 <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
                   <table className="min-w-full border border-gray-200">
                     <thead className="bg-green-100 text-green-900">
@@ -566,7 +548,6 @@ const Reports = () => {
 
             {reportType === "borrowed" && (
               <>
-                {/* Mobile Card View */}
                 <div className="block lg:hidden space-y-3">
                   {displayedReports.map((r, i) => (
                     <div
@@ -655,7 +636,6 @@ const Reports = () => {
                   ))}
                 </div>
 
-                {/* Desktop Table View */}
                 <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
                   <table className="min-w-full border border-gray-200">
                     <thead className="bg-green-100 text-green-900">

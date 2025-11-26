@@ -21,8 +21,7 @@ const HousekeepingTrends = () => {
   const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
-    // Fetch user role (you might want to get this from context or props)
-    const role = localStorage.getItem("role"); // Adjust based on your auth setup
+    const role = localStorage.getItem("role");
     setUserRole(role);
     fetchServiceTypes();
   }, []);
@@ -51,7 +50,6 @@ const HousekeepingTrends = () => {
     try {
       let url = `${API_URL}/api/trends/housekeeping-trends?granularity=${granularity}`;
       
-      // Add facility parameter for superadmin
       if (userRole === 'superadmin' && selectedFacility) {
         url += `&facility=${selectedFacility}`;
       }
@@ -84,7 +82,6 @@ const HousekeepingTrends = () => {
         const dataPoint = { period: day };
         
         if (selectedServiceType === "all") {
-          // Group service types by facility for superadmin viewing all facilities
           const serviceTypeFacilityKeys = new Set();
           rawData.forEach((r) => {
             if (userRole === 'superadmin' && selectedFacility === 'all') {
@@ -308,8 +305,7 @@ const HousekeepingTrends = () => {
       maintenance: "#ef4444",
       checkout: "#8b5cf6",
     };
-    
-    // Extract base service type name if it includes facility
+
     const baseType = serviceType.includes('(') 
       ? serviceType.split(' (')[0].toLowerCase() 
       : serviceType.toLowerCase();
@@ -326,7 +322,6 @@ const HousekeepingTrends = () => {
     return `hsl(${hue}, 60%, 50%)`;
   };
 
-  // Get unique service type keys for rendering bars
   const getServiceTypeKeys = () => {
     if (data.length === 0) return [];
     

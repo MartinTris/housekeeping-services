@@ -5,7 +5,6 @@ const ProtectedRoute = ({ children, pageKey, fallbackPath }) => {
   const { hasAccess, allAccess, loading } = usePermissions();
   const location = useLocation();
 
-  // Show loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -14,14 +13,11 @@ const ProtectedRoute = ({ children, pageKey, fallbackPath }) => {
     );
   }
 
-  // Superadmin has access to everything
   if (allAccess) {
     return children;
   }
 
-  // Check if user has access to this page
   if (!hasAccess(pageKey)) {
-    // Determine fallback based on current role
     const defaultFallback = fallbackPath || location.pathname.split("/")[1] || "/";
     
     return (

@@ -182,7 +182,6 @@ const BorrowedItemsList = () => {
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-md w-full flex flex-col h-[400px]">
-      {/* Print content - hidden on screen */}
       <div id="print-content" style={{ display: "none" }}>
         <div className="receipt-header">
           <div className="receipt-title">BORROWED ITEMS RECEIPT</div>
@@ -217,7 +216,6 @@ const BorrowedItemsList = () => {
         </table>
       </div>
 
-      {/* Screen display */}
       <div className="flex-shrink-0 border-b pb-2 mb-2">
         <h2 className="text-xl font-semibold text-green-800 text-center">
           Borrowed Items

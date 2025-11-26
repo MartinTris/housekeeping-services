@@ -35,7 +35,6 @@ const fetchPermissions = async () => {
       return;
     }
 
-    // ADD THIS CHECK
     if (!decoded.facility) {
       console.error("ERROR: User has no facility in token!", decoded);
       setPermissions([]);
@@ -60,13 +59,11 @@ const fetchPermissions = async () => {
     }
   };
 
-  // Initial fetch on mount
   useEffect(() => {
     console.log("PermissionsProvider mounted - fetching permissions");
     fetchPermissions();
   }, []);
 
-  // Listen for permission refresh events
   useEffect(() => {
     const handleRefresh = () => {
       console.log("Permission refresh event received - refetching permissions");
@@ -87,21 +84,18 @@ const fetchPermissions = async () => {
     };
   }, []);
 
-  // Set up polling to check for permission updates every 10 seconds
   useEffect(() => {
     const pollInterval = setInterval(() => {
-      // Only poll if user is authenticated
       const token = localStorage.getItem("token");
       if (token) {
         console.log("Polling for permission updates...");
         fetchPermissions();
       }
-    }, 10000); // Poll every 10 seconds
+    }, 10000);
 
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Check if a specific page is accessible
   const hasAccess = (pageKey) => {
     if (allAccess) {
       console.log(`Access check for ${pageKey}: granted (all access)`);
@@ -112,7 +106,6 @@ const fetchPermissions = async () => {
     return hasPermission;
   };
 
-  // Get all enabled page keys
   const enabledPages = permissions
     .filter((p) => p.is_enabled)
     .map((p) => p.page_key);
@@ -135,7 +128,6 @@ const fetchPermissions = async () => {
   );
 };
 
-// Custom hook to use permissions
 export const usePermissions = () => {
   const context = useContext(PermissionsContext);
   if (!context) {

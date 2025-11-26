@@ -89,14 +89,13 @@ function App() {
       const parseRes = await response.json();
 
       if (parseRes === true) {
-        // Decode token to get user info
         try {
           const decoded = jwtDecode(token);
           console.log("Decoded token:", decoded);
 
           setUser({
             id: decoded.id,
-            role: decoded.role, // Use role from token, not localStorage
+            role: decoded.role,
             facility: decoded.facility,
             email: decoded.email,
           });
@@ -126,7 +125,6 @@ function App() {
     checkAuth();
   }, []);
 
-  // Listen for user facility updates
   useEffect(() => {
     const handleFacilityUpdate = () => {
       const token = localStorage.getItem("token");
@@ -148,7 +146,6 @@ function App() {
       window.removeEventListener("userFacilityUpdated", handleFacilityUpdate);
   }, []);
 
-  // Show loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

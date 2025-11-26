@@ -22,8 +22,7 @@ const ManageAdmins = () => {
     if (token) {
       const decoded = jwtDecode(token);
       setRole(decoded.role);
-      
-      // Redirect if not superadmin
+
       if (decoded.role !== "superadmin") {
         alert("Access denied. This page is only accessible to superadmins.");
         navigate("/");
@@ -123,7 +122,6 @@ const ManageAdmins = () => {
     }
   };
 
-  // Filter admins by facility
   const filteredAdmins = admins.filter((admin) => {
     if (facilityFilter === "all") return true;
     return admin.facility === facilityFilter;
@@ -135,7 +133,6 @@ const ManageAdmins = () => {
         Manage Facility Admins
       </h2>
 
-      {/* Add Form */}
       <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto mb-8 sm:mb-10 bg-white p-4 sm:p-6 rounded-lg shadow-md">
         <h3 className="text-base sm:text-lg font-semibold text-green-800">Add New Admin</h3>
         
@@ -197,7 +194,6 @@ const ManageAdmins = () => {
         </button>
       </div>
 
-      {/* Facility Filter */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
         <label className="font-medium text-sm sm:text-base">Filter by Facility:</label>
         <select
@@ -211,7 +207,6 @@ const ManageAdmins = () => {
         </select>
       </div>
 
-      {/* Admins List - Mobile Card View */}
       <h3 className="text-lg sm:text-xl font-poppins font-bold text-green-900 mb-3 sm:mb-4">
         Facility Admins
       </h3>
@@ -243,7 +238,6 @@ const ManageAdmins = () => {
         )}
       </div>
 
-      {/* Admins List - Desktop Table View */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="table-auto w-full border-collapse border border-gray-300 text-left bg-white shadow-sm">
           <thead>

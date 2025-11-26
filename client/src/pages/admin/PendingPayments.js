@@ -11,8 +11,7 @@ const PendingPayments = () => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
-  
-  // Invoice modal states
+
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [selectedAction, setSelectedAction] = useState(null);
@@ -53,7 +52,6 @@ const PendingPayments = () => {
     fetchPendingPayments();
   }, []);
 
-  // Scroll to highlighted guest section when URL has guest parameter
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const guestId = params.get('guest');
@@ -266,16 +264,15 @@ const PendingPayments = () => {
 
   const groupedByGuest = items.reduce((acc, item) => {
     const guest = item.borrower_name || "Unknown Guest";
-    const userId = String(item.user_id); // Convert to string for consistent comparison
+    const userId = String(item.user_id);
     const facility = item.facility;
     if (!acc[userId]) acc[userId] = { guest, facility, items: [] };
     acc[userId].items.push(item);
     return acc;
   }, {});
 
-  // Get highlighted guest from URL
   const params = new URLSearchParams(location.search);
-  const highlightedGuestId = params.get('guest'); // This is a string from URL
+  const highlightedGuestId = params.get('guest');
 
   if (loading) return <p className="text-center mt-10">Loading...</p>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
@@ -415,7 +412,6 @@ const PendingPayments = () => {
                 </div>
               </div>
 
-              {/* Desktop Table View */}
               <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full border border-gray-200 text-sm mb-3">
                   <thead className="bg-gray-100">
@@ -454,7 +450,6 @@ const PendingPayments = () => {
                 </table>
               </div>
 
-              {/* Mobile Card View */}
               <div className="sm:hidden space-y-3 mb-3">
                 {Object.values(groupedItems).map((item) => (
                   <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
@@ -501,7 +496,6 @@ const PendingPayments = () => {
         })
       )}
 
-      {/* Invoice Number Modal */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6">

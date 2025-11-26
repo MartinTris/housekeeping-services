@@ -14,10 +14,7 @@ const Login = ({ setAuth, setUser }) => {
   const [popupInputs, setPopupInputs] = useState({ email: "", password: "" });
   const [showModal, setShowModal] = useState(false);
 
-  // ✅ Add this new state for T&C modal
   const [showTerms, setShowTerms] = useState(false);
-
-  // ✅ Add forgot password state
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotMessage, setForgotMessage] = useState("");
@@ -34,7 +31,6 @@ const Login = ({ setAuth, setUser }) => {
     setPopupInputs({ ...popupInputs, [e.target.name]: e.target.value });
   };
 
-  // ✅ Add forgot password handler
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setForgotMessage("");
@@ -171,7 +167,6 @@ const Login = ({ setAuth, setUser }) => {
           worry-free.
         </p>
 
-        {/* Hotel Rafael Section */}
         <div className="flex flex-col lg:flex-row items-center gap-4 sm:gap-6 mb-8 sm:mb-12 w-full max-w-5xl">
           <img
             src="/images/HR_homepage.jpg"
@@ -192,7 +187,6 @@ const Login = ({ setAuth, setUser }) => {
           </div>
         </div>
 
-        {/* RCC Section */}
         <div className="flex flex-col lg:flex-row-reverse items-center gap-4 sm:gap-6 w-full max-w-5xl mb-8">
           <img
             src="/images/RCC_homepage.jpg"
@@ -214,7 +208,6 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       </main>
 
-      {/* Main Login Modal (Guest) */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
           <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-md">
@@ -261,7 +254,6 @@ const Login = ({ setAuth, setUser }) => {
               </button>
             </p>
 
-            {/* ✅ Add Forgot Password button */}
             <p className="mt-2 text-center text-gray-600 text-sm">
               <button
                 onClick={() => {
@@ -307,7 +299,6 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       )}
 
-      {/* Admin/Housekeeper Login Modal */}
       {popupRole && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
@@ -355,7 +346,6 @@ const Login = ({ setAuth, setUser }) => {
               </div>
             </div>
 
-            {/* ✅ Add Forgot Password button in staff modal too */}
             <p className="mt-3 text-center text-gray-600 text-sm">
               <button
                 onClick={() => {
@@ -371,7 +361,6 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       )}
 
-      {/* ✅ Add Forgot Password Modal */}
       {showForgotPassword && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md">
@@ -425,7 +414,6 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       )}
 
-      {/* Terms & Conditions Modal */}
       {showTerms && (
         <TermsAndConditionsModal
           isOpen={showTerms}

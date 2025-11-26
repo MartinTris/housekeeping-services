@@ -6,7 +6,6 @@ const { authorization } = require("../middleware/authorization");
 const crypto = require("crypto");
 const { sendVerificationEmail } = require("../utils/emailService");
 
-// Get all admins (superadmin only)
 router.get("/", authorization, async (req, res) => {
   try {
     const { role } = req.user;
@@ -29,7 +28,6 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// Add new admin (superadmin only)
 router.post("/", authorization, async (req, res) => {
   try {
     const { role } = req.user;
@@ -40,7 +38,6 @@ router.post("/", authorization, async (req, res) => {
 
     const { first_name, last_name, email, password, facility } = req.body;
 
-    // Validation
     if (!first_name || !last_name || !email || !password || !facility) {
       return res.status(400).json({ error: "All fields are required." });
     }
@@ -49,7 +46,6 @@ router.post("/", authorization, async (req, res) => {
       return res.status(400).json({ error: "Invalid facility selected." });
     }
 
-    // Check if email already exists
     const emailCheck = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
@@ -59,16 +55,13 @@ router.post("/", authorization, async (req, res) => {
       return res.status(400).json({ error: "Email already exists." });
     }
 
-    // Hash password
     const saltRounds = 10;
     const salt = await bcrypt.genSalt(saltRounds);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Insert new admin with email verification
     const newAdmin = await pool.query(
       `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, is_active,
                          email_verified, verification_token, verification_token_expires)
@@ -78,13 +71,11 @@ router.post("/", authorization, async (req, res) => {
        false, verificationToken, tokenExpiry]
     );
 
-    // Send verification email
     try {
       await sendVerificationEmail(email, verificationToken, first_name);
       console.log('✓ Verification email sent to admin:', email);
     } catch (emailError) {
       console.error('Failed to send verification email to admin:', emailError);
-      // Continue even if email fails
     }
 
     res.json({
@@ -97,7 +88,6 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// Toggle admin status (enable/disable) - superadmin only
 router.put("/:id/toggle-status", authorization, async (req, res) => {
   try {
     const { role } = req.user;
@@ -107,7 +97,6 @@ router.put("/:id/toggle-status", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
 
-    // Check if user exists and is an admin
     const adminCheck = await pool.query(
       "SELECT * FROM users WHERE id = $1 AND role = 'admin'",
       [id]
@@ -117,7 +106,6 @@ router.put("/:id/toggle-status", authorization, async (req, res) => {
       return res.status(404).json({ error: "Admin not found." });
     }
 
-    // Toggle is_active status
     const result = await pool.query(
       `UPDATE users
        SET is_active = NOT is_active

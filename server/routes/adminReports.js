@@ -32,8 +32,6 @@ router.get("/", authorization, async (req, res) => {
       paramIndex++;
     }
 
-    // Query from service_history table
-    // Filter by status = 'completed' and use assigned_at for date range
     const reportQuery = `
       SELECT 
         CASE 
@@ -125,14 +123,12 @@ router.get("/borrowed-items", authorization, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized." });
     }
 
-    // Build payment filter
     let paymentFilter = "";
     if (payment_status === "paid") {
       paymentFilter = "AND bi.is_paid = true";
     } else if (payment_status === "unpaid") {
       paymentFilter = "AND bi.is_paid = false";
     }
-    // If payment_status is "all" or not provided, no filter is added
 
     let query;
     let params;

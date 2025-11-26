@@ -25,7 +25,6 @@ const SystemFeedback = () => {
     setComment("");
   }
 
-  // Get active rating (hover has priority)
   const displayRating = hover || rating;
 
   return (
@@ -35,7 +34,7 @@ const SystemFeedback = () => {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-        {/* ⭐ Star Rating */}
+
         <div>
           <label className="block font-medium mb-2 text-sm sm:text-base">
             Rating
@@ -64,12 +63,10 @@ const SystemFeedback = () => {
                     setRating(percent <= 0.5 ? star - 0.5 : star);
                   }}
                 >
-                  {/* Base empty star */}
                   <Star
                     size={window.innerWidth < 640 ? 36 : 32}
                     className="text-gray-300"
                   />
-                  {/* Overlayed filled portion */}
                   <div
                     className="absolute top-0 left-0 overflow-hidden"
                     style={{
@@ -90,7 +87,6 @@ const SystemFeedback = () => {
           </p>
         </div>
 
-        {/* 💬 Comment Section */}
         <div>
           <label className="block font-medium mb-2 text-sm sm:text-base">
             Comment
@@ -104,7 +100,6 @@ const SystemFeedback = () => {
           />
         </div>
 
-        {/* 📩 Submit */}
         <button
           type="submit"
           className={`mt-6 w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-sm sm:text-base ${

@@ -10,8 +10,6 @@ router.get("/", authorization, async (req, res) => {
     let query;
     let params;
 
-    // For guests, exclude "Checkout" service type
-    // For admin/superadmin/housekeeper, show all service types
     const excludeCheckout = role === "guest" || (!role || role === "user");
 
     if (role === "superadmin") {
@@ -61,13 +59,10 @@ router.post("/", authorization, async (req, res) => {
 
     const { name, duration, facility: targetFacility } = req.body;
 
-    // For superadmin, use the selected facility from the form
-    // For admin, use their own facility
     const serviceTypeFacility = role === 'superadmin' && targetFacility 
       ? targetFacility 
       : facility;
 
-    // Validate facility for superadmin
     if (role === 'superadmin' && !targetFacility) {
       return res.status(400).json({ error: "Facility selection is required for superadmin" });
     }
@@ -86,7 +81,7 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// Admin edits service type (Superadmin cannot edit)
+// Admin edits service type
 router.put("/:id", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
@@ -116,7 +111,7 @@ router.put("/:id", authorization, async (req, res) => {
   }
 });
 
-// Admin deletes service type (Superadmin cannot delete)
+// Admin deletes service type
 router.delete("/:id", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;

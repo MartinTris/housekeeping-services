@@ -60,7 +60,6 @@ const PageAccessControl = () => {
       );
 
       if (response.ok) {
-        // Update local state
         setPermissions(
           permissions.map((p) =>
             p.id === permissionId ? { ...p, is_enabled: !currentState } : p
@@ -99,7 +98,7 @@ const PageAccessControl = () => {
       );
 
       if (response.ok) {
-        fetchPermissions(); // Refresh
+        fetchPermissions();
         alert(`All pages ${enable ? 'enabled' : 'disabled'} for ${roleType}`);
       } else {
         alert("Failed to update permissions");
@@ -131,7 +130,6 @@ const PageAccessControl = () => {
         Page Access Control
       </h2>
 
-      {/* Facility Selector */}
       <div className="mb-6 sm:mb-8 bg-white p-4 sm:p-6 rounded-lg shadow-md">
         <label className="block text-base sm:text-lg font-semibold mb-3 text-gray-700">
           Select Facility:

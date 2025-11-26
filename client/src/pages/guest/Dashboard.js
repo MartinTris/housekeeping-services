@@ -127,7 +127,6 @@ const GuestDashboard = () => {
     }
   }
 
-  // Initial data fetch on mount
   useEffect(() => {
     fetchProfile();
     fetchTotalRequests();
@@ -275,14 +274,12 @@ const GuestDashboard = () => {
     }
   }
 
-  // Set initial service type when loaded
   useEffect(() => {
     if (serviceTypes.length > 0 && !serviceType) {
       setServiceType(serviceTypes[0].name);
     }
   }, [serviceTypes]);
 
-  // Modal open/close handling
   useEffect(() => {
     if (showModal) {
       const today = new Date().toISOString().split("T")[0];
@@ -299,15 +296,12 @@ const GuestDashboard = () => {
     }
   }, [showModal]);
 
-  // Listen for facility updates - CRITICAL FOR REAL-TIME UPDATES
   useEffect(() => {
     const handler = async () => {
       console.log("🔔 userFacilityUpdated event fired!");
 
-      // Small delay to ensure token is written to localStorage
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Force refetch profile with NEW token from localStorage
       try {
         const res = await fetch(`${API_URL}/users/me`, {
           headers: { token: localStorage.getItem("token") },
@@ -322,14 +316,12 @@ const GuestDashboard = () => {
             : data.name || "";
         setName(fullName);
 
-        // If facility exists, refetch service types and requests
         if (data.facility) {
           console.log("✅ Facility found, refetching all data...");
           await fetchServiceTypes();
           await fetchTotalRequests();
           await fetchTodayRequests();
 
-          // Force regenerate time slots after a brief delay
           setTimeout(() => {
             if (showModal && serviceType && preferredDate) {
               generateTimeSlots();
@@ -338,7 +330,7 @@ const GuestDashboard = () => {
           }, 300);
         }
       } catch (err) {
-        console.error("❌ Error refetching profile:", err);
+        console.error(" Error refetching profile:", err);
       }
     };
 
@@ -346,7 +338,6 @@ const GuestDashboard = () => {
     return () => window.removeEventListener("userFacilityUpdated", handler);
   }, [showModal, serviceType, preferredDate]);
 
-  // Fetch service types when facility is detected
   useEffect(() => {
     if (profile?.facility) {
       console.log("Facility detected in profile:", profile.facility);
@@ -354,7 +345,6 @@ const GuestDashboard = () => {
     }
   }, [profile?.facility]);
 
-  // Generate time slots and fetch availability when dependencies change
   useEffect(() => {
     if (serviceType && preferredDate && profile?.facility) {
       generateTimeSlots();
@@ -369,7 +359,6 @@ const GuestDashboard = () => {
 
         {view === "dashboard" && (
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-            {/* Left Side - Welcome Box and Main Content */}
             <div className="flex-1 w-full">
               <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-4 sm:p-8 mb-4 sm:mb-6 shadow-md border border-green-100">
                 <h2 className="text-2xl sm:text-3xl font-poppins font-bold text-green-800 mb-2">
@@ -414,9 +403,7 @@ const GuestDashboard = () => {
               </div>
             </div>
 
-            {/* Right Sidebar */}
             <div className="w-full lg:w-96 lg:flex-shrink-0 space-y-4">
-              {/* Remaining Balance Widget */}
               <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-4 sm:p-6 rounded-xl shadow-md border border-green-100">
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="p-3 sm:p-4 bg-white rounded-xl shadow-sm">
@@ -429,7 +416,6 @@ const GuestDashboard = () => {
                 </div>
               </div>
 
-              {/* Borrowed Items List */}
               <BorrowedItemsList />
             </div>
           </div>

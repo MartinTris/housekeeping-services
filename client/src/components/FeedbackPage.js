@@ -11,8 +11,7 @@ const FeedbackPage = () => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
   const [feedbackType, setFeedbackType] = useState(searchParams.get("type") || "service");
-  
-  // Filter states
+
   const [guestFilter, setGuestFilter] = useState("");
   const [housekeeperFilter, setHousekeeperFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -62,26 +61,23 @@ const FeedbackPage = () => {
   useEffect(() => {
     let filtered = [...feedbacks];
 
-    // Filter by guest name (exact match)
     if (guestFilter) {
       filtered = filtered.filter(f => 
         f.guest_name === guestFilter
       );
     }
 
-    // Filter by housekeeper name (exact match, only for service feedback)
     if (housekeeperFilter && feedbackType === "service") {
       filtered = filtered.filter(f => 
         f.housekeeper_name === housekeeperFilter
       );
     }
 
-    // Sort by rating
     filtered.sort((a, b) => {
       if (sortOrder === "desc") {
-        return b.rating - a.rating; // High to low
+        return b.rating - a.rating;
       } else {
-        return a.rating - b.rating; // Low to high
+        return a.rating - b.rating;
       }
     });
 
@@ -90,13 +86,11 @@ const FeedbackPage = () => {
 
   const isSuperAdmin = userRole === "superadmin";
 
-  // Get unique names for dropdowns
   const uniqueGuests = [...new Set(feedbacks.map(f => f.guest_name).filter(Boolean))];
   const uniqueHousekeepers = [...new Set(feedbacks.map(f => f.housekeeper_name).filter(Boolean))];
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Back Link */}
       <button
         onClick={() => navigate(-1)}
         className="flex items-center text-green-600 hover:text-green-700 active:text-green-800 font-medium mb-4 transition-colors text-sm sm:text-base"
@@ -133,10 +127,8 @@ const FeedbackPage = () => {
         )}
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-          {/* Guest Filter */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Filter by Guest
@@ -153,7 +145,6 @@ const FeedbackPage = () => {
             </select>
           </div>
 
-          {/* Housekeeper Filter - Only for service feedback */}
           {feedbackType === "service" && (
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
@@ -172,7 +163,6 @@ const FeedbackPage = () => {
             </div>
           )}
 
-          {/* Sort Order */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Sort by Rating
@@ -189,14 +179,12 @@ const FeedbackPage = () => {
         </div>
       </div>
 
-      {/* Feedback Content */}
       {loading ? (
         <p className="text-gray-600 text-sm sm:text-base">Loading feedback...</p>
       ) : filteredFeedbacks.length === 0 ? (
         <p className="text-gray-600 text-sm sm:text-base">No feedback found.</p>
       ) : (
         <>
-          {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-200">
             <table className="w-full">
               <thead>
@@ -278,7 +266,6 @@ const FeedbackPage = () => {
                     </div>
                   </div>
 
-                  {/* Facility Badge (if superadmin) */}
                   {isSuperAdmin && (
                     <div>
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
@@ -291,7 +278,6 @@ const FeedbackPage = () => {
                     </div>
                   )}
 
-                  {/* Service Details (if service feedback) */}
                   {feedbackType === "service" && (
                     <div className="grid grid-cols-2 gap-2 pt-2 border-t">
                       <div>
@@ -312,8 +298,6 @@ const FeedbackPage = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Comment */}
                   <div className="pt-2 border-t">
                     <p className="text-xs text-gray-500 uppercase mb-1">Comment</p>
                     <p className="text-sm text-gray-700">

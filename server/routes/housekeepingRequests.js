@@ -132,7 +132,6 @@ router.post("/", authorization, async (req, res) => {
         roomId = adminRoomRes.rows[0].id;
         room_number = adminRoomRes.rows[0].room_number;
       } else {
-        // Create Admin Office room if it doesn't exist
         const newRoomRes = await pool.query(
           `INSERT INTO rooms (room_number, facility)
            VALUES ('Admin Office', $1)
@@ -143,7 +142,6 @@ router.post("/", authorization, async (req, res) => {
         room_number = newRoomRes.rows[0].room_number;
       }
     } else {
-      // For guests, check active room booking
       const bookingRes = await pool.query(
         `SELECT rb.room_id, r.room_number
          FROM room_bookings rb
@@ -264,7 +262,6 @@ router.post("/", authorization, async (req, res) => {
         [userId, roomId, preferred_date, normalizedTime, serviceTypeId]
       );
 
-      // Only notify admin if requester is not admin/superadmin
       if (userRole !== "admin" && userRole !== "superadmin") {
         const adminRes = await pool.query(
           `SELECT id FROM users WHERE role IN ('admin', 'superadmin') AND LOWER(facility) = LOWER($1) LIMIT 1`,
@@ -337,7 +334,6 @@ router.post("/", authorization, async (req, res) => {
       ]
     );
 
-    // Only notify admin if requester is not admin/superadmin
     if (userRole !== "admin" && userRole !== "superadmin") {
       const adminRes = await pool.query(
         `SELECT id FROM users WHERE role IN ('admin', 'superadmin') AND LOWER(facility) = LOWER($1) LIMIT 1`,
@@ -389,7 +385,6 @@ router.post("/", authorization, async (req, res) => {
       ]
     );
 
-    // Get housekeeper email
     const hkDetails = await pool.query(
       `SELECT email, first_name FROM users WHERE id = $1`,
       [selectedHk.id]
@@ -415,7 +410,6 @@ router.post("/", authorization, async (req, res) => {
         );
       } catch (emailError) {
         console.error("Failed to send task assignment email:", emailError);
-        // Continue even if email fails
       }
     }
 
@@ -439,7 +433,7 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// GET all requests - SUPERADMIN SUPPORT
+// GET all requests
 router.get("/", authorization, async (req, res) => {
   try {
     const { id: adminId, role, facility } = req.user;
@@ -497,7 +491,7 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// Assign housekeeper - SUPERADMIN SUPPORT
+// Assign housekeeper
 router.put("/:id/assign", authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -508,7 +502,6 @@ router.put("/:id/assign", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
-    // Get the request to find its facility
     const requestCheck = await pool.query(
       `SELECT r.facility 
        FROM housekeeping_requests hr
@@ -523,8 +516,6 @@ router.put("/:id/assign", authorization, async (req, res) => {
 
     const requestFacility = requestCheck.rows[0].facility;
 
-    // For superadmin, check housekeeper is in the same facility as the request
-    // For regular admin, check both facility and that it matches their facility
     let hkCheckQuery;
     let hkCheckParams;
 
@@ -538,7 +529,6 @@ router.put("/:id/assign", authorization, async (req, res) => {
       `;
       hkCheckParams = [housekeeperId, requestFacility];
     } else {
-      // Regular admin must assign within their own facility
       if (requestFacility.toLowerCase() !== facility.toLowerCase()) {
         return res
           .status(403)
@@ -582,7 +572,6 @@ router.put("/:id/assign", authorization, async (req, res) => {
 
     const reqData = reqRes.rows[0];
 
-    // Insert into service_history
     await pool.query(
       `
       INSERT INTO service_history (
@@ -623,7 +612,6 @@ router.put("/:id/assign", authorization, async (req, res) => {
       ]
     );
 
-    // Get housekeeper email and service type details
     const hkEmailDetails = await pool.query(
       `SELECT u.email, u.first_name, st.name as service_type_name, 
           r.room_number, guest.first_name || ' ' || guest.last_name as guest_name
@@ -667,7 +655,6 @@ router.put("/:id/assign", authorization, async (req, res) => {
   }
 });
 
-// Check housekeeper availability
 router.get("/availability", authorization, async (req, res) => {
   try {
     const { serviceType, serviceTypeId } = req.query;
@@ -684,7 +671,6 @@ router.get("/availability", authorization, async (req, res) => {
 
     let duration, foundServiceTypeId;
 
-    // Try to find by ID first (preferred method)
     if (serviceTypeId) {
       const serviceTypeRes = await pool.query(
         "SELECT id, duration, name FROM service_types WHERE id = $1 AND LOWER(facility) = LOWER($2)",
@@ -697,7 +683,6 @@ router.get("/availability", authorization, async (req, res) => {
       }
     }
 
-    // If not found by ID, try by name
     if (!duration && serviceType) {
       const serviceTypeRes = await pool.query(
         "SELECT id, duration, name FROM service_types WHERE LOWER(name) = LOWER($1) AND LOWER(facility) = LOWER($2)",
@@ -710,7 +695,6 @@ router.get("/availability", authorization, async (req, res) => {
       }
     }
 
-    // If still not found, return error with available types (exclude Checkout)
     if (!duration) {
       const availableTypes = await pool.query(
         "SELECT id, name FROM service_types WHERE LOWER(facility) = LOWER($1) AND LOWER(name) != 'checkout'",
@@ -724,7 +708,6 @@ router.get("/availability", authorization, async (req, res) => {
       });
     }
 
-    // Get all housekeepers with their schedules
     const housekeepers = await pool.query(
       `SELECT u.id, s.shift_time_in, s.shift_time_out, s.day_offs
        FROM users u
@@ -733,7 +716,6 @@ router.get("/availability", authorization, async (req, res) => {
       [facility]
     );
 
-    // Get busy times from housekeeping_requests
     const busy = await pool.query(
       `SELECT hr.assigned_to AS housekeeper_id, hr.preferred_time, st.duration
        FROM housekeeping_requests hr
@@ -744,7 +726,6 @@ router.get("/availability", authorization, async (req, res) => {
       [date]
     );
 
-    // Get busy times from service_history
     const busyHistory = await pool.query(
       `SELECT sh.housekeeper_id, sh.preferred_time, st.duration
        FROM service_history sh
@@ -761,16 +742,13 @@ router.get("/availability", authorization, async (req, res) => {
       weekday: "long",
     });
 
-    // Helper function to convert time string to minutes
     const toMinutes = (timeStr) => {
       const [h, m] = timeStr.split(":").map(Number);
       return h * 60 + m;
     };
 
-    // Build a map of busy intervals for each housekeeper
     const busyMap = {};
 
-    // Combine both busy arrays
     const allBusy = [...busy.rows, ...busyHistory.rows];
 
     for (const b of allBusy) {
@@ -786,7 +764,6 @@ router.get("/availability", authorization, async (req, res) => {
 
     const availability = {};
 
-    // Generate all possible time slots
     for (
       let timeInMinutes = startHour * 60;
       timeInMinutes < endHour * 60;
@@ -795,7 +772,6 @@ router.get("/availability", authorization, async (req, res) => {
       const slotStart = timeInMinutes;
       const slotEnd = slotStart + duration;
 
-      // Don't create slots that extend past end hour
       if (slotEnd > endHour * 60) continue;
 
       const hour = Math.floor(timeInMinutes / 60);
@@ -805,26 +781,20 @@ router.get("/availability", authorization, async (req, res) => {
         minute
       ).padStart(2, "0")}:00`;
 
-      // Check if ANY housekeeper is available for this slot
       const availableHousekeepers = housekeepers.rows.filter((hk) => {
-        // Check if it's their day off
         const isDayOff = hk.day_offs?.includes(selectedDay);
         if (isDayOff) {
           console.log(`Housekeeper ${hk.id} is off on ${selectedDay}`);
           return false;
         }
 
-        // Check if the slot falls within their shift
         const shiftStart = toMinutes(hk.shift_time_in);
         const shiftEnd = toMinutes(hk.shift_time_out);
 
-        // Handle shifts that cross midnight
         let isWithinShift;
         if (shiftStart <= shiftEnd) {
-          // Normal shift (e.g., 8:00 to 17:00)
           isWithinShift = slotStart >= shiftStart && slotEnd <= shiftEnd;
         } else {
-          // Overnight shift (e.g., 22:00 to 06:00)
           isWithinShift = slotStart >= shiftStart || slotEnd <= shiftEnd;
         }
 
@@ -835,10 +805,8 @@ router.get("/availability", authorization, async (req, res) => {
           return false;
         }
 
-        // Check if they have any conflicting busy intervals
         const blockedIntervals = busyMap[hk.id] || [];
         const hasConflict = blockedIntervals.some((b) => {
-          // Two intervals overlap if: start1 < end2 AND end1 > start2
           const overlaps = slotStart < b.end && slotEnd > b.start;
           if (overlaps) {
             console.log(
@@ -925,7 +893,7 @@ router.get("/user/total", authorization, async (req, res) => {
   }
 });
 
-// SUPERADMIN SUPPORT - Get admin total requests
+// Get admin total requests
 router.get("/admin/total", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
@@ -1016,7 +984,6 @@ router.get("/user/my-requests", authorization, async (req, res) => {
       timeZone: "Asia/Manila",
     });
 
-    // Get active requests from housekeeping_requests
     const activeRequests = await pool.query(
       `
       SELECT 
@@ -1042,7 +1009,6 @@ router.get("/user/my-requests", authorization, async (req, res) => {
       [userId, today]
     );
 
-    // Get completed/historical requests from service_history
     const historyRequests = await pool.query(
       `
       SELECT 
@@ -1067,10 +1033,8 @@ router.get("/user/my-requests", authorization, async (req, res) => {
       [userId, today]
     );
 
-    // Combine and format results
     const allRequests = [...activeRequests.rows, ...historyRequests.rows].map(
       (req) => {
-        // Calculate end time
         const [hours, minutes] = req.preferred_time.split(":");
         const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
         const endMinutes = startMinutes + req.duration;
@@ -1095,7 +1059,6 @@ router.get("/user/my-requests", authorization, async (req, res) => {
       }
     );
 
-    // Sort by preferred time
     allRequests.sort((a, b) => a.preferredTime.localeCompare(b.preferredTime));
 
     res.json({
@@ -1125,9 +1088,7 @@ router.get("/user/history", authorization, async (req, res) => {
     } else if (filter === "30days") {
       dateFilter = "AND sh.preferred_date >= CURRENT_DATE - INTERVAL '30 days'";
     }
-    // For 'all', no date filter is applied
-
-    // Get historical requests from service_history (excluding today)
+  
     const historyRequests = await pool.query(
       `
       SELECT 
@@ -1152,9 +1113,8 @@ router.get("/user/history", authorization, async (req, res) => {
       params
     );
 
-    // Format results
     const formattedHistory = historyRequests.rows.map((req) => {
-      // Calculate end time
+
       const [hours, minutes] = req.preferred_time.split(":");
       const startMinutes = parseInt(hours) * 60 + parseInt(minutes);
       const endMinutes = startMinutes + req.duration;

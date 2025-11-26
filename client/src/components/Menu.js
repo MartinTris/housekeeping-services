@@ -8,7 +8,6 @@ const Menu = ({ setAuth, role }) => {
   const { hasAccess, allAccess, loading } = usePermissions();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Map route paths to permission page_keys
   const pageKeyMap = {
     // Admin pages
     "/admin": "dashboard",
@@ -39,7 +38,7 @@ const Menu = ({ setAuth, role }) => {
   const adminItems = [
     { name: "Dashboard", path: "/admin", pageKey: "dashboard" },
     { name: "My Profile", path: "/admin/profile", pageKey: "profile" },
-    { name: "Add/Remove Guest", path: "/admin/guests", pageKey: "guests" },
+    { name: "Check in/Check out Guests", path: "/admin/guests", pageKey: "guests" },
     { name: "Manage Housekeepers", path: "/admin/housekeepers", pageKey: "housekeepers" },
     { name: "Service Requests", path: "/admin/requests", pageKey: "requests" },
     { name: "Item List", path: "/admin/item-list", pageKey: "item_list" },
@@ -96,15 +95,11 @@ const Menu = ({ setAuth, role }) => {
     panelTitle = "Panel";
   }
 
-  // Filter items based on permissions
   const filteredItems = items.filter((item) => {
-    // Superadmin always has access to everything
     if (allAccess) return true;
     
-    // Show loading state items without filtering
     if (loading) return true;
     
-    // Check permission for this page
     return hasAccess(item.pageKey);
   });
 
@@ -116,7 +111,6 @@ const Menu = ({ setAuth, role }) => {
   };
 
   const handleLinkClick = () => {
-    // Close menu on mobile when a link is clicked
     if (window.innerWidth < 1024) {
       setIsOpen(false);
     }
@@ -124,7 +118,6 @@ const Menu = ({ setAuth, role }) => {
 
   return (
     <>
-      {/* Mobile Menu Button - Fixed at top left */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-colors"
@@ -154,7 +147,6 @@ const Menu = ({ setAuth, role }) => {
         </svg>
       </button>
 
-      {/* Overlay for mobile */}
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
@@ -162,7 +154,6 @@ const Menu = ({ setAuth, role }) => {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col p-6 shadow-sm overflow-y-auto z-40 transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"

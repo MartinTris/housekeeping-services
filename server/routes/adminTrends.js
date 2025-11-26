@@ -20,7 +20,6 @@ router.get("/housekeeping-trends", authorization, async (req, res) => {
     let params = [];
 
     if (role === 'superadmin') {
-      // Superadmin can filter by facility or view all
       if (facility && facility !== 'all') {
         facilityFilter = `sh.facility = $1`;
         params = [facility];
@@ -74,7 +73,6 @@ router.get("/housekeeping-trends", authorization, async (req, res) => {
         ORDER BY period ASC, sh.facility
       `;
     } else {
-      // daily
       query = `
         SELECT 
           to_char(sh.preferred_date, 'YYYY-MM-DD') AS period,
@@ -102,7 +100,6 @@ router.get("/housekeeper-trends", authorization, async (req, res) => {
     const { granularity } = req.query;
     const { id: housekeeperId, role } = req.user;
 
-    // Only housekeepers can access this endpoint
     if (role !== 'housekeeper') {
       return res.status(403).json({ error: "Access denied. Housekeeper only." });
     }
@@ -151,7 +148,6 @@ router.get("/housekeeper-trends", authorization, async (req, res) => {
         ORDER BY period ASC
       `;
     } else {
-      // daily
       query = `
         SELECT 
           to_char(sh.preferred_date, 'YYYY-MM-DD') AS period,

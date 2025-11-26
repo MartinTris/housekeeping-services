@@ -23,8 +23,7 @@ router.post("/", authorization, async (req, res) => {
 
       if (historyCheck.rows.length > 0) {
         const hoursSince = historyCheck.rows[0].hours_since_completion;
-        
-        // Check if within 24 hours
+
         if (hoursSince > 24) {
           return res.status(400).json({ 
             error: "Feedback period expired",
@@ -92,7 +91,6 @@ router.get("/recent", authorization, async (req, res) => {
       [userId]
     );
 
-    // Convert numeric values to proper numbers
     const formattedRows = result.rows.map(row => ({
       ...row,
       hours_since_completion: parseFloat(row.hours_since_completion)

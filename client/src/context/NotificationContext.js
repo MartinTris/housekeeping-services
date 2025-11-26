@@ -81,7 +81,7 @@ export const NotificationProvider = ({ children }) => {
     if (!user) return;
 
     const handleConnect = () => {
-      console.log("✅ Reconnected, joining rooms again...");
+      console.log("Reconnected, joining rooms again...");
       if (user.facility) {
         socket.emit("joinFacility", user.facility.toLowerCase());
       }
@@ -142,7 +142,6 @@ export const NotificationProvider = ({ children }) => {
     };
 
     const handleHousekeeperAssigned = (data) => {
-      console.log("📥 handleHousekeeperAssigned triggered:", data);
       if (user.role !== "guest") return;
 
       const newNotification = {
@@ -171,7 +170,6 @@ export const NotificationProvider = ({ children }) => {
     };
 
     const handleNewAssignment = (data) => {
-      console.log("📥 handleNewAssignment triggered:", data);
       if (user.role !== "housekeeper") return;
 
       const newNotification = {
@@ -206,7 +204,6 @@ export const NotificationProvider = ({ children }) => {
     socket.off("newAssignment").on("newAssignment", handleNewAssignment);
 
     socket.off("newNotification").on("newNotification", (data) => {
-      console.log("📥 newNotification event:", data);
 
       const newNotif = {
         id: Date.now(),
@@ -220,7 +217,6 @@ export const NotificationProvider = ({ children }) => {
     });
 
     return () => {
-      console.log("🧹 Cleaning up socket listeners...");
       socket.off("newRequest", handleNewRequest);
       socket.off("housekeeperAssigned", handleHousekeeperAssigned);
       socket.off("newAssignment", handleNewAssignment);

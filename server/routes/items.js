@@ -181,7 +181,6 @@ router.post("/borrow", authorization, async (req, res) => {
 
     const guestName = `${first_name} ${last_name}`;
 
-    // Get the guest's current room
     const roomRes = await pool.query(
       `SELECT r.id, r.room_number
        FROM room_bookings rb
@@ -208,7 +207,6 @@ router.post("/borrow", authorization, async (req, res) => {
     console.log("Quantity:", quantity);
     console.log("Facility:", facility);
 
-    // Get current Manila time
     const manila_now = new Date().toLocaleString("en-US", {
       timeZone: "Asia/Manila",
     });
@@ -223,7 +221,6 @@ router.post("/borrow", authorization, async (req, res) => {
     console.log("Manila time:", manila_time);
     console.log("Current day:", current_day_name);
 
-    // Find available housekeepers
     const availableHk = await pool.query(
       `SELECT 
         u.id, 
@@ -255,8 +252,7 @@ router.post("/borrow", authorization, async (req, res) => {
       assignedHousekeeperName = null;
     } else {
       console.log("=== CHECKING BUSY HOUSEKEEPERS ===");
-      
-      // Check for busy housekeepers - those with ongoing tasks TODAY
+
       const busyHk = await pool.query(
         `
         SELECT DISTINCT assigned_to
@@ -271,7 +267,6 @@ router.post("/borrow", authorization, async (req, res) => {
 
       console.log("Busy housekeepers (housekeeping tasks):", busyHk.rows);
 
-      // ALSO check for housekeepers with pending/in-progress deliveries TODAY
       const busyDeliveries = await pool.query(`
         SELECT DISTINCT housekeeper_id
         FROM borrowed_items
@@ -282,13 +277,10 @@ router.post("/borrow", authorization, async (req, res) => {
 
       console.log("Busy housekeepers (deliveries):", busyDeliveries.rows);
 
-      // Combine both busy lists
       const busyIds = [
         ...busyHk.rows.map((r) => String(r.assigned_to)),
         ...busyDeliveries.rows.map((r) => String(r.housekeeper_id))
       ];
-      
-      // Remove duplicates
       const uniqueBusyIds = [...new Set(busyIds)];
       console.log("Combined busy IDs:", uniqueBusyIds);
 
@@ -301,8 +293,6 @@ router.post("/borrow", authorization, async (req, res) => {
 
       const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
       console.log("Final candidates:", candidates.map((c) => ({ id: c.id, name: c.name })));
-
-      // Count ongoing deliveries TODAY for fairness
       console.log("=== COUNTING DELIVERIES FOR LOAD BALANCING ===");
 
       const allDeliveries = await pool.query(`
@@ -328,28 +318,22 @@ router.post("/borrow", authorization, async (req, res) => {
 
       console.log("Delivery counts per housekeeper:", deliveryCounts);
 
-      // ===== FIX STARTS HERE =====
-      // Sort by task count (ascending - least busy first)
       candidates.sort((a, b) => {
         const countA = deliveryCounts[a.id] || 0;
         const countB = deliveryCounts[b.id] || 0;
         return countA - countB;
       });
 
-      // Get the minimum task count
       const minCount = deliveryCounts[candidates[0].id] || 0;
 
-      // Filter all housekeepers with the minimum count
       const leastBusyHousekeepers = candidates.filter(
         (hk) => (deliveryCounts[hk.id] || 0) === minCount
       );
 
       console.log("Least busy housekeepers (count:", minCount, "):", leastBusyHousekeepers.map(h => h.name));
 
-      // Randomly select one from the least busy housekeepers
       const randomIndex = Math.floor(Math.random() * leastBusyHousekeepers.length);
       const selectedHk = leastBusyHousekeepers[randomIndex];
-      // ===== FIX ENDS HERE =====
 
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
@@ -360,13 +344,11 @@ router.post("/borrow", authorization, async (req, res) => {
       console.log("Current delivery count:", deliveryCounts[assignedHousekeeperId] || 0);
     }
 
-    // Reduce item quantity
     await pool.query(
       "UPDATE borrowable_items SET quantity = quantity - $1 WHERE id = $2",
       [quantity, item_id]
     );
 
-    // Insert borrowed item with delivery status, assigned housekeeper, AND room_id
     const borrowed = await pool.query(
       `INSERT INTO borrowed_items 
        (user_id, item_name, quantity, charge_amount, delivery_status, housekeeper_id, room_id)
@@ -383,7 +365,6 @@ router.post("/borrow", authorization, async (req, res) => {
       ]
     );
 
-    // Notify admin
     await pool.query(
       `INSERT INTO notifications (user_id, message, created_at)
        SELECT id, $1, NOW() FROM users
@@ -398,7 +379,6 @@ router.post("/borrow", authorization, async (req, res) => {
       ]
     );
 
-    // If housekeeper assigned, notify them and the guest
     if (assignedHousekeeperId) {
       await pool.query(
         `INSERT INTO notifications (user_id, message, created_at)
@@ -455,7 +435,6 @@ router.post("/borrow", authorization, async (req, res) => {
         assigned_housekeeper: assignedHousekeeperName,
       });
     } else {
-      // No housekeeper available - notify guest
       await pool.query(
         `INSERT INTO notifications (user_id, message, created_at)
          VALUES ($1, $2, NOW())`,

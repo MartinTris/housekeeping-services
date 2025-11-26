@@ -1,6 +1,5 @@
 const pool = require("../db");
 
-// Create a notification for a specific user
 async function createNotification(userId, message) {
   try {
     await pool.query(

@@ -22,7 +22,6 @@ const NotificationModal = ({ notification, user, onClose }) => {
 
     // Guest notifications
     if (role === "guest") {
-      // Housekeeping request status updates
       if (
         message.includes("approved") ||
         message.includes("in progress") ||
@@ -34,13 +33,11 @@ const NotificationModal = ({ notification, user, onClose }) => {
       if (message.includes("has been delivered")) {
         return "/guest";
       }
-      // Items will be delivered - no redirect, just OK button
       if (message.includes("will be delivered")) {
         return null;
       }
     }
 
-    // Housekeeper notifications
     if (role === "housekeeper") {
       return "/housekeeper/tasks";
     }
@@ -54,7 +51,6 @@ const NotificationModal = ({ notification, user, onClose }) => {
       navigate(path);
       onClose();
     } else {
-      // Just close modal for notifications without redirect
       onClose();
     }
   };

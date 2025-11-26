@@ -7,7 +7,7 @@ const { authorization, checkAdminOrSuperAdmin, checkSuperAdmin } = require("../m
 const crypto = require("crypto");
 const { sendVerificationEmail, sendPasswordResetEmail } = require("../utils/emailService");
 
-// REGISTER
+// Register
 router.post("/register", validInfo, async (req, res) => {
   try {
     const { first_name, last_name, email, password, role, facility } = req.body;
@@ -21,7 +21,6 @@ router.post("/register", validInfo, async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     if (user.rows.length !== 0) {
       return res.status(409).json({ message: "User already exists" });
@@ -34,11 +33,9 @@ router.post("/register", validInfo, async (req, res) => {
 
     const isFirstLogin = role === "admin" || role === "housekeeper";
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Insert new user with verification token
     const newUser = await pool.query(
       `INSERT INTO users (first_name, last_name, email, password_hash, role, facility, first_login, 
                          email_verified, verification_token, verification_token_expires) 
@@ -51,22 +48,19 @@ router.post("/register", validInfo, async (req, res) => {
         role,
         facility || null,
         isFirstLogin,
-        false, // email_verified
+        false,
         verificationToken,
         tokenExpiry,
       ]
     );
 
-    // Send verification email
     try {
       await sendVerificationEmail(email, verificationToken, first_name);
       console.log('✓ Verification email sent successfully to:', email);
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
-      // Continue with registration even if email fails
     }
 
-    // For guests and students, don't generate token until verified
     if (role === 'guest' || role === 'student') {
       return res.json({ 
         message: "Registration successful! Please check your email to verify your account.",
@@ -74,7 +68,6 @@ router.post("/register", validInfo, async (req, res) => {
       });
     }
 
-    // For admin/housekeeper, generate token (they can verify later)
     const token = jwtGenerator(newUser.rows[0]);
     res.json({ 
       token, 
@@ -87,12 +80,11 @@ router.post("/register", validInfo, async (req, res) => {
   }
 });
 
-// VERIFY EMAIL
+// Verify Email
 router.get("/verify-email/:token", async (req, res) => {
   try {
     const { token } = req.params;
 
-    // Find user with this token
     const result = await pool.query(
       `SELECT * FROM users 
        WHERE verification_token = $1 
@@ -108,7 +100,6 @@ router.get("/verify-email/:token", async (req, res) => {
 
     const user = result.rows[0];
 
-    // Update user as verified
     await pool.query(
       `UPDATE users 
        SET email_verified = TRUE, 
@@ -128,7 +119,6 @@ router.get("/verify-email/:token", async (req, res) => {
   }
 });
 
-// RESEND VERIFICATION EMAIL
 router.post("/resend-verification", async (req, res) => {
   try {
     const { email } = req.body;
@@ -137,7 +127,6 @@ router.post("/resend-verification", async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // Find user
     const result = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
@@ -153,11 +142,9 @@ router.post("/resend-verification", async (req, res) => {
       return res.status(400).json({ message: "Email already verified" });
     }
 
-    // Generate new verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Update user with new token
     await pool.query(
       `UPDATE users 
        SET verification_token = $1, verification_token_expires = $2 
@@ -165,7 +152,6 @@ router.post("/resend-verification", async (req, res) => {
       [verificationToken, tokenExpiry, user.id]
     );
 
-    // Send verification email
     await sendVerificationEmail(email, verificationToken, user.first_name);
 
     res.json({ message: "Verification email sent successfully" });
@@ -175,7 +161,7 @@ router.post("/resend-verification", async (req, res) => {
   }
 });
 
-// REQUEST PASSWORD RESET
+// Request password reset
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -184,13 +170,11 @@ router.post("/forgot-password", async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    // Check if user exists
     const user = await pool.query(
       "SELECT id, email, first_name FROM users WHERE email = $1",
       [email]
     );
 
-    // Always return success to prevent email enumeration
     if (user.rows.length === 0) {
       return res.json({ 
         message: "If an account exists with that email, a password reset link has been sent." 
@@ -203,7 +187,6 @@ router.post("/forgot-password", async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    // Store token in database
     await pool.query(
       `UPDATE users 
        SET password_reset_token = $1, password_reset_expires = $2 
@@ -211,7 +194,6 @@ router.post("/forgot-password", async (req, res) => {
       [resetToken, tokenExpiry, userData.id]
     );
 
-    // Send email
     try {
       await sendPasswordResetEmail(userData.email, resetToken, userData.first_name);
       console.log('✓ Password reset email sent to:', userData.email);
@@ -231,7 +213,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-// VERIFY RESET TOKEN
+// Verify Reset Token
 router.get("/verify-reset-token/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -260,7 +242,7 @@ router.get("/verify-reset-token/:token", async (req, res) => {
   }
 });
 
-// RESET PASSWORD
+// Reset Password
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body;
@@ -269,7 +251,6 @@ router.post("/reset-password", async (req, res) => {
       return res.status(400).json({ message: "Token and new password are required" });
     }
 
-    // Password validation
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*_]).{6,}$/;
     
     if (!passwordRegex.test(newPassword)) {
@@ -279,7 +260,6 @@ router.post("/reset-password", async (req, res) => {
       });
     }
 
-    // Find user with valid token
     const user = await pool.query(
       `SELECT id, role, email, password_hash FROM users 
        WHERE password_reset_token = $1 
@@ -306,7 +286,6 @@ router.post("/reset-password", async (req, res) => {
     const salt = await bcrypt.genSalt(saltRound);
     const bcryptPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update password and clear reset token
     await pool.query(
       `UPDATE users 
        SET password_hash = $1, 
@@ -327,7 +306,7 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-// LOGIN - Updated to check email verification
+// Login
 router.post("/login", validInfo, async (req, res) => {
   try {
     const { email, password, role } = req.body;
@@ -336,7 +315,6 @@ router.post("/login", validInfo, async (req, res) => {
       return res.status(400).json({ message: "Email required" });
     }
 
-    // Query user by email first
     const user = await pool.query(
       "SELECT * FROM users WHERE email = $1",
       [email]
@@ -348,16 +326,14 @@ router.post("/login", validInfo, async (req, res) => {
 
     const userData = user.rows[0];
 
-    // Check if email is verified for ALL roles (guest, student, admin, housekeeper)
     if (!userData.email_verified && userData.role !== 'superadmin') {
       return res.status(403).json({ 
         message: "Please verify your email before logging in. Check your inbox for the verification link.",
         requiresVerification: true,
-        email: email // Send email back so frontend can show resend option
+        email: email
       });
     }
 
-    // Allow superadmin to login through admin button
     if (role === "admin" && userData.role === "superadmin") {
       const validPassword = await bcrypt.compare(password, userData.password_hash);
       
@@ -373,7 +349,6 @@ router.post("/login", validInfo, async (req, res) => {
       });
     }
 
-    // For regular users, check if role matches
     if (userData.role !== role) {
       return res.status(401).json({ message: "User not found or role mismatch" });
     }
@@ -396,7 +371,7 @@ router.post("/login", validInfo, async (req, res) => {
   }
 });
 
-// VERIFY TOKEN
+// Verify token
 router.get("/is-verify", authorization, async (req, res) => {
   try {
     res.json(true);

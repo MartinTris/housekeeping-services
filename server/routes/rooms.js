@@ -154,7 +154,6 @@ router.post("/:id/assign", authorization, async (req, res) => {
       [id, guest_id, time_out || null]
     );
 
-    // Update user's facility based on room's facility
     const updatedUser = await pool.query(
       `
       UPDATE users 
@@ -165,7 +164,6 @@ router.post("/:id/assign", authorization, async (req, res) => {
       [id, guest_id]
     );
 
-    // Generate new token with updated facility
     const jwtGenerator = require("../utils/jwtGenerator");
     const newToken = jwtGenerator({
       id: updatedUser.rows[0].id,
@@ -202,7 +200,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
-    // Get room details first
     const roomRes = await pool.query(
       `SELECT r.id, r.room_number, r.facility
        FROM rooms r
@@ -216,12 +213,10 @@ router.put("/:id/remove", authorization, async (req, res) => {
 
     const room = roomRes.rows[0];
 
-    // For regular admin, verify facility access
     if (role === 'admin' && room.facility.toLowerCase() !== facility.toLowerCase()) {
       return res.status(403).json({ error: "Cannot manage rooms from other facilities." });
     }
 
-    // NEW: Check for unpaid borrowed items before allowing checkout
     const unpaidItems = await pool.query(
       `SELECT COUNT(*) as unpaid_count, 
               SUM(bi.charge_amount) as total_unpaid
@@ -245,7 +240,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
       });
     }
 
-    // Continue with existing checkout logic
     const result = await pool.query(
       `
       WITH active AS (
@@ -279,14 +273,12 @@ router.put("/:id/remove", authorization, async (req, res) => {
     }
 
     const guestId = result.rows[0].guest_id;
-    
-    // Update user facility to NULL and get updated user data
+
     const updatedUser = await pool.query(
       "UPDATE users SET facility = NULL WHERE id = $1 RETURNING id, email, role, facility", 
       [guestId]
     );
 
-    // Generate new token with facility removed
     const jwtGenerator = require("../utils/jwtGenerator");
     const newToken = jwtGenerator({
       id: updatedUser.rows[0].id,
@@ -475,7 +467,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
   }
 });
 
-// Frontend handleRemove update to show detailed error
 const handleRemove = async (room) => {
   if (role === "superadmin") {
     alert("Superadmins can only view rooms. Guest checkout is restricted to facility admins.");
@@ -492,8 +483,7 @@ const handleRemove = async (room) => {
 
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      
-      // Handle payment error with detailed information
+
       if (j.unpaid_count && j.total_amount) {
         alert(
           `${j.error}\n\n` +
@@ -508,8 +498,7 @@ const handleRemove = async (room) => {
     }
 
     const data = await res.json();
-    
-    // Check if checked-out guest is current user
+
     const token = localStorage.getItem("token");
     if (token && data.token) {
       try {
@@ -539,7 +528,6 @@ const handleRemove = async (room) => {
   }
 };
 
-// update timeout
 router.put("/:id/update-timeout", authorization, async (req, res) => {
   try {
     const { id } = req.params;

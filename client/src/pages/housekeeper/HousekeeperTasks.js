@@ -27,7 +27,6 @@ const HousekeeperTasks = () => {
     }
   };
 
-  // Mark as In Progress (replaces acknowledge)
   const handleMarkInProgress = async (taskId) => {
     try {
       const res = await fetch(
@@ -56,7 +55,6 @@ const HousekeeperTasks = () => {
     }
   };
 
-  // Mark housekeeping task as done
   const handleMarkDone = async (taskId) => {
     try {
       const res = await fetch(
@@ -81,7 +79,6 @@ const HousekeeperTasks = () => {
     }
   };
 
-  // Confirm item delivery
   const handleItemDelivered = async (deliveryId) => {
     try {
       const res = await fetch(
@@ -112,7 +109,6 @@ const HousekeeperTasks = () => {
 
   if (loading) return <p className="p-4">Loading tasks...</p>;
 
-  // helper function to parse "04:00 PM" correctly into a Date
   const parsePreferredTime = (dateStr, timeStr) => {
     const [time, modifier] = timeStr.split(" ");
     let [hours, minutes] = time.split(":").map(Number);
@@ -127,7 +123,6 @@ const HousekeeperTasks = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
-      {/* HOUSEKEEPING TASKS SECTION */}
       <div>
         <h2 className="text-green-900 text-xl sm:text-2xl font-poppins font-bold mb-3 sm:mb-4">
           Housekeeping Tasks
@@ -137,7 +132,6 @@ const HousekeeperTasks = () => {
           <p className="text-gray-500 text-sm sm:text-base">No housekeeping tasks assigned.</p>
         ) : (
           <>
-            {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full border border-gray-300">
                 <thead>
@@ -203,7 +197,6 @@ const HousekeeperTasks = () => {
               </table>
             </div>
 
-            {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
               {housekeepingTasks.map((task) => {
                 const now = new Date();
@@ -280,7 +273,6 @@ const HousekeeperTasks = () => {
         )}
       </div>
 
-      {/* ITEM DELIVERY TASKS SECTION */}
       <div>
         <h2 className="text-green-900 text-xl sm:text-2xl font-poppins font-bold mb-3 sm:mb-4">
           Item Deliveries
@@ -290,7 +282,6 @@ const HousekeeperTasks = () => {
           <p className="text-gray-500 text-sm sm:text-base">No delivery tasks pending.</p>
         ) : (
           <>
-            {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full border border-gray-300">
                 <thead>
@@ -325,7 +316,6 @@ const HousekeeperTasks = () => {
               </table>
             </div>
 
-            {/* Mobile Card View */}
             <div className="md:hidden space-y-4">
               {deliveryTasks.map((task) => (
                 <div key={task.id} className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">

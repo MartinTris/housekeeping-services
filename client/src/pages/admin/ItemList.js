@@ -154,7 +154,6 @@ return (
         <p className="text-sm sm:text-base">No items added yet.</p>
       ) : (
         <>
-          {/* Mobile Card View */}
           <div className="block lg:hidden space-y-3">
             {items.map((item) => (
               <div key={item.id} className="border border-gray-300 rounded-lg p-4 bg-white shadow hover:bg-gray-50">
@@ -212,7 +211,6 @@ return (
             ))}
           </div>
 
-          {/* Desktop Table View */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
               <thead>
@@ -267,7 +265,6 @@ return (
         </>
       )}
 
-      {/* Add Button - Only for admin */}
       {userRole === "admin" && (
         <div className="flex justify-start mt-4">
           <button
@@ -279,7 +276,6 @@ return (
         </div>
       )}
 
-      {/* Add Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-md">
@@ -338,7 +334,6 @@ return (
         </div>
       )}
 
-      {/* Edit Modal */}
       {editModal && selectedItem && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-md">

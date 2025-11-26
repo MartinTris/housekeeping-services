@@ -29,7 +29,6 @@ const HousekeeperFeedbackWidget = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Limit to 3 feedbacks
   const displayedFeedbacks = feedbacks.slice(0, 3);
 
   return (
@@ -58,7 +57,6 @@ const HousekeeperFeedbackWidget = () => {
         <p className="text-gray-600 text-sm sm:text-base">No feedback assigned to you yet.</p>
       ) : (
         <>
-          {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -97,7 +95,6 @@ const HousekeeperFeedbackWidget = () => {
             </table>
           </div>
 
-          {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
             {displayedFeedbacks.map((f) => (
               <div 
@@ -105,7 +102,6 @@ const HousekeeperFeedbackWidget = () => {
                 className="border border-gray-200 rounded-lg p-3 bg-gradient-to-br from-white to-gray-50 shadow-sm"
               >
                 <div className="space-y-2">
-                  {/* Header: Guest and Rating */}
                   <div className="flex justify-between items-start gap-2 pb-2 border-b border-gray-200">
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-500 uppercase">Guest</p>
@@ -119,7 +115,6 @@ const HousekeeperFeedbackWidget = () => {
                     </div>
                   </div>
 
-                  {/* Room and Service Details */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-xs text-gray-500 uppercase">Room</p>
@@ -133,7 +128,6 @@ const HousekeeperFeedbackWidget = () => {
                     </div>
                   </div>
 
-                  {/* Comment */}
                   <div className="pt-2 border-t border-gray-200">
                     <p className="text-xs text-gray-500 uppercase mb-1">Comment</p>
                     <p className="text-sm text-gray-700 leading-relaxed">
@@ -141,7 +135,6 @@ const HousekeeperFeedbackWidget = () => {
                     </p>
                   </div>
 
-                  {/* Date */}
                   <div className="pt-2 border-t border-gray-200">
                     <p className="text-xs text-gray-500">
                       {new Date(f.created_at).toLocaleDateString()}
@@ -152,7 +145,6 @@ const HousekeeperFeedbackWidget = () => {
             ))}
           </div>
 
-          {/* View More Button */}
           {feedbacks.length > 3 && (
             <div className="mt-4 text-center">
               <button

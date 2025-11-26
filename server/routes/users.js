@@ -75,7 +75,6 @@ router.put("/reset-password", authorization, async (req, res) => {
       return res.status(400).json({ error: "Old password is incorrect." });
     }
 
-    // Check if new password is the same as old password
     const isSamePassword = await bcrypt.compare(newPassword, storedPassword);
     
     if (isSamePassword) {

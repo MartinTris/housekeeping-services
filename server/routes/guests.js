@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
-const jwtGenerator = require("../utils/jwtGenerator"); // Make sure you have this
+const jwtGenerator = require("../utils/jwtGenerator");
 
 router.get("/rooms", authorization, async (req, res) => {
   try {
@@ -81,7 +81,6 @@ router.post("/assign/:room_id", authorization, async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Get the room's facility
     const roomResult = await client.query(
       "SELECT facility FROM rooms WHERE id = $1",
       [room_id]
@@ -94,25 +93,21 @@ router.post("/assign/:room_id", authorization, async (req, res) => {
 
     const roomFacility = roomResult.rows[0].facility;
 
-    // Update guest's facility
     await client.query(
       "UPDATE users SET facility = $1 WHERE id = $2",
       [roomFacility, guest_id]
     );
 
-    // Create booking
     await client.query(
       "INSERT INTO room_bookings (room_id, guest_id, time_in, time_out) VALUES ($1, $2, $3, $4)",
       [room_id, guest_id, time_in, time_out]
     );
 
-    // Update room occupation
     await client.query(
       "UPDATE rooms SET occupied_by = $1 WHERE id = $2",
       [guest_id, room_id]
     );
 
-    // Get updated user info for JWT
     const userResult = await client.query(
       "SELECT id, email, role, facility FROM users WHERE id = $1",
       [guest_id]
@@ -122,7 +117,6 @@ router.post("/assign/:room_id", authorization, async (req, res) => {
 
     const updatedUser = userResult.rows[0];
 
-    // Generate new token with updated facility
     const newToken = jwtGenerator({
       id: updatedUser.id,
       email: updatedUser.email,

@@ -40,7 +40,6 @@ const expireBookings = async () => {
   }
 };
 
-// run every minute (adjust to your needs)
 cron.schedule("* * * * *", () => {
   console.log("Running expireBookings task...");
   expireBookings();

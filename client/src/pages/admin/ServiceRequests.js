@@ -8,12 +8,10 @@ const ServiceRequests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedHousekeeper, setSelectedHousekeeper] = useState("");
 
-  // fetch requests
   const fetchRequests = async () => {
     try {
       const res = await fetch(`${API_URL}/housekeeping-requests`, {
@@ -33,7 +31,6 @@ const ServiceRequests = () => {
     }
   };
 
-  // fetch housekeepers
   const fetchHousekeepers = async () => {
     try {
       const res = await fetch(`${API_URL}/housekeepers`, {
@@ -47,14 +44,12 @@ const ServiceRequests = () => {
     }
   };
 
-  // open modal for assignment
   const openAssignModal = (req) => {
     setSelectedRequest(req);
     setSelectedHousekeeper("");
     setShowModal(true);
   };
 
-  // confirm assignment
   const confirmAssignment = async () => {
     if (!selectedHousekeeper) {
       alert("Please select a housekeeper.");
@@ -108,7 +103,6 @@ const ServiceRequests = () => {
         </p>
       ) : (
         <>
-          {/* Mobile Card View */}
           <div className="block lg:hidden space-y-4">
             {requests.map((req) => (
               <div
@@ -197,7 +191,6 @@ const ServiceRequests = () => {
             ))}
           </div>
 
-          {/* Desktop Table View */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full border border-gray-300">
               <thead>
@@ -253,7 +246,6 @@ const ServiceRequests = () => {
         </>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md">

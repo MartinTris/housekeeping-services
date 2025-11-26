@@ -82,7 +82,6 @@ router.post("/", authorization, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const bcryptPassword = await bcrypt.hash(password, salt);
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -103,7 +102,6 @@ router.post("/", authorization, async (req, res) => {
       ]
     );
 
-    // Send verification email
     try {
       await sendVerificationEmail(email, verificationToken, first_name);
       console.log("✓ Verification email sent to housekeeper:", email);
@@ -112,7 +110,6 @@ router.post("/", authorization, async (req, res) => {
         "Failed to send verification email to housekeeper:",
         emailError
       );
-      // Continue even if email fails
     }
 
     const hk = newUser.rows[0];
@@ -180,7 +177,7 @@ router.put("/:id/toggle-status", authorization, async (req, res) => {
   }
 });
 
-// Get all schedules - FIXED: Removed day_of_week references
+// Get all schedules
 router.get("/all-schedules", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
@@ -223,7 +220,6 @@ router.get("/all-schedules", authorization, async (req, res) => {
   }
 });
 
-// Get individual schedule
 router.get("/:id/schedule", authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -280,10 +276,9 @@ router.get("/:id/schedule", authorization, async (req, res) => {
   }
 });
 
-// Create/Update individual schedule
 router.post("/:id/schedule", authorization, async (req, res) => {
   try {
-    const { id } = req.params; // housekeeper_id
+    const { id } = req.params; 
     const { shift_time_in, shift_time_out, day_offs } = req.body;
     const { role, facility } = req.user;
 
@@ -345,12 +340,10 @@ router.post("/:id/schedule", authorization, async (req, res) => {
   }
 });
 
-// Get housekeeper tasks
 router.get("/tasks", authorization, async (req, res) => {
   try {
     const housekeeperId = req.user.id;
 
-    // Get housekeeping tasks - FIXED to use service_type_id
     const housekeepingTasks = await pool.query(
       `SELECT 
          hr.id,
@@ -372,7 +365,6 @@ router.get("/tasks", authorization, async (req, res) => {
       [housekeeperId]
     );
 
-    // Get delivery tasks
     const deliveryTasks = await pool.query(
       `SELECT 
          bi.id,
@@ -409,7 +401,6 @@ router.get("/tasks", authorization, async (req, res) => {
   }
 });
 
-// Acknowledge task
 router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
   try {
     const { id: hkId, role } = req.user;
@@ -419,7 +410,6 @@ router.put("/tasks/:id/acknowledge", authorization, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    // Check if task exists and get its time
     const taskRes = await pool.query(
       `SELECT preferred_date, preferred_time 
        FROM housekeeping_requests 
@@ -511,7 +501,6 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
       });
     }
 
-    // Insert into service_history with service_type_id
     await pool.query(
       `INSERT INTO service_history (
         request_id, guest_id, housekeeper_id, room_id, facility,
@@ -565,7 +554,6 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
   }
 });
 
-// Confirm item delivery
 router.put("/delivery/:id/confirm", authorization, async (req, res) => {
   try {
     const { id: hkId, role } = req.user;
@@ -631,16 +619,14 @@ router.get("/task-history", authorization, async (req, res) => {
         .json({ error: "Access denied. Housekeeper only." });
     }
 
-    const validDays = [7, 14, 30, 0]; // 0 represents "All Time"
+    const validDays = [7, 14, 30, 0];
     const range = validDays.includes(Number(days)) ? Number(days) : 7;
 
-    // Build the date filter conditionally
     const dateFilter =
       range === 0
-        ? "" // No date filter for "All Time"
+        ? ""
         : `AND sh.assigned_at >= NOW() - INTERVAL '${range} days'`;
 
-    // Query from service_history table for this specific housekeeper
     const historyQuery = `
   SELECT 
     CASE 

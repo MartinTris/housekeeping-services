@@ -4,7 +4,6 @@ const { authorization } = require("../middleware/authorization");
 
 const router = express.Router();
 
-// POST - Create announcement (can target multiple facilities)
 router.post("/", authorization, async (req, res) => {
   try {
     const {
@@ -12,14 +11,13 @@ router.post("/", authorization, async (req, res) => {
       message,
       target_guests,
       target_housekeepers,
-      target_admins, // NEW
-      facilities, // Array of facilities
+      target_admins,
+      facilities,
     } = req.body;
 
     const { id: user_id, role, facility: userFacility } = req.user;
     const toBool = (val) => val === true || val === "true";
 
-    // Determine which facilities to post to
     let targetFacilities;
     if (role === 'superadmin' && facilities && Array.isArray(facilities) && facilities.length > 0) {
       targetFacilities = facilities;
@@ -29,7 +27,6 @@ router.post("/", authorization, async (req, res) => {
 
     console.log("Creating announcement(s) for facilities:", targetFacilities);
 
-    // Create an announcement for each selected facility
     const insertPromises = targetFacilities.map(facility =>
       pool.query(
         `INSERT INTO announcements 
@@ -62,7 +59,7 @@ router.post("/", authorization, async (req, res) => {
   }
 });
 
-// GET - Get announcements based on user role and facility
+// Get announcements based on user role and facility
 router.get("/", authorization, async (req, res) => {
   try {
     const { role: userRole, facility: userFacility } = req.user;
@@ -77,7 +74,6 @@ router.get("/", authorization, async (req, res) => {
     let params;
 
     if (userRole === 'superadmin') {
-      // Superadmin sees ALL announcements from both facilities (regardless of target)
       query = `
         SELECT a.*,
                COALESCE(
@@ -92,7 +88,6 @@ router.get("/", authorization, async (req, res) => {
       `;
       params = [];
     } else if (userRole === "admin") {
-      // Regular admin sees announcements for their facility where target_admins = true
       query = `
         SELECT a.*,
                COALESCE(
@@ -152,7 +147,7 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// PUT - Update announcement
+// Update announcement
 router.put("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
@@ -178,13 +173,11 @@ router.put("/:id", authorization, async (req, res) => {
   }
 });
 
-// DELETE - Delete announcement
 router.delete("/:id", authorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { role, id: userId } = req.user;
 
-    // Superadmin can delete any announcement, others can only delete their own
     let deleteQuery;
     let deleteParams;
 
@@ -209,7 +202,7 @@ router.delete("/:id", authorization, async (req, res) => {
   }
 });
 
-// GET /admin - Admin's own announcements
+// Admin's own announcements
 router.get("/admin", authorization, async (req, res) => {
   try {
     const { role: userRole, facility: userFacility, id: userId } = req.user;
@@ -226,7 +219,6 @@ router.get("/admin", authorization, async (req, res) => {
     let params;
 
     if (userRole === 'superadmin') {
-      // Superadmin sees all announcements they posted across all facilities
       query = `
         SELECT a.*,
                COALESCE(
@@ -241,7 +233,6 @@ router.get("/admin", authorization, async (req, res) => {
       `;
       params = [userId];
     } else {
-      // Regular admin sees only their own facility's announcements that they posted
       query = `
         SELECT a.*,
                COALESCE(

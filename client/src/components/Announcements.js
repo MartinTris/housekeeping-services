@@ -18,7 +18,6 @@ const Announcements = () => {
       });
       const data = await res.json();
 
-      // For guests and housekeepers, check if they're checked in
       if ((data.role === "guest" || data.role === "housekeeper") && 
           (!data.facility || data.facility.trim() === "")) {
         setNotCheckedIn(true);
@@ -53,7 +52,6 @@ const Announcements = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate pagination
   const totalPages = Math.ceil(announcements.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -71,14 +69,12 @@ const Announcements = () => {
     }
   };
 
-  // Reset to page 1 if announcements change and current page is out of bounds
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
   }, [announcements.length, totalPages, currentPage]);
 
-  // Get title based on role
   const getTitle = () => {
     if (role === "admin" || role === "superadmin") {
       return "Admin Announcements";
@@ -89,7 +85,6 @@ const Announcements = () => {
     }
   };
 
-  // Get empty message based on role
   const getEmptyMessage = () => {
     if (role === "admin" || role === "superadmin") {
       return "No announcements for admins at this time.";
@@ -129,7 +124,6 @@ const Announcements = () => {
                 <p className="text-gray-700 text-base mt-2 leading-relaxed">
                   {a.message}
                 </p>
-                {/* Show facility for superadmins */}
                 {role === "superadmin" && a.facility && (
                   <p className="text-xs text-gray-500 mt-2">
                     Facility:{" "}

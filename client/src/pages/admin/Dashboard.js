@@ -51,7 +51,6 @@ const AdminDashboard = () => {
   const [rooms, setRooms] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Authentication check - runs first
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -364,7 +363,7 @@ const AdminDashboard = () => {
 
       const data = await res.json();
 
-      // Always ensure we set an array
+      
       if (Array.isArray(data)) {
         setMyAnnouncements(data);
       } else {
@@ -372,7 +371,7 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching admin announcements:", err.message);
-      setMyAnnouncements([]); // Set to empty array on error
+      setMyAnnouncements([]);
     }
   }
 
@@ -436,7 +435,6 @@ const AdminDashboard = () => {
       });
   }
 
-  // Don't render until authenticated
   if (!isAuthenticated) {
     return null;
   }
@@ -458,7 +456,6 @@ const AdminDashboard = () => {
         <DashboardToggle view={view} setView={setView} />
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-          {/* Left Side - Welcome Box and Main Content */}
           <div className="flex-1 w-full">
             <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-4 sm:p-8 mb-4 sm:mb-6 shadow-md border border-green-100">
               <h2 className="text-2xl sm:text-3xl font-poppins font-bold text-green-800 mb-2">
@@ -482,7 +479,6 @@ const AdminDashboard = () => {
               )}
             </div>
 
-            {/* Main Content Area */}
             <div className="flex-1">
               <HousekeepingTrends />
 
@@ -571,7 +567,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Right Sidebar - Stacks below on mobile */}
           <div className="w-full lg:w-96 lg:flex-shrink-0 space-y-4 sm:space-y-6">
             <HousekeeperRatingsList />
 

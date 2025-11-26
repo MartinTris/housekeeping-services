@@ -49,7 +49,6 @@ const AdminProfile = () => {
       ) : (
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 max-w-3xl">
 
-          {/* Top Section */}
           <div className="flex items-start gap-4 sm:gap-6">
             <div className="flex-1 min-w-0">
               <p className="text-xl sm:text-2xl font-semibold text-gray-900 break-words">
@@ -77,7 +76,6 @@ const AdminProfile = () => {
             </div>
           </div>
 
-          {/* Reset Password Button */}
           <div className="mt-6 sm:mt-8">
             <button
               onClick={() => setShowResetModal(true)}
@@ -87,7 +85,6 @@ const AdminProfile = () => {
             </button>
           </div>
 
-          {/* Modal */}
           {showResetModal && (
             <ResetPassword
               onClose={() => setShowResetModal(false)}

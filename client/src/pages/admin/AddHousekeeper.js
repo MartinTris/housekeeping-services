@@ -182,7 +182,6 @@ const AddHousekeeper = () => {
         password: inputs.password,
       };
 
-      // Only add facility if superadmin
       if (role === "superadmin" && inputs.facility) {
         payload.facility = inputs.facility;
       }
@@ -299,7 +298,6 @@ const AddHousekeeper = () => {
     );
   };
 
-  // Filter housekeepers by facility for superadmin
   const filteredHousekeepers = housekeepers.filter((hk) => {
     if (role !== "superadmin" || facilityFilter === "all") return true;
     return hk.facility === facilityFilter;
@@ -311,7 +309,6 @@ const AddHousekeeper = () => {
         Add / Remove Housekeeper {role !== "superadmin" && `(${facility})`}
       </h2>
 
-      {/* Add Form */}
       <div className="flex flex-col gap-3 sm:gap-4 max-w-md mx-auto mb-8 sm:mb-10">
         <input
           type="text"
@@ -346,7 +343,6 @@ const AddHousekeeper = () => {
           className="border rounded-lg px-3 py-2 text-sm sm:text-base"
         />
 
-        {/* Facility selector for superadmin */}
         {role === "superadmin" && (
           <select
             name="facility"
@@ -369,7 +365,6 @@ const AddHousekeeper = () => {
         </button>
       </div>
 
-      {/* Facility Filter for Superadmin */}
       {role === "superadmin" && (
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4">
           <label className="font-medium text-sm sm:text-base">
@@ -391,7 +386,6 @@ const AddHousekeeper = () => {
         Active Housekeepers
       </h3>
 
-      {/* Mobile Card View */}
       <div className="block sm:hidden space-y-3 mb-8">
         {filteredHousekeepers
           .filter((hk) => hk.is_active)
@@ -437,7 +431,6 @@ const AddHousekeeper = () => {
         )}
       </div>
 
-      {/* Desktop Table View */}
       <div className="hidden sm:block overflow-x-auto mb-8">
         <table className="table-auto w-full border-collapse border border-gray-300 text-left">
           <thead>
@@ -506,7 +499,6 @@ const AddHousekeeper = () => {
         Disabled Housekeepers
       </h3>
 
-      {/* Mobile Card View */}
       <div className="block sm:hidden space-y-3">
         {filteredHousekeepers
           .filter((hk) => !hk.is_active)
@@ -544,7 +536,6 @@ const AddHousekeeper = () => {
         )}
       </div>
 
-      {/* Desktop Table View */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="table-auto w-full border-collapse border border-gray-300 text-left">
           <thead>

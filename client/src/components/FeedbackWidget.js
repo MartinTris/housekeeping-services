@@ -10,7 +10,6 @@ const FeedbackWidget = () => {
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
 
-  // 🔄 Fetch completed requests eligible for feedback
   const fetchRecentCompleted = async () => {
     try {
       const res = await fetch(`${API_URL}/feedback/recent`, {
@@ -26,12 +25,10 @@ const FeedbackWidget = () => {
   useEffect(() => {
     fetchRecentCompleted();
     
-    // Refresh every minute to update time remaining
     const interval = setInterval(fetchRecentCompleted, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate time remaining
   const getTimeRemaining = (hoursSince) => {
     const hours = parseFloat(hoursSince);
     if (isNaN(hours)) return 'N/A';
@@ -44,7 +41,6 @@ const FeedbackWidget = () => {
     return `${Math.floor(hoursLeft)}h`;
   };
 
-  // 📤 Submit feedback
   const handleSubmitFeedback = async () => {
     try {
       if (!feedbackModal.requestId) throw new Error("Missing request ID");
@@ -93,7 +89,6 @@ const FeedbackWidget = () => {
 
   const displayRating = hover || rating;
 
-  // ⭐ Renders interactive stars with half support
   const renderStars = () => {
     return [1, 2, 3, 4, 5].map((star) => {
       const isFull = displayRating >= star;
@@ -115,9 +110,7 @@ const FeedbackWidget = () => {
             setRating(percent <= 0.5 ? star - 0.5 : star);
           }}
         >
-          {/* Base empty star */}
           <Star size={32} className="text-gray-300" />
-          {/* Filled portion (full or half) */}
           <div
             className="absolute top-0 left-0 overflow-hidden"
             style={{
@@ -145,7 +138,6 @@ const FeedbackWidget = () => {
         </div>
       ) : (
         <>
-          {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full border border-gray-300">
               <thead>
@@ -189,7 +181,6 @@ const FeedbackWidget = () => {
             </table>
           </div>
 
-          {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
             {recentCompleted.map((s) => (
               <div key={s.id} className="border border-gray-300 rounded-lg p-3 bg-gray-50">
@@ -238,7 +229,6 @@ const FeedbackWidget = () => {
             ))}
           </div>
 
-          {/* Info message */}
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs sm:text-sm text-blue-800">
               <span className="font-semibold">Note:</span> Feedback can only be submitted within 24 hours of service completion.
@@ -247,13 +237,11 @@ const FeedbackWidget = () => {
         </>
       )}
 
-      {/* Feedback Modal */}
       {feedbackModal.show && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md">
             <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Submit Feedback</h3>
 
-            {/* ⭐ Interactive Star Rating (half support) */}
             <label className="block mb-2 text-sm sm:text-base font-medium">Rating:</label>
             <div className="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2 mb-2">
               {renderStars()}
@@ -262,7 +250,6 @@ const FeedbackWidget = () => {
               {displayRating ? `${displayRating} / 5` : "Select a rating"}
             </p>
 
-            {/* 💬 Comment */}
             <label className="block mb-2 text-sm sm:text-base font-medium">Comment:</label>
             <textarea
               value={comment}
@@ -272,7 +259,6 @@ const FeedbackWidget = () => {
               placeholder="Share your experience..."
             />
 
-            {/* Buttons */}
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
               <button
                 className="w-full sm:w-auto px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 active:bg-gray-400 text-sm sm:text-base"

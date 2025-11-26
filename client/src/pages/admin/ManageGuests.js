@@ -18,22 +18,18 @@ const ManageGuests = () => {
   const [role, setRole] = useState("");
   const [guestsPendingPayments, setGuestsPendingPayments] = useState(new Set());
 
-  // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [facilityFilter, setFacilityFilter] = useState("all");
 
-  // Admin modals
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState(null);
 
-  // Rename state
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editedRoomName, setEditedRoomName] = useState("");
 
-  // Get user role
   useEffect(() => {
     const userRole = localStorage.getItem("role");
     setRole(userRole);
@@ -55,7 +51,6 @@ const ManageGuests = () => {
       const data = await res.json();
       setRooms(data || []);
 
-      // Fetch pending payments to check which guests have unsettled payments
       await fetchPendingPaymentsForGuests(data);
     } catch (err) {
       console.error("Network error fetching rooms:", err);
@@ -69,7 +64,6 @@ const ManageGuests = () => {
     fetchRooms();
   }, []);
 
-  // Fetch pending payments to determine which guests have unsettled bills
   const fetchPendingPaymentsForGuests = async (roomsData) => {
     try {
       const res = await fetch(`${API_URL}/items/pending`, {
@@ -82,8 +76,7 @@ const ManageGuests = () => {
       }
 
       const pendingItems = await res.json();
-      
-      // Create a Set of user IDs who have pending payments
+
       const guestsWithPending = new Set(
         pendingItems.map(item => item.user_id)
       );
@@ -94,7 +87,6 @@ const ManageGuests = () => {
     }
   };
 
-  // Guest search
   useEffect(() => {
     if (!searchQuery || searchQuery.trim().length < 2) {
       setSuggestions([]);
@@ -130,7 +122,6 @@ const ManageGuests = () => {
   }, [searchQuery]);
 
   const openAssignModal = (room) => {
-    // Superadmin cannot assign guests
     if (role === "superadmin") {
       alert(
         "Superadmins can only view rooms. Guest assignment is restricted to facility admins."
@@ -138,7 +129,6 @@ const ManageGuests = () => {
       return;
     }
 
-    // Check if Admin Office
     if (room.room_number === "Admin Office") {
       alert(
         "Cannot assign guests to Admin Office. This room is reserved for admin service requests."
@@ -211,7 +201,6 @@ const ManageGuests = () => {
     }
   };
 
-  // Socket setup
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -265,7 +254,6 @@ const ManageGuests = () => {
 
       const data = await res.json();
 
-      // Check if checked-out guest is current user
       const token = localStorage.getItem("token");
       if (token && data.token) {
         try {
@@ -298,7 +286,6 @@ const ManageGuests = () => {
     }
   };
 
-  // ---- ADMIN ROOM FUNCTIONS ----
   const handleAddRoom = async () => {
     if (!newRoomName.trim()) return alert("Room name is required.");
 
@@ -379,7 +366,6 @@ const ManageGuests = () => {
     }
   };
 
-  // Filter rooms
   const filteredRooms = rooms.filter((room) => {
     const matchesSearch = room.room_number
       .toLowerCase()
@@ -408,7 +394,6 @@ const ManageGuests = () => {
         )}
       </h2>
 
-      {/* Filters */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
         <input
           type="text"
@@ -454,7 +439,6 @@ const ManageGuests = () => {
                 key={room.id}
                 className="relative border rounded-lg p-3 sm:p-4 shadow bg-white text-center"
               >
-                {/* Facility badge for superadmin */}
                 {role === "superadmin" && room.facility && (
                   <div className="absolute top-2 left-2">
                     <span
@@ -469,7 +453,6 @@ const ManageGuests = () => {
                   </div>
                 )}
 
-                {/* Delete icon - only for regular admin, not for Admin Office */}
                 {role === "admin" && !isAdminOffice && (
                   <button
                     onClick={() => {
@@ -483,7 +466,6 @@ const ManageGuests = () => {
                   </button>
                 )}
 
-                {/* Room name + edit (not for Admin Office) */}
                 {editingRoomId === room.id && !isAdminOffice ? (
                   <div className="flex items-center justify-center gap-1 sm:gap-2 mb-2 mt-6">
                     <input
@@ -594,7 +576,6 @@ const ManageGuests = () => {
             );
           })}
 
-          {/* Add Room Button - only for regular admin */}
           {role === "admin" && (
             <button
               onClick={() => setShowAddRoomModal(true)}
@@ -607,7 +588,6 @@ const ManageGuests = () => {
         </div>
       )}
 
-      {/* Summary */}
       {!loading && (
         <div className="mt-4 sm:mt-6 text-gray-600 text-sm sm:text-base">
           <p>
@@ -616,7 +596,6 @@ const ManageGuests = () => {
         </div>
       )}
 
-      {/* ----- Add Room Modal ----- */}
       {showAddRoomModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-sm">
@@ -651,7 +630,6 @@ const ManageGuests = () => {
         </div>
       )}
 
-      {/* ----- Delete Room Modal ----- */}
       {showDeleteModal && roomToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-sm text-center">
@@ -683,7 +661,6 @@ const ManageGuests = () => {
         </div>
       )}
 
-      {/* ----- Assign Guest Modal ----- */}
       {showModal && selectedRoom && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">

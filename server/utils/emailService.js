@@ -1,12 +1,10 @@
 require('dotenv').config();
 const SibApiV3Sdk = require('@getbrevo/brevo');
 
-// Initialize Brevo API client
 const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 const apiKey = apiInstance.authentications['apiKey'];
 apiKey.apiKey = process.env.BREVO_API_KEY;
 
-// Send verification email using Brevo API
 async function sendVerificationEmail(email, token, firstName) {
   const verificationUrl = `${process.env.CLIENT_URL}/verify-email?token=${token}`;
   
@@ -104,11 +102,11 @@ async function sendVerificationEmail(email, token, firstName) {
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('✅ Verification email sent successfully via Brevo API!');
+    console.log('Verification email sent successfully via Brevo API!');
     console.log('   Message ID:', data.messageId);
     return { success: true, messageId: data.messageId };
   } catch (error) {
-    console.error('❌ Error sending verification email via Brevo API:');
+    console.error('Error sending verification email via Brevo API:');
     console.error('   Error:', error.message);
     console.error('   Response:', error.response?.body);
     console.error('   API Key present:', process.env.BREVO_API_KEY ? 'Yes' : 'No');
@@ -211,10 +209,10 @@ async function sendTaskAssignmentEmail(email, firstName, taskDetails) {
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('✅ Task assignment email sent successfully!');
+    console.log('Task assignment email sent successfully!');
     return { success: true, messageId: data.messageId };
   } catch (error) {
-    console.error('❌ Error sending task assignment email:', error.message);
+    console.error('Error sending task assignment email:', error.message);
     throw error;
   }
 }
@@ -308,10 +306,10 @@ async function sendPasswordResetEmail(email, resetToken, firstName) {
 
   try {
     const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log('✅ Password reset email sent successfully!');
+    console.log('Password reset email sent successfully!');
     return { success: true, messageId: data.messageId };
   } catch (error) {
-    console.error('❌ Error sending password reset email:', error.message);
+    console.error('Error sending password reset email:', error.message);
     throw error;
   }
 }

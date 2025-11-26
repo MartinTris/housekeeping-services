@@ -14,11 +14,9 @@ const BorrowItems = () => {
   const [isWithinOperatingHours, setIsWithinOperatingHours] = useState(true);
   const [nextOpenTime, setNextOpenTime] = useState("");
 
-  // Function to check if current time is within operating hours
   const checkOperatingHours = (facility) => {
     if (!facility) return { isOpen: false, nextOpen: "" };
 
-    // Get current time in Philippine timezone
     const phTime = new Date().toLocaleString("en-US", {
       timeZone: "Asia/Manila",
       hour12: false,
@@ -32,13 +30,13 @@ const BorrowItems = () => {
     let openMinutes, closeMinutes, openTime, closeTime;
 
     if (facility === "RCC") {
-      openMinutes = 8 * 60; // 8:00 AM
-      closeMinutes = 17 * 60; // 5:00 PM
+      openMinutes = 8 * 60; 
+      closeMinutes = 17 * 60; 
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else if (facility === "Hotel Rafael") {
-      openMinutes = 6 * 60; // 6:00 AM
-      closeMinutes = 22 * 60; // 6:00 PM
+      openMinutes = 6 * 60;
+      closeMinutes = 22 * 60; 
       openTime = "6:00 AM";
       closeTime = "6:00 PM";
     } else {
@@ -87,8 +85,7 @@ const BorrowItems = () => {
           const decoded = jwtDecode(token);
           facilityToCheck = decoded.facility || "";
           setUserFacility(facilityToCheck);
-          
-          // Check operating hours on mount
+
           const { isOpen, nextOpen } = checkOperatingHours(facilityToCheck);
           setIsWithinOperatingHours(isOpen);
           setNextOpenTime(nextOpen);
@@ -102,14 +99,13 @@ const BorrowItems = () => {
 
     initializeFacility();
 
-    // Check operating hours every minute
     const interval = setInterval(() => {
       if (userFacility) {
         const { isOpen, nextOpen } = checkOperatingHours(userFacility);
         setIsWithinOperatingHours(isOpen);
         setNextOpenTime(nextOpen);
       }
-    }, 60000); // Check every minute
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -128,8 +124,7 @@ const BorrowItems = () => {
         const user = await res.json();
         console.log("Updated user data:", user);
         setUserFacility(user.facility || "");
-        
-        // Check operating hours for new facility
+
         const { isOpen, nextOpen } = checkOperatingHours(user.facility);
         setIsWithinOperatingHours(isOpen);
         setNextOpenTime(nextOpen);
@@ -166,8 +161,6 @@ const BorrowItems = () => {
 
   const handleBorrow = async (e) => {
     e.preventDefault();
-    
-    // Double-check operating hours before allowing borrow
     const { isOpen } = checkOperatingHours(userFacility);
     if (!isOpen) {
       toast.error("Borrowing is currently outside operating hours.");
@@ -223,7 +216,6 @@ const BorrowItems = () => {
     );
   }
 
-  // Get operating hours for display
   const { openTime, closeTime } = checkOperatingHours(userFacility);
 
   if (!isWithinOperatingHours) {
@@ -310,7 +302,6 @@ const BorrowItems = () => {
         </table>
       )}
 
-      {/* Borrow Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">

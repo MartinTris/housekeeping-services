@@ -3,13 +3,12 @@ const router = express.Router();
 const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 
-// Get all permissions (optionally filtered by facility and role)
+// Get all permissions
 router.get("/", authorization, async (req, res) => {
   try {
     const { role: userRole } = req.user;
     const { facility, role } = req.query;
 
-    // Only superadmin can view permissions
     if (userRole !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
@@ -45,12 +44,11 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// Get permissions for a specific user (based on their role and facility)
+// Get permissions for a specific user
 router.get("/my-permissions", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
 
-    // Superadmin has access to everything, no restrictions
     if (role === "superadmin") {
       return res.json({ all_access: true, permissions: [] });
     }
@@ -77,14 +75,13 @@ router.get("/my-permissions", authorization, async (req, res) => {
   }
 });
 
-// Update a single permission (toggle enabled/disabled)
+// Update a single permission
 router.put("/:id", authorization, async (req, res) => {
   try {
     const { role: userRole, id: userId } = req.user;
     const { id } = req.params;
     const { is_enabled } = req.body;
 
-    // Only superadmin can update permissions
     if (userRole !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
@@ -112,13 +109,12 @@ router.put("/:id", authorization, async (req, res) => {
   }
 });
 
-// Bulk update permissions (enable/disable multiple pages at once)
+// Bulk update permissions
 router.put("/bulk/update", authorization, async (req, res) => {
   try {
     const { role: userRole, id: userId } = req.user;
     const { permission_ids, is_enabled } = req.body;
 
-    // Only superadmin can update permissions
     if (userRole !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
@@ -155,7 +151,6 @@ router.put("/bulk/facility-role", authorization, async (req, res) => {
     const { role: userRole, id: userId } = req.user;
     const { facility, role, is_enabled } = req.body;
 
-    // Only superadmin can update permissions
     if (userRole !== "superadmin") {
       return res.status(403).json({ error: "Access denied. Superadmin only." });
     }
