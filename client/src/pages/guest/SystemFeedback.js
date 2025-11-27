@@ -29,7 +29,7 @@ const SystemFeedback = () => {
 
   return (
     <div className="p-4 sm:p-8">
-      <h2 className="text-xl sm:text-2xl font-bold mb-4 text-green-800">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 text-green-900 font-poppins">
         System Feedback
       </h2>
 

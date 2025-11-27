@@ -39,7 +39,7 @@ const UserProfile = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      <h2 className="text-xl sm:text-2xl font-poppins font-bold text-green-900 mb-4 sm:mb-6">
+      <h2 className="text-2xl sm:text-3xl font-poppins font-bold text-green-900 mb-4 sm:mb-6">
         My Profile
       </h2>
 

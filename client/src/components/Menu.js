@@ -49,7 +49,7 @@ const Menu = ({ setAuth, role }) => {
   const superadminItems = [
     { name: "Dashboard", path: "/admin", pageKey: "dashboard" },
     { name: "My Profile", path: "/admin/profile", pageKey: "profile" },    
-    { name: "Add/Remove Guest", path: "/admin/guests", pageKey: "guests" },
+    { name: "View Guests", path: "/admin/guests", pageKey: "guests" },
     { name: "Manage Admins", path: "/admin/manage-admins", pageKey: "manage_admins" },
     { name: "Manage Housekeepers", path: "/admin/housekeepers", pageKey: "housekeepers" },
     { name: "Service Requests", path: "/admin/requests", pageKey: "requests" },

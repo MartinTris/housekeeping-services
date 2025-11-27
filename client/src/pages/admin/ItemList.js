@@ -144,7 +144,7 @@ const ItemList = () => {
 
 return (
     <div className="p-4 sm:p-6 relative min-h-screen">
-      <h2 className="text-green-900 text-xl sm:text-2xl font-bold mb-4">
+      <h2 className="text-green-900 font-poppins text-xl sm:text-2xl font-bold mb-4">
         Borrowable Items
       </h2>
 

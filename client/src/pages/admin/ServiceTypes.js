@@ -145,7 +145,7 @@ const ServiceTypes = () => {
 
   return (
     <div className="p-4 sm:p-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-green-800 mb-4 sm:mb-6">
+      <h1 className="sm:text-3xl font-bold text-green-900 mb-4 sm:mb-6 font-poppins">
         Manage Service Types
         {userRole === "superadmin" && (
           <span className="block sm:inline text-base sm:text-lg font-normal text-gray-600 sm:ml-2 mt-1 sm:mt-0">

@@ -302,7 +302,7 @@ const Login = ({ setAuth, setUser }) => {
       {popupRole && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h3 className="text-lg sm:text-xl font-bold mb-4 text-center">
+            <h3 className="text-lg sm:text-xl text-green-900 font-poppins font-bold mb-4 text-center">
               {popupRole.charAt(0).toUpperCase() + popupRole.slice(1)} Login
             </h3>
             <div className="flex flex-col gap-3 sm:gap-4">

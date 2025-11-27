@@ -106,7 +106,14 @@ const TaskHistory = () => {
       return;
     }
 
-    const printContent = printRef.current.innerHTML;
+    // Get only the table element instead of all innerHTML
+    const tableElement = printRef.current.querySelector('table');
+    if (!tableElement) {
+      alert("No table found to print.");
+      return;
+    }
+    const printContent = tableElement.outerHTML;
+
     const printWindow = window.open("", "", "width=1000,height=800");
     printWindow.document.write(`
       <html>
@@ -173,7 +180,7 @@ const TaskHistory = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      <h1 className="text-xl sm:text-2xl font-semibold mb-2 text-green-700">
+      <h1 className="text-xl sm:text-2xl font-bold mb-2 text-green-900 font-poppins">
         My Task History
       </h1>
 
