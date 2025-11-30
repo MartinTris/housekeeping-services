@@ -350,6 +350,17 @@ const AdminDashboard = () => {
       });
   };
 
+  const handleCancel = () => {
+    setShowModal(false);
+    setTitle("");
+    setMessage("");
+    setTargetGuests(false);
+    setTargetHousekeepers(false);
+    setTargetAdmins(false);
+    setSelectAll(false);
+    setSelectedFacilitiesForAnnouncement([]);
+  };
+
   async function fetchMyAnnouncements() {
     try {
       const res = await fetch(`${API_URL}/announcements/admin`, {
@@ -616,7 +627,7 @@ const AdminDashboard = () => {
                         <div className="flex justify-end gap-3">
                           <button
                             type="button"
-                            onClick={() => setEditingId(null)}
+                            onClick={handleCancel}
                             className="text-gray-500 text-sm hover:text-gray-700 transition"
                           >
                             Cancel
@@ -684,7 +695,7 @@ const AdminDashboard = () => {
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
             <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-2xl w-full max-w-[700px] max-h-[90vh] overflow-y-auto">
-              <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
+              <h3 className="text-xl sm:text-2xl font-semibold text-green-900 mb-4 sm:mb-6">
                 Post New Announcement
               </h3>
 

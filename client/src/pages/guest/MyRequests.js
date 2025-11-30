@@ -192,6 +192,18 @@ const MyRequests = () => {
     });
   };
 
+  // Separate and sort requests
+  const upcomingRequests = requests
+    .filter((req) => req.status !== "completed")
+    .sort((a, b) => {
+      // Sort by time (earliest first)
+      const timeA = a.preferredTime || "00:00:00";
+      const timeB = b.preferredTime || "00:00:00";
+      return timeA.localeCompare(timeB);
+    });
+
+  const completedRequests = requests.filter((req) => req.status === "completed");
+
   const totalPages = Math.ceil(historyRequests.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -206,6 +218,109 @@ const MyRequests = () => {
 
   const handleRateService = () => {
     navigate("/guest");
+  };
+
+  const renderRequestCard = (request, showRateButton = false) => {
+    const statusConfig = getStatusConfig(request.status);
+    const StatusIcon = statusConfig.icon;
+
+    return (
+      <div
+        key={request.id}
+        className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}
+          >
+            <StatusIcon className={`w-4 h-4 ${statusConfig.iconColor}`} />
+            {statusConfig.label}
+          </div>
+          <span className="text-sm text-gray-500">Room {request.roomNumber}</span>
+        </div>
+
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {request.serviceType}
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-start gap-3">
+            <div className="bg-blue-100 rounded-lg p-2">
+              <User className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                Housekeeper
+              </p>
+              <p className="text-sm font-medium text-gray-900">
+                {request.housekeeperName}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="bg-green-100 rounded-lg p-2">
+              <Clock className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                Service Time
+              </p>
+              <p className="text-sm font-medium text-gray-900">
+                {formatTime(request.preferredTime)} - {formatTime(request.endTime)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="bg-purple-100 rounded-lg p-2">
+              <Calendar className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                Date
+              </p>
+              <p className="text-sm font-medium text-gray-900">
+                {formatDate(request.preferredDate)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="bg-gray-100 rounded-lg p-2">
+              <Clock className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                Requested At
+              </p>
+              <p className="text-sm font-medium text-gray-900">
+                {new Date(request.createdAt).toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                  timeZone: "Asia/Manila",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {showRateButton && request.status === "completed" && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleRateService}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm"
+            >
+              <Star className="w-4 h-4" />
+              Rate this service
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -266,130 +381,31 @@ const MyRequests = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {requests.map((request) => {
-              const statusConfig = getStatusConfig(request.status);
-              const StatusIcon = statusConfig.icon;
-
-              return (
-                <div
-                  key={request.id}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusConfig.color}`}
-                    >
-                      <StatusIcon
-                        className={`w-4 h-4 ${statusConfig.iconColor}`}
-                      />
-                      {statusConfig.label}
-                    </div>
-                    <span className="text-sm text-gray-500">
-                      Room {request.roomNumber}
-                    </span>
-                  </div>
-
-                  <div className="mb-4">
-                    <span className="text-sm text-gray-500">Service Request</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-indigo-100 rounded-lg p-2">
-                        <CheckCircle className="w-5 h-5 text-indigo-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                          Service Type
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {request.serviceType}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="bg-blue-100 rounded-lg p-2">
-                        <User className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                          Housekeeper
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {request.housekeeperName}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="bg-green-100 rounded-lg p-2">
-                        <Clock className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                          Service Time
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatTime(request.preferredTime)} -{" "}
-                          {formatTime(request.endTime)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="bg-purple-100 rounded-lg p-2">
-                        <Calendar className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                          Date
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatDate(request.preferredDate)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="bg-gray-100 rounded-lg p-2">
-                        <Clock className="w-5 h-5 text-gray-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                          Requested At
-                        </p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {new Date(request.createdAt).toLocaleTimeString(
-                            "en-US",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                              timeZone: "Asia/Manila",
-                            }
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {request.status === "completed" && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={handleRateService}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm"
-                      >
-                        <Star className="w-4 h-4" />
-                        Rate this service
-                      </button>
-                    </div>
-                  )}
+          <>
+            {upcomingRequests.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <PlayCircle className="w-5 h-5 text-blue-600" />
+                  Upcoming Requests ({upcomingRequests.length})
+                </h3>
+                <div className="space-y-4">
+                  {upcomingRequests.map((request) => renderRequestCard(request))}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+
+            {completedRequests.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  Completed Today ({completedRequests.length})
+                </h3>
+                <div className="space-y-4">
+                  {completedRequests.map((request) => renderRequestCard(request, true))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {requests.length > 0 && (
@@ -414,7 +430,7 @@ const MyRequests = () => {
               onClick={() => setHistoryFilter("7days")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
                 historyFilter === "7days"
-                  ? "bg-green-600 text-white"
+                  ? "bg-green-900 text-white"
                   : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }`}
             >
@@ -424,7 +440,7 @@ const MyRequests = () => {
               onClick={() => setHistoryFilter("30days")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
                 historyFilter === "30days"
-                  ? "bg-green-600 text-white"
+                  ? "bg-green-900 text-white"
                   : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }`}
             >
@@ -434,7 +450,7 @@ const MyRequests = () => {
               onClick={() => setHistoryFilter("all")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
                 historyFilter === "all"
-                  ? "bg-green-600 text-white"
+                  ? "bg-green-900 text-white"
                   : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }`}
             >

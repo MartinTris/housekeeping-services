@@ -549,9 +549,9 @@ const PendingPayments = () => {
       <div className="mt-4 sm:mt-6 text-center">
         <button
           onClick={() => window.history.back()}
-          className="w-full sm:w-auto px-6 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 active:bg-gray-500 text-sm sm:text-base"
+          className="w-full sm:w-auto px-6 py-2.5 bg-gray-500 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:bg-gray-600 transition-all duration-300 mb-4 text-sm sm:text-base"
         >
-          ← Back
+          Back
         </button>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import { Trash2, Pencil } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const ItemList = () => {
   const [items, setItems] = useState([]);
@@ -112,17 +112,14 @@ const ItemList = () => {
   const handleUpdateItem = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(
-        `${API_URL}/items/${selectedItem.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            token: localStorage.token,
-          },
-          body: JSON.stringify(editData),
-        }
-      );
+      const res = await fetch(`${API_URL}/items/${selectedItem.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          token: localStorage.token,
+        },
+        body: JSON.stringify(editData),
+      });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update item");
@@ -138,11 +135,16 @@ const ItemList = () => {
     }
   };
 
+  const handleCancel = () => {
+    setShowModal(false);
+    setNewItem({ name: "", quantity: "", price: "" });
+  };
+
   useEffect(() => {
     fetchItems();
   }, []);
 
-return (
+  return (
     <div className="p-4 sm:p-6 relative min-h-screen">
       <h2 className="text-green-900 font-poppins text-xl sm:text-2xl font-bold mb-4">
         Borrowable Items
@@ -156,7 +158,10 @@ return (
         <>
           <div className="block lg:hidden space-y-3">
             {items.map((item) => (
-              <div key={item.id} className="border border-gray-300 rounded-lg p-4 bg-white shadow hover:bg-gray-50">
+              <div
+                key={item.id}
+                className="border border-gray-300 rounded-lg p-4 bg-white shadow hover:bg-gray-50"
+              >
                 {userRole === "superadmin" && (
                   <div className="mb-2">
                     <span
@@ -170,20 +175,28 @@ return (
                     </span>
                   </div>
                 )}
-                
+
                 <div className="space-y-2">
                   <div>
-                    <span className="text-xs text-gray-500 uppercase">Item Name</span>
-                    <p className="font-semibold text-base break-words">{item.name}</p>
+                    <span className="text-xs text-gray-500 uppercase">
+                      Item Name
+                    </span>
+                    <p className="font-semibold text-base break-words">
+                      {item.name}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="text-xs text-gray-500 uppercase">Quantity</span>
+                      <span className="text-xs text-gray-500 uppercase">
+                        Quantity
+                      </span>
                       <p className="text-sm">{item.quantity}</p>
                     </div>
                     <div>
-                      <span className="text-xs text-gray-500 uppercase">Price</span>
+                      <span className="text-xs text-gray-500 uppercase">
+                        Price
+                      </span>
                       <p className="text-sm">₱{item.price}</p>
                     </div>
                   </div>
@@ -215,11 +228,15 @@ return (
             <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
               <thead>
                 <tr className="bg-gray-100 text-left">
-                  {userRole === "superadmin" && <th className="p-2 border">Facility</th>}
+                  {userRole === "superadmin" && (
+                    <th className="p-2 border">Facility</th>
+                  )}
                   <th className="p-2 border">Item Name</th>
                   <th className="p-2 border">Quantity</th>
                   <th className="p-2 border">Price</th>
-                  {userRole === "admin" && <th className="p-2 border text-center w-24">Actions</th>}
+                  {userRole === "admin" && (
+                    <th className="p-2 border text-center w-24">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -316,15 +333,15 @@ return (
               <div className="flex justify-end gap-2 sm:gap-3 mt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-3 sm:px-4 py-2 rounded border border-gray-400 text-sm sm:text-base"
+                  onClick={handleCancel}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gray-500 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:bg-gray-600 transition-all duration-300 mb-4 text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  className="px-3 sm:px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800 text-sm sm:text-base"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 mb-4 text-sm sm:text-base"
                 >
                   Add
                 </button>

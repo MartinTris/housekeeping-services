@@ -147,7 +147,6 @@ const Reports = () => {
       return;
     }
 
-    // Get only the table element instead of all innerHTML
     const tableElement = printRef.current.querySelector('table');
     if (!tableElement) {
       alert("No table found to print.");

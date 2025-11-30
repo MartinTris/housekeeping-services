@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TermsAndConditionsModal from "../components/TermsAndConditionsModal";
+import { Eye, EyeOff } from "lucide-react";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const Login = ({ setAuth, setUser }) => {
   const [inputs, setInputs] = useState({
@@ -16,6 +17,7 @@ const Login = ({ setAuth, setUser }) => {
 
   const [showTerms, setShowTerms] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotMessage, setForgotMessage] = useState("");
 
@@ -44,7 +46,7 @@ const Login = ({ setAuth, setUser }) => {
 
       const data = await response.json();
       setForgotMessage(data.message);
-      
+
       if (response.ok) {
         setTimeout(() => {
           setShowForgotPassword(false);
@@ -134,6 +136,7 @@ const Login = ({ setAuth, setUser }) => {
   };
 
   const handleCancel = () => {
+    setInputs({ email: "", password: "" });
     setPopupInputs({ email: "", password: "" });
     setPopupRole(null);
     setShowModal(false);
@@ -174,7 +177,9 @@ const Login = ({ setAuth, setUser }) => {
             className="w-full lg:w-1/2 rounded-lg shadow-md"
           />
           <div className="w-full lg:w-1/2">
-            <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center lg:text-left">Hotel Rafael</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center lg:text-left">
+              Hotel Rafael
+            </h2>
             <p className="text-sm sm:text-base text-gray-700 text-center lg:text-left">
               Formerly known as Hotel Nicole, Hotel Rafael is patterned after
               classic buildings in Vigan, Ilocos Norte. It offers a blend of
@@ -226,15 +231,24 @@ const Login = ({ setAuth, setUser }) => {
                 className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
               />
 
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={password}
-                onChange={onChange}
-                required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={onChange}
+                  required
+                  className="border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base w-full"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
 
               <button
                 onClick={(e) => handleLogin(e, "guest", { email, password })}
@@ -368,20 +382,27 @@ const Login = ({ setAuth, setUser }) => {
               Reset Password
             </h3>
             <p className="text-gray-600 text-center mb-6 text-sm sm:text-base">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we'll send you a link to reset your
+              password.
             </p>
-            
+
             {forgotMessage && (
-              <div className={`p-3 rounded-lg mb-4 text-center text-sm ${
-                forgotMessage.includes('error') || forgotMessage.includes('Failed') 
-                  ? 'bg-red-100 text-red-700' 
-                  : 'bg-green-100 text-green-700'
-              }`}>
+              <div
+                className={`p-3 rounded-lg mb-4 text-center text-sm ${
+                  forgotMessage.includes("error") ||
+                  forgotMessage.includes("Failed")
+                    ? "bg-red-100 text-red-700"
+                    : "bg-green-100 text-green-700"
+                }`}
+              >
                 {forgotMessage}
               </div>
             )}
-            
-            <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+
+            <form
+              onSubmit={handleForgotPassword}
+              className="flex flex-col gap-4"
+            >
               <input
                 type="email"
                 placeholder="Enter your email"

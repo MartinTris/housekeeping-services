@@ -41,6 +41,13 @@ const FeedbackWidget = () => {
     return `${Math.floor(hoursLeft)}h`;
   };
 
+  const handleCancelFeedback = () => {
+    setFeedbackModal({ show: false, requestId: null });
+    setRating(0);
+    setHover(0);
+    setComment("");
+  }
+
   const handleSubmitFeedback = async () => {
     try {
       if (!feedbackModal.requestId) throw new Error("Missing request ID");
@@ -138,16 +145,16 @@ const FeedbackWidget = () => {
         </div>
       ) : (
         <>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full border border-gray-300">
-              <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="p-2 border text-sm">Room</th>
-                  <th className="p-2 border text-sm">Service Type</th>
-                  <th className="p-2 border text-sm">Date</th>
-                  <th className="p-2 border text-sm">Time</th>
-                  <th className="p-2 border text-sm">Expires In</th>
-                  <th className="p-2 border text-sm text-center">Action</th>
+          <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
+            <table className="min-w-full border border-gray-200">
+              <thead className="bg-green-200 text-green-900">
+                <tr>
+                  <th className="p-3 text-left border-b">Room</th>
+                  <th className="p-3 text-left border-b">Service Type</th>
+                  <th className="p-3 text-left border-b">Date</th>
+                  <th className="p-3 text-left border-b">Time</th>
+                  <th className="p-3 text-left border-b">Expires In</th>
+                  <th className="p-3 text-left border-b text-center">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -170,7 +177,7 @@ const FeedbackWidget = () => {
                     <td className="p-2 border text-center">
                       <button
                         onClick={() => setFeedbackModal({ show: true, requestId: s.id })}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                        className="px-3 py-1 bg-green-900 text-white rounded hover:bg-green-700 text-sm"
                       >
                         Give Feedback
                       </button>
@@ -261,16 +268,16 @@ const FeedbackWidget = () => {
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
               <button
-                className="w-full sm:w-auto px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 active:bg-gray-400 text-sm sm:text-base"
-                onClick={() => setFeedbackModal({ show: false, requestId: null })}
+                className="w-full sm:w-auto px-6 py-2.5 bg-gray-500 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:bg-gray-600 transition-all duration-300 mb-4 text-sm sm:text-base"
+                onClick={() => handleCancelFeedback()}
               >
                 Cancel
               </button>
               <button
-                className={`w-full sm:w-auto px-4 py-2 rounded text-white text-sm sm:text-base ${
+                className={`w-full sm:w-auto px-6 py-2.5 text-white font-medium rounded-full shadow-lg mb-4 text-sm sm:text-base ${
                   rating === 0
                     ? "bg-green-400 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700 active:bg-green-800"
+                    : "bg-gradient-to-r from-green-600 to-emerald-600 hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300"
                 }`}
                 onClick={handleSubmitFeedback}
                 disabled={rating === 0}

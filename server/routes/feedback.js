@@ -14,8 +14,8 @@ router.post("/", authorization, async (req, res) => {
     if (request_id) {
       const historyCheck = await pool.query(
         `SELECT id, 
-                preferred_date,
-                EXTRACT(EPOCH FROM (NOW() - preferred_date)) / 3600 AS hours_since_completion
+                created_at,
+                EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 AS hours_since_completion
          FROM service_history 
          WHERE id = $1`,
         [request_id]
@@ -71,9 +71,9 @@ router.get("/recent", authorization, async (req, res) => {
         st.name AS service_type,
         sh.preferred_date,
         sh.preferred_time,
-        ROUND((EXTRACT(EPOCH FROM (NOW() - sh.preferred_date)) / 3600)::numeric, 2) AS hours_since_completion,
+        ROUND((EXTRACT(EPOCH FROM (NOW() - sh.created_at)) / 3600)::numeric, 2) AS hours_since_completion,
         CASE 
-          WHEN EXTRACT(EPOCH FROM (NOW() - sh.preferred_date)) / 3600 > 24 
+          WHEN EXTRACT(EPOCH FROM (NOW() - sh.created_at)) / 3600 > 24 
           THEN true 
           ELSE false 
         END AS is_expired
@@ -85,8 +85,8 @@ router.get("/recent", authorization, async (req, res) => {
         AND NOT EXISTS (
           SELECT 1 FROM feedback f WHERE f.request_id = sh.id
         )
-        AND EXTRACT(EPOCH FROM (NOW() - sh.preferred_date)) / 3600 <= 24
-      ORDER BY sh.preferred_date DESC
+        AND EXTRACT(EPOCH FROM (NOW() - sh.created_at)) / 3600 <= 24
+      ORDER BY sh.created_at DESC
       `,
       [userId]
     );

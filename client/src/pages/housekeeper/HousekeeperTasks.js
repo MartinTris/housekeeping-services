@@ -132,17 +132,17 @@ const HousekeeperTasks = () => {
           <p className="text-gray-500 text-sm sm:text-base">No housekeeping tasks assigned.</p>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="p-2 border text-sm">Guest</th>
-                    <th className="p-2 border text-sm">Room</th>
-                    <th className="p-2 border text-sm">Service Type</th>
-                    <th className="p-2 border text-sm">Preferred Date</th>
-                    <th className="p-2 border text-sm">Preferred Time</th>
-                    <th className="p-2 border text-sm">Status</th>
-                    <th className="p-2 border text-sm">Action</th>
+            <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
+              <table className="min-w-full border border-gray-200">
+                <thead className="bg-green-200 text-green-900">
+                  <tr>
+                    <th className="p-3 text-left border-b">Guest</th>
+                    <th className="p-3 text-left border-b">Room</th>
+                    <th className="p-3 text-left border-b">Service Type</th>
+                    <th className="p-3 text-left border-b">Preferred Date</th>
+                    <th className="p-3 text-left border-b">Preferred Time</th>
+                    <th className="p-3 text-left border-b">Status</th>
+                    <th className="p-3 text-left border-b">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -182,7 +182,7 @@ const HousekeeperTasks = () => {
                           ) : task.status === "in_progress" ? (
                             <button
                               onClick={() => handleMarkDone(task.id)}
-                              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
+                              className="px-3 py-1 bg-green-900 hover:bg-green-700 text-white rounded text-sm"
                             >
                               Mark as Done
                             </button>
@@ -282,16 +282,16 @@ const HousekeeperTasks = () => {
           <p className="text-gray-500 text-sm sm:text-base">No delivery tasks pending.</p>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="p-2 border text-sm">Guest</th>
-                    <th className="p-2 border text-sm">Room</th>
-                    <th className="p-2 border text-sm">Item</th>
-                    <th className="p-2 border text-sm">Quantity</th>
-                    <th className="p-2 border text-sm">Charge Amount</th>
-                    <th className="p-2 border text-sm">Action</th>
+            <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
+              <table className="min-w-full border border-gray-200">
+                <thead className="bg-green-200 text-green-900">
+                  <tr>
+                    <th className="p-3 text-left border-b">Guest</th>
+                    <th className="p-3 text-left border-b">Room</th>
+                    <th className="p-3 text-left border-b">Item</th>
+                    <th className="p-3 text-left border-b">Quantity</th>
+                    <th className="p-3 text-left border-b">Charge Amount</th>
+                    <th className="p-3 text-left border-b">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -305,7 +305,7 @@ const HousekeeperTasks = () => {
                       <td className="p-2 border">
                         <button
                           onClick={() => handleItemDelivered(task.id)}
-                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                          className="px-4 py-2 bg-green-900 text-white rounded hover:bg-green-700 text-sm"
                         >
                           Item Delivered
                         </button>

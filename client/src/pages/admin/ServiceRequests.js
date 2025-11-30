@@ -191,18 +191,18 @@ const ServiceRequests = () => {
             ))}
           </div>
 
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full border border-gray-300">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="p-2 border">Guest</th>
-                  <th className="p-2 border">Room</th>
-                  <th className="p-2 border">Preferred Date</th>
-                  <th className="p-2 border">Preferred Time</th>
-                  <th className="p-2 border">Status</th>
-                  <th className="p-2 border">Assigned To</th>
-                  <th className="p-2 border">Created At</th>
-                  <th className="p-2 border">Action</th>
+          <div className="hidden lg:block overflow-x-auto shadow rounded-lg">
+            <table className="min-w-full border border-gray-200">
+              <thead className="bg-green-200 text-green-900">
+                <tr>
+                  <th className="p-3 text-left border-b">Guest</th>
+                  <th className="p-3 text-left border-b">Room</th>
+                  <th className="p-3 text-left border-b">Preferred Date</th>
+                  <th className="p-3 text-left border-b">Preferred Time</th>
+                  <th className="p-3 text-left border-b">Status</th>
+                  <th className="p-3 text-left border-b">Assigned To</th>
+                  <th className="p-3 text-left border-b">Created At</th>
+                  <th className="p-3 text-left border-b">Action</th>
                 </tr>
               </thead>
               <tbody>
