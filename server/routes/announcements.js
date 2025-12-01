@@ -4,6 +4,54 @@ const { authorization } = require("../middleware/authorization");
 
 const router = express.Router();
 
+// Helper function to create notifications for targeted users
+async function createNotificationsForAnnouncement(announcement, targetFacilities) {
+  try {
+    const { id: announcementId, title, message, target_guests, target_housekeepers, target_admins } = announcement;
+    
+    // Build WHERE clause based on targets
+    const roles = [];
+    
+    if (target_guests) roles.push('guest');
+    if (target_housekeepers) roles.push('housekeeper');
+    if (target_admins) roles.push('admin');
+    
+    if (roles.length === 0) return; // No one to notify
+    
+    // Get all users matching the criteria
+    const userQuery = `
+      SELECT id, role, facility 
+      FROM users 
+      WHERE role = ANY($1::text[])
+      AND LOWER(facility) = ANY($2::text[])
+    `;
+    
+    const facilityLowerCase = targetFacilities.map(f => f.toLowerCase());
+    const users = await pool.query(userQuery, [roles, facilityLowerCase]);
+    
+    console.log(`Found ${users.rows.length} users to notify:`, users.rows.map(u => ({ id: u.id, role: u.role, facility: u.facility })));
+    
+    // Create notifications for each user
+    const notificationPromises = users.rows.map(user => 
+      pool.query(
+        `INSERT INTO notifications (user_id, message, read, created_at)
+         VALUES ($1, $2, FALSE, NOW())`,
+        [
+          user.id,
+          `📢 New announcement: ${title}`
+        ]
+      )
+    );
+    
+    await Promise.all(notificationPromises);
+    console.log(`✓ Created ${users.rows.length} notifications for announcement: "${title}"`);
+    
+  } catch (err) {
+    console.error("Error creating notifications:", err.message);
+    // Don't throw - we don't want to fail the announcement creation if notifications fail
+  }
+}
+
 router.post("/", authorization, async (req, res) => {
   try {
     const {
@@ -47,6 +95,11 @@ router.post("/", authorization, async (req, res) => {
 
     const results = await Promise.all(insertPromises);
     const createdAnnouncements = results.map(r => r.rows[0]);
+
+    // Create notifications for each announcement
+    for (const announcement of createdAnnouncements) {
+      await createNotificationsForAnnouncement(announcement, targetFacilities);
+    }
 
     res.json({
       success: true,
@@ -207,11 +260,17 @@ router.get("/admin", authorization, async (req, res) => {
   try {
     const { role: userRole, facility: userFacility, id: userId } = req.user;
 
+    console.log("=== /admin route hit ===");
+    console.log("User ID:", userId, "Type:", typeof userId);
+    console.log("Role:", userRole);
+    console.log("Facility:", userFacility);
+
     if (userRole !== 'admin' && userRole !== 'superadmin') {
       return res.status(403).json({ error: "Access denied. Admins only." });
     }
 
-    if (!userFacility || userFacility.trim() === "") {
+    // Only check facility for regular admins, not superadmins
+    if (userRole !== 'superadmin' && (!userFacility || userFacility.trim() === "")) {
       return res.json([]);
     }
 
@@ -229,7 +288,7 @@ router.get("/admin", authorization, async (req, res) => {
         FROM announcements a
         LEFT JOIN users u ON a.posted_by = u.id
         WHERE a.posted_by = $1
-        ORDER BY a.facility, a.created_at DESC
+        ORDER BY a.created_at DESC, a.facility
       `;
       params = [userId];
     } else {
@@ -249,6 +308,7 @@ router.get("/admin", authorization, async (req, res) => {
     }
 
     const result = await pool.query(query, params);
+    console.log(`Found ${result.rows.length} announcements for user ${userId}`);
 
     res.json(result.rows);
     

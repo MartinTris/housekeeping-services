@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Information from "../../components/Information";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements";
@@ -8,12 +9,21 @@ import HousekeeperPersonalTrends from "../../components/HousekeeperPersonalTrend
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const HousekeeperDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [facility, setFacility] = useState("");
 
   const [totalDone, setTotalDone] = useState(0);
   const [averageFeedback, setAverageFeedback] = useState(0.0);
+
+  useEffect(() => {
+    const viewParam = searchParams.get("view");
+    if (viewParam === "announcements") {
+      setView("announcements");
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   async function getName() {
     try {

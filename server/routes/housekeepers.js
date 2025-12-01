@@ -475,9 +475,10 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
     }
 
     const taskRes = await pool.query(
-      `SELECT hr.*, st.name AS service_type_name
+      `SELECT hr.*, st.name AS service_type_name, r.facility, r.room_number
        FROM housekeeping_requests hr
        LEFT JOIN service_types st ON hr.service_type_id = st.id
+       LEFT JOIN rooms r ON hr.room_id = r.id
        WHERE hr.id = $1 AND hr.assigned_to = $2`,
       [id, hkId]
     );
@@ -501,19 +502,27 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
       });
     }
 
+    // Get housekeeper name
+    const housekeeperRes = await pool.query(
+      `SELECT first_name, last_name FROM users WHERE id = $1`,
+      [hkId]
+    );
+    const housekeeper = housekeeperRes.rows[0];
+    const housekeeperName = `${housekeeper.first_name} ${housekeeper.last_name}`;
+    const roomNumber = task.room_number || 'N/A';
+
     await pool.query(
       `INSERT INTO service_history (
         request_id, guest_id, housekeeper_id, room_id, facility,
         service_type_id, preferred_date, preferred_time, status
       )
-      VALUES ($1, $2, $3, $4, 
-              (SELECT facility FROM rooms WHERE id = $4),
-              $5, $6, $7, 'completed')`,
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'completed')`,
       [
         task.id,
         task.user_id,
         hkId,
         task.room_id,
+        task.facility,
         task.service_type_id,
         task.preferred_date,
         task.preferred_time,
@@ -530,6 +539,7 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
       [id]
     );
 
+    // Send notification to guest
     const guestId = task.user_id;
     const completeMessage = "Your housekeeping request has been completed.";
 
@@ -545,6 +555,32 @@ router.put("/tasks/:id/complete", authorization, async (req, res) => {
         type: "success",
       });
       console.log(`Sent completion notification to user:${guestId}`);
+    }
+
+    // Send notification to admins of the facility
+    const adminQuery = await pool.query(
+      `SELECT id FROM users 
+       WHERE role IN ('admin', 'superadmin') 
+       AND facility = $1`,
+      [task.facility]
+    );
+
+    const adminMessage = `${housekeeperName} has completed a ${task.service_type_name} task for Room ${roomNumber}.`;
+
+    for (const admin of adminQuery.rows) {
+      await pool.query(
+        `INSERT INTO notifications (user_id, message, created_at)
+         VALUES ($1, $2, NOW())`,
+        [admin.id, adminMessage]
+      );
+
+      if (req.io) {
+        req.io.to(`user:${admin.id}`).emit("newNotification", {
+          message: adminMessage,
+          type: "info",
+        });
+        console.log(`Sent admin notification to user:${admin.id}`);
+      }
     }
 
     res.json({ message: "Task completed and moved to service history." });

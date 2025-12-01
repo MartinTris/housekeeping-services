@@ -1,5 +1,6 @@
 import Information from "../../components/Information";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import BorrowedItemsList from "../../components/BorrowedItemsList";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements";
@@ -11,6 +12,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const pad = (n) => String(n).padStart(2, "0");
 
 const GuestDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [profile, setProfile] = useState(null);
@@ -27,6 +29,24 @@ const GuestDashboard = () => {
   const [todayRequests, setTodayRequests] = useState(0);
   const [remainingBalance, setRemainingBalance] = useState(0);
   const dailyLimit = 3;
+
+  useEffect(() => {
+    const viewParam = searchParams.get("view");
+    if (viewParam === "announcements") {
+      setView("announcements");
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Update URL when view changes
+  const handleSetView = (newView) => {
+    setView(newView);
+    if (newView === "announcements") {
+      setSearchParams({ view: "announcements" });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   async function fetchProfile() {
     try {
@@ -298,8 +318,6 @@ const GuestDashboard = () => {
 
   useEffect(() => {
     const handler = async () => {
-      console.log("🔔 userFacilityUpdated event fired!");
-
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       try {
@@ -307,7 +325,6 @@ const GuestDashboard = () => {
           headers: { token: localStorage.getItem("token") },
         });
         const data = await res.json();
-        console.log("✅ Refetched profile after facility update:", data);
         setProfile(data);
 
         const fullName =
@@ -317,7 +334,6 @@ const GuestDashboard = () => {
         setName(fullName);
 
         if (data.facility) {
-          console.log("✅ Facility found, refetching all data...");
           await fetchServiceTypes();
           await fetchTotalRequests();
           await fetchTodayRequests();
@@ -355,7 +371,7 @@ const GuestDashboard = () => {
   return (
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-4 sm:p-8">
-        <DashboardToggle view={view} setView={setView} />
+        <DashboardToggle view={view} setView={handleSetView} />
 
         {view === "dashboard" && (
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">

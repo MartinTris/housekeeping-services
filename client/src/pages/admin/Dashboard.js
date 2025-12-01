@@ -1,6 +1,7 @@
 import Information from "../../components/Information";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import BorrowedItemsList from "../../components/BorrowedItemsList";
 import AdminFeedbackWidget from "../../components/AdminFeedbackWidget.js";
 import HousekeepingTrends from "../../components/HousekeepingTrends.js";
@@ -13,6 +14,7 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState("dashboard");
   const [name, setName] = useState("");
   const [facility, setFacility] = useState("");
@@ -51,6 +53,14 @@ const AdminDashboard = () => {
   const [rooms, setRooms] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+    useEffect(() => {
+    const viewParam = searchParams.get("view");
+    if (viewParam === "announcements") {
+      setView("announcements");
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
+  
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
