@@ -50,7 +50,7 @@ router.get("/", authorization, async (req, res) => {
   }
 });
 
-// Admin/Superadmin creates service type
+// Admin/Superadmin create service type
 router.post("/", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;

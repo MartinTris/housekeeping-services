@@ -38,7 +38,6 @@ const GuestDashboard = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // Update URL when view changes
   const handleSetView = (newView) => {
     setView(newView);
     if (newView === "announcements") {
@@ -147,12 +146,30 @@ const GuestDashboard = () => {
     }
   }
 
+  const refreshData = async () => {
+    await Promise.all([
+      fetchProfile(),
+      fetchTotalRequests(),
+      fetchTodayRequests(),
+      fetchRemainingBalance(),
+    ]);
+  };
+
   useEffect(() => {
     fetchProfile();
     fetchTotalRequests();
     fetchTodayRequests();
     fetchServiceTypes();
     fetchRemainingBalance();
+  }, []);
+
+    useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log("Auto-refreshing data...");
+      refreshData();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const generateTimeSlots = () => {
@@ -256,6 +273,8 @@ const GuestDashboard = () => {
         setShowModal(false);
         setPreferredDate("");
         setPreferredTime("");
+
+        refreshData();
       } else {
         setError(data.error || "Something went wrong.");
       }

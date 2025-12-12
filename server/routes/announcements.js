@@ -5,9 +5,9 @@ const { authorization } = require("../middleware/authorization");
 const router = express.Router();
 
 // Helper function to create notifications for targeted users
-async function createNotificationsForAnnouncement(announcement, targetFacilities) {
+async function createNotificationsForAnnouncement(announcement) {
   try {
-    const { id: announcementId, title, message, target_guests, target_housekeepers, target_admins } = announcement;
+    const { id: announcementId, title, message, target_guests, target_housekeepers, target_admins, facility } = announcement;
     
     // Build WHERE clause based on targets
     const roles = [];
@@ -18,18 +18,17 @@ async function createNotificationsForAnnouncement(announcement, targetFacilities
     
     if (roles.length === 0) return; // No one to notify
     
-    // Get all users matching the criteria
+    // Get all users matching the criteria FOR THIS ANNOUNCEMENT'S FACILITY ONLY
     const userQuery = `
       SELECT id, role, facility 
       FROM users 
       WHERE role = ANY($1::text[])
-      AND LOWER(facility) = ANY($2::text[])
+      AND LOWER(facility) = LOWER($2)
     `;
     
-    const facilityLowerCase = targetFacilities.map(f => f.toLowerCase());
-    const users = await pool.query(userQuery, [roles, facilityLowerCase]);
+    const users = await pool.query(userQuery, [roles, facility]);
     
-    console.log(`Found ${users.rows.length} users to notify:`, users.rows.map(u => ({ id: u.id, role: u.role, facility: u.facility })));
+    console.log(`Found ${users.rows.length} users to notify in ${facility}:`, users.rows.map(u => ({ id: u.id, role: u.role, facility: u.facility })));
     
     // Create notifications for each user
     const notificationPromises = users.rows.map(user => 
@@ -44,7 +43,7 @@ async function createNotificationsForAnnouncement(announcement, targetFacilities
     );
     
     await Promise.all(notificationPromises);
-    console.log(`✓ Created ${users.rows.length} notifications for announcement: "${title}"`);
+    console.log(`✓ Created ${users.rows.length} notifications for announcement: "${title}" in ${facility}`);
     
   } catch (err) {
     console.error("Error creating notifications:", err.message);
@@ -98,7 +97,7 @@ router.post("/", authorization, async (req, res) => {
 
     // Create notifications for each announcement
     for (const announcement of createdAnnouncements) {
-      await createNotificationsForAnnouncement(announcement, targetFacilities);
+      await createNotificationsForAnnouncement(announcement);
     }
 
     res.json({

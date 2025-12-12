@@ -31,12 +31,12 @@ const BorrowItems = () => {
 
     if (facility === "RCC") {
       openMinutes = 8 * 60;
-      closeMinutes = 17 * 60;
+      closeMinutes = 23 * 60;
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else if (facility === "Hotel Rafael") {
       openMinutes = 8 * 60;
-      closeMinutes = 17 * 60;
+      closeMinutes = 23 * 60;
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else {
