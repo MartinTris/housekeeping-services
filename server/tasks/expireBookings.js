@@ -4,11 +4,10 @@ const { getIo } = require("../realtime");
 const { createNotification } = require("../utils/notifications");
 
 const expireBookings = async () => {
-  console.log("\n=== 🔍 EXPIRE BOOKINGS TASK STARTED ===");
+  console.log("\nEXPIRE BOOKINGS TASK STARTED");
   console.log("Time:", new Date().toISOString());
   
   try {
-    // First, find all bookings that have reached checkout time
     const expiredBookings = await pool.query(
       `
       SELECT rb.*, u.id as guest_id, u.email as guest_email,
@@ -23,19 +22,18 @@ const expireBookings = async () => {
     );
 
     if (expiredBookings.rows.length === 0) {
-      console.log("=== ✅ NO EXPIRED BOOKINGS ===\n");
+      console.log("NO EXPIRED BOOKINGS\n");
       return;
     }
 
-    console.log(`📋 Found ${expiredBookings.rows.length} bookings at checkout time`);
+    console.log(`Found ${expiredBookings.rows.length} bookings at checkout time`);
 
     const successfulCheckouts = [];
     const blockedCheckouts = [];
 
     for (const booking of expiredBookings.rows) {
       console.log(`\n--- Checking:  ${booking.guest_name} (Room ${booking.room_number}) ---`);
-      
-      // Check for unpaid items
+
       const unpaidItems = await pool.query(
         `
         SELECT COUNT(*) as unpaid_count, 
@@ -49,17 +47,14 @@ const expireBookings = async () => {
       const unpaidCount = parseInt(unpaidItems.rows[0].unpaid_count);
       const totalUnpaid = parseFloat(unpaidItems.rows[0].total_unpaid || 0);
 
-      console.log(`💰 Unpaid check - Count: ${unpaidCount}, Total: ₱${totalUnpaid.toFixed(2)}`);
+      console.log(`Unpaid check - Count: ${unpaidCount}, Total: ₱${totalUnpaid.toFixed(2)}`);
 
       if (unpaidCount > 0) {
-        // ❌ Guest has pending payments - BLOCK CHECKOUT
-        console.log(`\n🚫 ==========================================`);
-        console.log(`🚫 BLOCKING AUTO-CHECKOUT`);
-        console.log(`🚫 Guest: ${booking. guest_name}`);
-        console.log(`🚫 Room: ${booking.room_number}`);
-        console.log(`🚫 Unpaid:  ${unpaidCount} items, ₱${totalUnpaid.toFixed(2)}`);
-        console.log(`🚫 Booking ID: ${booking.id} - PRESERVED`);
-        console.log(`🚫 ==========================================\n`);
+        console.log(`BLOCKING AUTO-CHECKOUT`);
+        console.log(`Guest: ${booking. guest_name}`);
+        console.log(`Room: ${booking.room_number}`);
+        console.log(`Unpaid:  ${unpaidCount} items, ₱${totalUnpaid.toFixed(2)}`);
+        console.log(`Booking ID: ${booking.id} - PRESERVED`);
         
         blockedCheckouts. push({
           guest_id:  booking.guest_id,
@@ -70,7 +65,6 @@ const expireBookings = async () => {
           total_unpaid:  totalUnpaid
         });
 
-        // Notify the guest
         const guestMessage = `Your checkout time has passed, but you have ${unpaidCount} unpaid item(s) totaling ₱${totalUnpaid.toFixed(2)}. Please settle your payment before checkout.`;
         
         try {
@@ -95,7 +89,6 @@ const expireBookings = async () => {
           console.error(`✗ Socket.IO error (guest):`, ioError.message);
         }
 
-        // Notify admins in the facility
         const adminQuery = await pool.query(
           `SELECT id FROM users 
            WHERE role IN ('admin', 'superadmin') 
@@ -103,9 +96,6 @@ const expireBookings = async () => {
           [booking.facility]
         );
 
-        console.log(`👥 Notifying ${adminQuery.rows.length} admin(s)`);
-
-        // ✅ FIXED: Correct message - "cannot be auto-checked out"
         const adminMessage = `Guest ${booking.guest_name} in Room ${booking.room_number} cannot be auto-checked out due to ${unpaidCount} pending payment(s) totaling ₱${totalUnpaid.toFixed(2)}.`;
 
         for (const admin of adminQuery.rows) {
@@ -128,23 +118,18 @@ const expireBookings = async () => {
             console.error(`✗ Failed to notify admin ${admin.id}:`, adminErr.message);
           }
         }
-        console.log(`✓ Admin notifications complete`);
+        console.log(`Admin notifications complete`);
 
-        // ⚠️ CRITICAL:  SKIP TO NEXT BOOKING - DO NOT DELETE THIS BOOKING
-        console.log(`⚠️ Skipping to next booking (${booking.id} remains active)\n`);
+        console.log(`Skipping to next booking (${booking.id} remains active)\n`);
         continue;
 
       } else {
-        // ✅ No pending payments - PROCEED WITH CHECKOUT
-        console. log(`\n✅ ==========================================`);
-        console.log(`✅ PROCEEDING WITH AUTO-CHECKOUT`);
-        console.log(`✅ Guest: ${booking.guest_name}`);
-        console.log(`✅ Room: ${booking. room_number}`);
-        console.log(`✅ No unpaid items`);
-        console.log(`✅ ==========================================\n`);
+        console.log(`PROCEEDING WITH AUTO-CHECKOUT`);
+        console.log(`Guest: ${booking.guest_name}`);
+        console.log(`Room: ${booking. room_number}`);
+        console.log(`No unpaid items`);
         
         try {
-          // Move to history
           await pool.query(
             `
             INSERT INTO booking_history (room_id, guest_id, time_in, time_out, checked_out_at, moved_from_booking)
@@ -154,14 +139,12 @@ const expireBookings = async () => {
           );
           console.log(`✓ Moved to booking_history`);
 
-          // Delete from active bookings
           await pool.query(
             `DELETE FROM room_bookings WHERE id = $1`,
             [booking.id]
           );
           console.log(`✓ Deleted from room_bookings`);
 
-          // Clear user facility
           await pool.query(
             `UPDATE users SET facility = NULL WHERE id = $1`,
             [booking.guest_id]
@@ -175,7 +158,6 @@ const expireBookings = async () => {
             facility: booking. facility
           });
 
-          // Notify guest
           const checkoutMessage = "You have been automatically checked out.";
           await createNotification(booking.guest_id, checkoutMessage);
 
@@ -195,7 +177,6 @@ const expireBookings = async () => {
       }
     }
 
-    // Summary
     if (successfulCheckouts.length > 0) {
       console.log(`\n✅ Successfully auto-checked out ${successfulCheckouts.length} guest(s)`);
       
@@ -210,7 +191,7 @@ const expireBookings = async () => {
     }
 
     if (blockedCheckouts. length > 0) {
-      console.log(`\n🚫 Blocked ${blockedCheckouts.length} checkout(s) due to pending payments:`);
+      console.log(`\nBlocked ${blockedCheckouts.length} checkout(s) due to pending payments:`);
       blockedCheckouts.forEach(b => {
         console.log(`   - ${b.guest_name} (Room ${b.room_number}): ${b.unpaid_count} items, ₱${b.total_unpaid.toFixed(2)}`);
       });
@@ -225,16 +206,15 @@ const expireBookings = async () => {
       }
     }
 
-    console. log("\n=== ✅ EXPIRE BOOKINGS TASK COMPLETE ===\n");
+    console. log("\nEXPIRE BOOKINGS TASK COMPLETE\n");
 
   } catch (err) {
-    console.error("\n❌ ERROR in expireBookings task:", err. message);
+    console.error("\nERROR in expireBookings task:", err. message);
     console.error(err.stack);
   }
 };
 
 cron. schedule("* * * * *", () => {
-  console.log("\n⏰ Cron trigger at:", new Date().toLocaleString());
   expireBookings();
 });
 

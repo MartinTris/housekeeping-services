@@ -259,13 +259,13 @@ router.put("/:id/remove", authorization, async (req, res) => {
     console.log("Guest Name:", guestName);
     console.log("Room:", room.room_number);
 
-    // Check for unpaid items using guest_id directly (not through room_bookings)
     const unpaidItems = await pool.query(
       `SELECT COUNT(*) as unpaid_count, 
               COALESCE(SUM(charge_amount), 0) as total_unpaid
        FROM borrowed_items
        WHERE user_id = $1 
-         AND is_paid = false`,
+         AND is_paid = false
+         AND delivery_status = 'delivered'`,
       [guestId]
     );
 
@@ -384,109 +384,206 @@ router.put("/:id/remove", authorization, async (req, res) => {
         [facilityKey, currentDay, preferred_time]
       );
 
-      if (availableHk.rows.length > 0) {
-        const busyReqs = await pool.query(
-          `SELECT hr.assigned_to, hr.preferred_time, st.duration
-           FROM housekeeping_requests hr
-           JOIN service_types st ON hr.service_type_id = st.id
-           WHERE hr.preferred_date = $1
-             AND hr.assigned_to IS NOT NULL
-             AND hr.status IN ('approved','in_progress')`,
-          [preferred_date]
-        );
+if (availableHk.rows. length > 0) {
+  const busyReqs = await pool.query(
+    `SELECT hr.assigned_to, hr.preferred_time, st.duration
+     FROM housekeeping_requests hr
+     JOIN service_types st ON hr.service_type_id = st.id
+     WHERE hr.preferred_date = $1
+       AND hr.assigned_to IS NOT NULL
+       AND hr.status IN ('approved','in_progress')`,
+    [preferred_date]
+  );
 
-        const busyHistory = await pool.query(
-          `SELECT sh.housekeeper_id AS assigned_to, sh.preferred_time, st.duration
-           FROM service_history sh
-           JOIN service_types st ON sh.service_type_id = st.id
-           WHERE sh.preferred_date = $1
-             AND sh.housekeeper_id IS NOT NULL
-             AND sh.status IN ('approved','in_progress')`,
-          [preferred_date]
-        );
+  const busyHistory = await pool. query(
+    `SELECT sh.housekeeper_id AS assigned_to, sh.preferred_time, st.duration
+     FROM service_history sh
+     JOIN service_types st ON sh.service_type_id = st.id
+     WHERE sh.preferred_date = $1
+       AND sh.housekeeper_id IS NOT NULL
+       AND sh.status IN ('approved','in_progress')`,
+    [preferred_date]
+  );
 
-        const toMinutes = (t) => {
-          const [h, m] = t.split(":").map(Number);
-          return (h || 0) * 60 + (m || 0);
-        };
+  const toMinutes = (t) => {
+    const [h, m] = t.split(":").map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
 
-        const newStartMin = toMinutes(preferred_time);
-        const newEndMin = newStartMin + durationMinutes;
+  const toTimeString = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+  };
 
-        const busyIdsSet = new Set();
-        [...busyReqs.rows, ...busyHistory.rows].forEach(row => {
-          if (!row.assigned_to) return;
-          const otherStartMin = toMinutes(row.preferred_time);
-          const otherEndMin = otherStartMin + row.duration;
-          if (otherStartMin < newEndMin && otherEndMin > newStartMin) {
-            busyIdsSet.add(String(row.assigned_to));
-          }
-        });
+  const newStartMin = toMinutes(preferred_time);
+  const newEndMin = newStartMin + durationMinutes;
 
-        const freeHk = availableHk.rows.filter(
-          hk => !busyIdsSet.has(String(hk.id))
-        );
+  // Build a map of each housekeeper's busy periods
+  const housekeeperBusyPeriods = {};
+  availableHk.rows.forEach(hk => {
+    housekeeperBusyPeriods[hk.id] = [];
+  });
 
-        if (freeHk.length > 0) {
-          const counts = await pool.query(
-            `SELECT assigned_to AS hk_id, COUNT(*) AS tasks_today
-             FROM housekeeping_requests
-             WHERE DATE(created_at) = $1
-               AND assigned_to IS NOT NULL
-               AND status IN ('approved','in_progress')
-             GROUP BY assigned_to`,
-            [preferred_date]
-          );
+  [... busyReqs.rows, ... busyHistory.rows].forEach(row => {
+    if (!row.assigned_to || ! housekeeperBusyPeriods[row.assigned_to]) return;
+    const otherStartMin = toMinutes(row.preferred_time);
+    const otherEndMin = otherStartMin + row. duration;
+    housekeeperBusyPeriods[row.assigned_to]. push({
+      start: otherStartMin,
+      end: otherEndMin
+    });
+  });
 
-          const countMap = {};
-          counts.rows.forEach(row => {
-            countMap[row.hk_id] = parseInt(row.tasks_today);
-          });
+  // Sort busy periods for each housekeeper by start time
+  Object.keys(housekeeperBusyPeriods).forEach(hkId => {
+    housekeeperBusyPeriods[hkId].sort((a, b) => a.start - b.start);
+  });
 
-          freeHk.sort((a, b) => {
-            const countA = countMap[a.id] || 0;
-            const countB = countMap[b.id] || 0;
-            if (countA === countB) return a.name.localeCompare(b.name);
-            return countA - countB;
-          });
-
-          const selectedHk = freeHk[0];
-
-          const adminRes = await pool.query(
-            `SELECT id FROM users 
-             WHERE role IN ('admin', 'superadmin') 
-             AND LOWER(facility) = LOWER($1) 
-             LIMIT 1`,
-            [facilityKey]
-          );
-
-          const requesterId = adminRes.rows.length > 0 ? adminRes.rows[0].id : req.user.id;
-
-          await pool.query(
-            `INSERT INTO housekeeping_requests
-             (user_id, room_id, preferred_date, preferred_time, service_type_id, status, assigned_to)
-             VALUES ($1, $2, $3, $4, $5, 'approved', $6)`,
-            [requesterId, room.id, preferred_date, preferred_time, serviceTypeId, selectedHk.id]
-          );
-
-          await createNotification(
-            selectedHk.id,
-            `Automatic checkout cleaning: Room ${room.room_number} at ${preferred_time}.`
-          );
-
-          const io = getIo();
-          if (io) {
-            io.to(`user:${selectedHk.id}`).emit("newAssignment", {
-              message: `Automatic checkout cleaning assigned: Room ${room.room_number} at ${preferred_time}`,
-              room: room.room_number,
-              facility: facilityKey,
-              auto_created: true
-            });
-          }
-
-          autoCleaningCreated = true;
-        }
+  // Function to check if a housekeeper is free during a time slot
+  const isHousekeeperFree = (hkId, startMin, endMin) => {
+    const periods = housekeeperBusyPeriods[hkId];
+    for (const period of periods) {
+      if (startMin < period.end && endMin > period.start) {
+        return false; // Overlaps with busy period
       }
+    }
+    return true;
+  };
+
+  // Function to find earliest available time for a housekeeper
+  const findEarliestAvailableTime = (hkId, requestedStartMin, shiftEndMin) => {
+    let currentStart = requestedStartMin;
+    const periods = housekeeperBusyPeriods[hkId];
+    
+    for (const period of periods) {
+      const currentEnd = currentStart + durationMinutes;
+      
+      // If current slot doesn't overlap, we found it
+      if (currentEnd <= period.start) {
+        return currentStart;
+      }
+      
+      // If it overlaps, try after this busy period
+      if (currentStart < period.end) {
+        currentStart = period.end;
+      }
+    }
+    
+    // Check if the slot after all busy periods fits before shift ends
+    if (currentStart + durationMinutes <= shiftEndMin) {
+      return currentStart;
+    }
+    
+    return null; // No available time today
+  };
+
+  // First, try to find housekeepers who are free RIGHT NOW
+  const freeHk = availableHk.rows. filter(hk => 
+    isHousekeeperFree(hk.id, newStartMin, newEndMin)
+  );
+
+  let selectedHk = null;
+  let assignedTime = preferred_time;
+
+  if (freeHk.length > 0) {
+    // Found free housekeepers - use the one with least tasks today
+    const counts = await pool.query(
+      `SELECT assigned_to AS hk_id, COUNT(*) AS tasks_today
+       FROM housekeeping_requests
+       WHERE DATE(created_at) = $1
+         AND assigned_to IS NOT NULL
+         AND status IN ('approved','in_progress')
+       GROUP BY assigned_to`,
+      [preferred_date]
+    );
+
+    const countMap = {};
+    counts.rows.forEach(row => {
+      countMap[row.hk_id] = parseInt(row.tasks_today);
+    });
+
+    freeHk.sort((a, b) => {
+      const countA = countMap[a.id] || 0;
+      const countB = countMap[b. id] || 0;
+      if (countA === countB) return a.name.localeCompare(b. name);
+      return countA - countB;
+    });
+
+    selectedHk = freeHk[0];
+    console.log(`✓ Found immediately available housekeeper: ${selectedHk.name}`);
+  } else {
+    // No one is free right now - find who becomes available earliest
+    console.log(`⚠️ No housekeepers immediately available, finding earliest slot...`);
+    
+    const availabilityMap = [];
+    
+    for (const hk of availableHk.rows) {
+      const shiftEndMin = toMinutes(hk.shift_time_out);
+      const earliestTime = findEarliestAvailableTime(hk.id, newStartMin, shiftEndMin);
+      
+      if (earliestTime !== null) {
+        availabilityMap.push({
+          housekeeper: hk,
+          availableAtMin: earliestTime,
+          availableAtTime: toTimeString(earliestTime)
+        });
+      }
+    }
+
+    if (availabilityMap.length > 0) {
+      // Sort by earliest available time
+      availabilityMap.sort((a, b) => a.availableAtMin - b.availableAtMin);
+      
+      const earliest = availabilityMap[0];
+      selectedHk = earliest.housekeeper;
+      assignedTime = earliest.availableAtTime;
+      
+      console.log(`✓ Assigned to ${selectedHk.name} at ${assignedTime} (earliest available)`);
+    } else {
+      console.log(`✗ No housekeepers available today within their shifts`);
+    }
+  }
+
+  // If we found a housekeeper (either immediately or scheduled for later)
+  if (selectedHk) {
+    const adminRes = await pool.query(
+      `SELECT id FROM users 
+       WHERE role IN ('admin', 'superadmin') 
+       AND LOWER(facility) = LOWER($1) 
+       LIMIT 1`,
+      [facilityKey]
+    );
+
+    const requesterId = adminRes.rows. length > 0 ? adminRes.rows[0].id : req.user.id;
+
+    await pool.query(
+      `INSERT INTO housekeeping_requests
+       (user_id, room_id, preferred_date, preferred_time, service_type_id, status, assigned_to)
+       VALUES ($1, $2, $3, $4, $5, 'approved', $6)`,
+      [requesterId, room.id, preferred_date, assignedTime, serviceTypeId, selectedHk.id]
+    );
+
+    const timeDisplay = assignedTime.substring(0, 5);
+    await createNotification(
+      selectedHk.id,
+      `Automatic checkout cleaning:  Room ${room.room_number} at ${timeDisplay}. `
+    );
+
+    const io = getIo();
+    if (io) {
+      io.to(`user:${selectedHk.id}`).emit("newAssignment", {
+        message: `Automatic checkout cleaning assigned:  Room ${room.room_number} at ${timeDisplay}`,
+        room: room.room_number,
+        facility: facilityKey,
+        auto_created: true,
+        scheduled_time: assignedTime
+      });
+    }
+
+    autoCleaningCreated = true;
+  }
+}
     }
 
     const io = getIo();

@@ -6,7 +6,6 @@ const { sendTaskAssignmentEmail } = require("../utils/emailService");
 
 const checkAndAutoCheckoutAfterPayment = async (userId) => {
   try {
-    // Check if user still has any unpaid items
     const remainingUnpaid = await pool.query(
       `SELECT COUNT(*) as count FROM borrowed_items 
        WHERE user_id = $1 AND is_paid = FALSE`,
@@ -14,7 +13,6 @@ const checkAndAutoCheckoutAfterPayment = async (userId) => {
     );
 
     if (parseInt(remainingUnpaid.rows[0].count) === 0) {
-      // No more unpaid items - check if checkout time has passed
       const bookingCheck = await pool.query(
         `
         SELECT rb.*, r.room_number, r.facility,
@@ -42,22 +40,17 @@ const checkAndAutoCheckoutAfterPayment = async (userId) => {
           [booking.room_id, booking.guest_id, booking.time_in, booking.time_out, booking. id]
         );
 
-        // Delete booking
         await pool.query(`DELETE FROM room_bookings WHERE id = $1`, [booking.id]);
-
-        // Update user facility
         await pool.query(`UPDATE users SET facility = NULL WHERE id = $1`, [userId]);
 
         console.log(`✓ Auto-checked out ${booking.guest_name} from Room ${booking.room_number} after payment settlement`);
 
-        // Notify guest
         const { createNotification } = require("../utils/notifications");
         await createNotification(
           userId,
           "Your payment has been settled. You have been automatically checked out."
         );
 
-        // Notify via socket
         const { getIo } = require("../realtime");
         const io = getIo();
         if (io) {
@@ -73,11 +66,11 @@ const checkAndAutoCheckoutAfterPayment = async (userId) => {
           });
         }
 
-        return true; // Checkout performed
+        return true;
       }
     }
     
-    return false; // No checkout needed
+    return false;
   } catch (err) {
     console.error("Error in checkAndAutoCheckoutAfterPayment:", err.message);
     return false;

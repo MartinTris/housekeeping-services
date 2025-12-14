@@ -217,18 +217,16 @@ const ManageGuests = () => {
     socket.on("booking:removed", refresh);
     socket.on("booking:timeoutUpdated", refresh);
     socket.on("booking:autoCheckout", refresh);
-    socket.on("booking:checkoutBlocked", refresh); // Add this line
+    socket.on("booking:checkoutBlocked", refresh);
     socket.on("room:added", refresh);
     socket.on("room:updated", refresh);
     socket.on("room:deleted", refresh);
 
-    // Add handler for checkout blocked notifications
     socket.on("checkoutBlocked", (data) => {
       console.log("Admin notified - checkout blocked:", data);
-      // Show notification toast or banner
       if (data.guest_name && data.room_number) {
         alert(
-          `⚠️ AUTO-CHECKOUT BLOCKED\n\n${data.message}\n\nGuest: ${data.guest_name}\nRoom: ${data.room_number}\nUnpaid:  ${data.unpaid_count} item(s) - ₱${data.total_amount}`
+          `AUTO-CHECKOUT BLOCKED\n\n${data.message}\n\nGuest: ${data.guest_name}\nRoom: ${data.room_number}\nUnpaid:  ${data.unpaid_count} item(s) - ₱${data.total_amount}`
         );
       }
       refresh();
@@ -281,7 +279,7 @@ const ManageGuests = () => {
         console.log("data.unpaid_count:", data.unpaid_count);
 
         if (data.blocked && data.unpaid_count > 0) {
-          console.log("⚠️ CHECKOUT IS BLOCKED");
+          console.log("CHECKOUT IS BLOCKED");
           alert(
             `⚠️ CHECKOUT BLOCKED - PENDING PAYMENT\n\n` +
               `${data.message}\n\n` +
@@ -292,22 +290,19 @@ const ManageGuests = () => {
               `❗ Please go to "Pending Payments" to settle the payment before checkout.`
           );
 
-          // Refresh the rooms to update the UI
           await fetchRooms();
           console.log("=== CHECKOUT DEBUG END (BLOCKED) ===");
           return;
         }
 
-        // Handle other errors
         console.log("Other error:", data.error || data.message);
         alert("Checkout failed: " + (data.error || data.message || res.status));
         console.log("=== CHECKOUT DEBUG END (ERROR) ===");
         return;
       }
 
-      console.log("✅ Checkout successful");
+      console.log("Checkout successful");
 
-      // Successful checkout - handle token update if needed
       const token = localStorage.getItem("token");
       if (token && data.token) {
         try {
@@ -334,9 +329,9 @@ const ManageGuests = () => {
 
       await fetchRooms();
       alert("Guest checked out successfully.");
-      console.log("=== CHECKOUT DEBUG END (SUCCESS) ===");
+      console.log("CHECKOUT DEBUG END (SUCCESS)");
     } catch (err) {
-      console.error("=== CHECKOUT DEBUG ERROR ===");
+      console.error("CHECKOUT DEBUG ERROR");
       console.error("Remove error:", err);
       alert("Network error. Please check your connection.");
     }

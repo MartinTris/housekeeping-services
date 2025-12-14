@@ -592,7 +592,7 @@ const MyRequests = () => {
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <button
                             onClick={handleRateService}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-green-900 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm"
                           >
                             <Star className="w-4 h-4" />
                             Rate this service

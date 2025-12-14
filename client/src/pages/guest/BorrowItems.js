@@ -31,12 +31,12 @@ const BorrowItems = () => {
 
     if (facility === "RCC") {
       openMinutes = 8 * 60;
-      closeMinutes = 23 * 60;
+      closeMinutes = 17 * 60;
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else if (facility === "Hotel Rafael") {
       openMinutes = 8 * 60;
-      closeMinutes = 23 * 60;
+      closeMinutes = 17 * 60;
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else {
@@ -340,14 +340,17 @@ const BorrowItems = () => {
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded border border-gray-400"
+                  onClick={() => {
+                    setShowModal(false);
+                    setBorrowQty("");
+                  }}
+                  className="px-4 sm:px-5 py-2 bg-gray-200 rounded-full hover:bg-gray-300 transition text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-700 text-white rounded hover:bg-green-800"
+                  className="px-4 sm:px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300 text-sm sm:text-base"
                 >
                   Confirm Borrow
                 </button>
