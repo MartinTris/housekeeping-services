@@ -5,9 +5,10 @@ import BorrowedItemsList from "../../components/BorrowedItemsList";
 import DashboardToggle from "../../components/DashboardToggle.js";
 import Announcements from "../../components/Announcements";
 import FeedbackWidget from "../../components/FeedbackWidget";
+import { io } from "socket.io-client";
 import { Wallet } from "lucide-react";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -68,10 +69,9 @@ const GuestDashboard = () => {
 
   async function fetchTotalRequests() {
     try {
-      const res = await fetch(
-        `${API_URL}/housekeeping-requests/user/total`,
-        { headers: { token: localStorage.token } }
-      );
+      const res = await fetch(`${API_URL}/housekeeping-requests/user/total`, {
+        headers: { token: localStorage.token },
+      });
       if (!res.ok) {
         const text = await res.text();
         console.error("Server returned:", text);
@@ -86,10 +86,9 @@ const GuestDashboard = () => {
 
   async function fetchTodayRequests() {
     try {
-      const res = await fetch(
-        `${API_URL}/housekeeping-requests/user/today`,
-        { headers: { token: localStorage.token } }
-      );
+      const res = await fetch(`${API_URL}/housekeeping-requests/user/today`, {
+        headers: { token: localStorage.token },
+      });
       if (!res.ok) {
         const text = await res.text();
         console.error("Server returned:", text);
@@ -163,7 +162,7 @@ const GuestDashboard = () => {
     fetchRemainingBalance();
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     const intervalId = setInterval(() => {
       console.log("Auto-refreshing data...");
       refreshData();
@@ -387,6 +386,58 @@ const GuestDashboard = () => {
     }
   }, [profile?.facility, serviceType, preferredDate, serviceTypes]);
 
+  useEffect(() => {
+    const socket = io(API_URL, {
+      auth: { token: localStorage.getItem("token") },
+    });
+
+    socket.on("connect", () => {
+      console.log("Guest socket connected:", socket.id);
+    });
+
+    // Handle checkout blocked notification
+    socket.on("checkoutBlocked", (data) => {
+      console.log("Checkout blocked notification received:", data);
+
+      // Show alert to guest
+      alert(
+        `⚠️ CHECKOUT NOTICE\n\n${data.message}\n\nPlease visit the "Borrowed Items" section to settle your payment before you can check out.`
+      );
+
+      // Refresh data to show current status
+      refreshData();
+    });
+
+    // Handle successful checkout after payment
+    socket.on("booking:removed", (data) => {
+      console.log("Booking removed notification received:", data);
+
+      // Only show alert if it's about payment settlement
+      if (data.message && data.message.includes("Payment settled")) {
+        alert(`✅ ${data.message}`);
+
+        // Reload page to update facility status and UI
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Guest socket disconnected");
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      console.log("Disconnecting guest socket");
+      socket.disconnect();
+    };
+  }, []);
+
   return (
     <div className="flex w-full min-h-screen font-sans bg-gray-50">
       <main className="flex-1 p-4 sm:p-8">
@@ -411,9 +462,20 @@ const GuestDashboard = () => {
                   </div>
                 )}
 
+                {remainingBalance > 0 && profile?.current_booking?.room_id && (
+                  <div className="bg-orange-50 border-l-4 border-orange-400 p-3 sm:p-4 mb-4">
+                    <p className="text-orange-600 text-xs sm:text-sm mt-1">
+                      Please settle all payments before checkout to avoid
+                      delays.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   onClick={() => setShowModal(true)}
-                  disabled={!profile?.facility || !profile?.current_booking?.room_id}
+                  disabled={
+                    !profile?.facility || !profile?.current_booking?.room_id
+                  }
                   className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-sm sm:text-base"
                 >
                   Request a Service
@@ -445,8 +507,12 @@ const GuestDashboard = () => {
                     <Wallet className="text-green-600" size={28} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm font-medium text-green-700 mb-1">Remaining Balance</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-green-800 break-words">₱{remainingBalance.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm font-medium text-green-700 mb-1">
+                      Remaining Balance
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-bold text-green-800 break-words">
+                      ₱{remainingBalance.toFixed(2)}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -462,9 +528,13 @@ const GuestDashboard = () => {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg text-green-900 sm:text-xl font-bold mb-4">Request Service</h3>
+            <h3 className="text-lg text-green-900 sm:text-xl font-bold mb-4">
+              Request Service
+            </h3>
 
-            {error && <p className="text-red-500 mb-2 text-sm sm:text-base">{error}</p>}
+            {error && (
+              <p className="text-red-500 mb-2 text-sm sm:text-base">{error}</p>
+            )}
 
             <div className="space-y-4">
               <div>

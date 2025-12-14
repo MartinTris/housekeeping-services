@@ -9,7 +9,7 @@ import { toast } from "react-hot-toast";
 import socket from "../socket";
 import { jwtDecode } from "jwt-decode";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export const NotificationContext = createContext();
 
@@ -44,19 +44,22 @@ export const NotificationProvider = ({ children }) => {
   }, [user?.id]);
 
   const markAllAsRead = async () => {
-  if (!user?.id) return;
-  try {
-    const res = await fetch(`${API_URL}/notifications/user/${user.id}/read-all`, {
-      method: "PUT",
-    });
-    if (!res.ok) throw new Error("Failed to mark all as read");
-    toast.success("All notifications marked as read!");
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  } catch (err) {
-    console.error("Error marking all as read:", err);
-    toast.error("Failed to mark all as read");
-  }
-};
+    if (!user?.id) return;
+    try {
+      const res = await fetch(
+        `${API_URL}/notifications/user/${user.id}/read-all`,
+        {
+          method: "PUT",
+        }
+      );
+      if (!res.ok) throw new Error("Failed to mark all as read");
+      toast.success("All notifications marked as read!");
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error("Error marking all as read:", err);
+      toast.error("Failed to mark all as read");
+    }
+  };
 
   useEffect(() => {
     fetchUser();
@@ -197,14 +200,49 @@ export const NotificationProvider = ({ children }) => {
       });
     };
 
+    const handleCheckoutBlocked = (data) => {
+      console.log("handleCheckoutBlocked triggered:", data);
+
+      const newNotification = {
+        id: Date.now(),
+        message: data.message,
+        created_at: new Date().toISOString(),
+        read: false,
+      };
+
+      setNotifications((prev) => {
+        const exists = prev.some(
+          (n) =>
+            n.message === data.message &&
+            Math.abs(
+              new Date(n.created_at) - new Date(newNotification.created_at)
+            ) < 2000
+        );
+        if (exists) return prev;
+        return [newNotification, ...prev];
+      });
+
+      // Use error toast for checkout blocked (more urgent)
+      if (user.role === "guest") {
+        toast.error(data.message, {
+          duration: 8000, // Longer duration for important message
+          position: "top-right",
+        });
+      } else if (user.role === "admin" || user.role === "superadmin") {
+        toast.error(data.message, {
+          duration: 6000,
+          position: "top-right",
+        });
+      }
+    };
+
     socket.off("newRequest").on("newRequest", handleNewRequest);
     socket
       .off("housekeeperAssigned")
       .on("housekeeperAssigned", handleHousekeeperAssigned);
     socket.off("newAssignment").on("newAssignment", handleNewAssignment);
-
+    socket.off("checkoutBlocked").on("checkoutBlocked", handleCheckoutBlocked);
     socket.off("newNotification").on("newNotification", (data) => {
-
       const newNotif = {
         id: Date.now(),
         message: data.message,

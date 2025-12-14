@@ -20,10 +20,10 @@ router.get("/", authorization, async (req, res) => {
           r.room_number, 
           b.id AS booking_id, 
           b.time_in, 
-          b.time_out, 
+          b. time_out, 
           u.id AS guest_id, 
           CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
-          (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
+          (b.time_in <= NOW()) AS is_active
         FROM rooms r
         LEFT JOIN LATERAL (
           SELECT * FROM room_bookings rb
@@ -32,7 +32,7 @@ router.get("/", authorization, async (req, res) => {
           LIMIT 1
         ) b ON true
         LEFT JOIN users u ON b.guest_id = u.id
-        WHERE r.facility IN ('RCC', 'Hotel Rafael')
+        WHERE r. facility IN ('RCC', 'Hotel Rafael')
         ORDER BY r.facility, r.room_number;
       `;
       params = [];
@@ -47,11 +47,11 @@ router.get("/", authorization, async (req, res) => {
           b.time_out, 
           u.id AS guest_id, 
           CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
-          (b.time_in <= NOW() AND (b.time_out IS NULL OR b.time_out > NOW())) AS is_active
+          (b.time_in <= NOW()) AS is_active
         FROM rooms r
         LEFT JOIN LATERAL (
           SELECT * FROM room_bookings rb
-          WHERE rb.room_id = r.id
+          WHERE rb. room_id = r.id
           ORDER BY rb.time_in DESC
           LIMIT 1
         ) b ON true
@@ -64,11 +64,11 @@ router.get("/", authorization, async (req, res) => {
 
     const result = await pool.query(query, params);
 
-    const rooms = result.rows.map((room) => ({
+    const rooms = result.rows. map((room) => ({
       id: room.id,
       facility: room.facility,
       room_number: room.room_number,
-      booking: room.booking_id
+      booking:  room.booking_id
         ? {
             booking_id: room.booking_id,
             guest_id: room.guest_id,
@@ -82,7 +82,7 @@ router.get("/", authorization, async (req, res) => {
 
     res.json(rooms);
   } catch (err) {
-    console.error("Error fetching rooms:", err.message);
+    console.error("Error fetching rooms:", err. message);
     res.status(500).send("Server error");
   }
 });
@@ -119,30 +119,47 @@ router.post("/:id/assign", authorization, async (req, res) => {
 
     const roomOverlap = await pool.query(
       `
-      SELECT 1 FROM room_bookings
-      WHERE room_id = $1 AND (time_out IS NULL OR time_out > NOW())
+      SELECT rb.id, rb.guest_id, rb.time_in, rb.time_out,
+             CONCAT_WS(' ', u.first_name, u.last_name) as guest_name
+      FROM room_bookings rb
+      JOIN users u ON rb.guest_id = u.id
+      WHERE rb.room_id = $1
+      ORDER BY rb.time_in DESC
       LIMIT 1
       `,
       [id]
     );
 
     if (roomOverlap.rows.length > 0) {
-      return res.status(400).json({ error: "Room is already occupied." });
+      const existing = roomOverlap.rows[0];
+      console.log("⚠️ Room already has a booking:", existing);
+
+       return res.status(400).json({ 
+        error: "Room already has an active or scheduled booking.",
+        details: `${existing.guest_name} is currently assigned to this room.`
+      });
     }
 
     const guestOverlap = await pool.query(
       `
-      SELECT 1 FROM room_bookings
-      WHERE guest_id = $1 AND (time_out IS NULL OR time_out > NOW())
+      SELECT rb.id, r.room_number, rb.time_in, rb.time_out
+      FROM room_bookings rb
+      JOIN rooms r ON rb.room_id = r. id
+      WHERE rb.guest_id = $1
+      ORDER BY rb.time_in DESC
       LIMIT 1
       `,
       [guest_id]
     );
 
     if (guestOverlap.rows.length > 0) {
-      return res
-        .status(400)
-        .json({ error: "Guest is already checked in to another room." });
+      const existing = guestOverlap.rows[0];
+      console.log("⚠️ Guest already has a booking:", existing);
+      
+      return res.status(400).json({ 
+        error: "Guest is already assigned to a room.",
+        details: `Currently in Room ${existing.room_number}.`
+      });
     }
 
     const newBooking = await pool.query(
@@ -217,29 +234,64 @@ router.put("/:id/remove", authorization, async (req, res) => {
       return res.status(403).json({ error: "Cannot manage rooms from other facilities." });
     }
 
-    const unpaidItems = await pool.query(
-      `SELECT COUNT(*) as unpaid_count, 
-              SUM(bi.charge_amount) as total_unpaid
-       FROM borrowed_items bi
-       JOIN room_bookings rb ON bi.user_id = rb.guest_id
-       WHERE rb.room_id = $1
-         AND rb.time_in <= NOW()
+    // *** CRITICAL FIX: Get guest_id FIRST, then check their unpaid items ***
+    const bookingCheck = await pool.query(
+      `SELECT rb.guest_id, 
+              CONCAT_WS(' ', u.first_name, u.last_name) as guest_name
+       FROM room_bookings rb
+       JOIN users u ON rb.guest_id = u.id
+       WHERE rb.room_id = $1 
+         AND rb.time_in <= NOW() 
          AND (rb.time_out IS NULL OR rb.time_out > NOW())
-         AND bi.is_paid = false
-         AND bi.delivery_status = 'delivered'`,
+       LIMIT 1`,
       [id]
     );
 
+    if (bookingCheck.rows.length === 0) {
+      return res.status(400).json({ error: "No active booking found for this room." });
+    }
+
+    const guestId = bookingCheck.rows[0].guest_id;
+    const guestName = bookingCheck.rows[0].guest_name;
+
+    console.log("\n=== MANUAL CHECKOUT DEBUG ===");
+    console.log("Guest ID:", guestId);
+    console.log("Guest Name:", guestName);
+    console.log("Room:", room.room_number);
+
+    // Check for unpaid items using guest_id directly (not through room_bookings)
+    const unpaidItems = await pool.query(
+      `SELECT COUNT(*) as unpaid_count, 
+              COALESCE(SUM(charge_amount), 0) as total_unpaid
+       FROM borrowed_items
+       WHERE user_id = $1 
+         AND is_paid = false`,
+      [guestId]
+    );
+
     const unpaidCount = parseInt(unpaidItems.rows[0].unpaid_count);
+    const totalUnpaid = parseFloat(unpaidItems.rows[0].total_unpaid || 0);
+
+    console.log("Unpaid Count:", unpaidCount);
+    console.log("Total Unpaid:", totalUnpaid);
+    console.log("Will block? :", unpaidCount > 0);
+    console.log("=== END DEBUG ===\n");
+
     if (unpaidCount > 0) {
-      const totalUnpaid = parseFloat(unpaidItems.rows[0].total_unpaid || 0);
+      console.log(`❌ Manual checkout blocked for ${guestName} - ${unpaidCount} unpaid items (₱${totalUnpaid.toFixed(2)})`);
+      
       return res.status(400).json({ 
-        error: "Cannot check out guest with pending payments. Please settle all borrowed item charges first.",
+        error: "Cannot check out guest with pending payments",
+        message: `Guest has ${unpaidCount} unpaid item(s) totaling ₱${totalUnpaid.toFixed(2)}. Please settle payment first.`,
         unpaid_count: unpaidCount,
-        total_amount: totalUnpaid.toFixed(2)
+        total_amount: totalUnpaid.toFixed(2),
+        blocked: true
       });
     }
 
+    console.log(`✅ Manual checkout ALLOWED for ${guestName}`);
+
+    // No unpaid items - proceed with checkout
     const result = await pool.query(
       `
       WITH active AS (
@@ -272,8 +324,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
       return res.status(400).json({ error: "No active booking found for this room." });
     }
 
-    const guestId = result.rows[0].guest_id;
-
     const updatedUser = await pool.query(
       "UPDATE users SET facility = NULL WHERE id = $1 RETURNING id, email, role, facility", 
       [guestId]
@@ -286,6 +336,8 @@ router.put("/:id/remove", authorization, async (req, res) => {
       role: updatedUser.rows[0].role,
       facility: updatedUser.rows[0].facility,
     });
+
+    console.log(`✓ Manually checked out ${guestName} from Room ${room.room_number}`);
 
     // Auto-create checkout cleaning request
     const serviceTypeRes = await pool.query(
@@ -417,7 +469,6 @@ router.put("/:id/remove", authorization, async (req, res) => {
             [requesterId, room.id, preferred_date, preferred_time, serviceTypeId, selectedHk.id]
           );
 
-          const { createNotification } = require("../utils/notifications");
           await createNotification(
             selectedHk.id,
             `Automatic checkout cleaning: Room ${room.room_number} at ${preferred_time}.`

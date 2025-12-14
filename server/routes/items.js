@@ -4,6 +4,86 @@ const pool = require("../db");
 const { authorization } = require("../middleware/authorization");
 const { sendTaskAssignmentEmail } = require("../utils/emailService");
 
+const checkAndAutoCheckoutAfterPayment = async (userId) => {
+  try {
+    // Check if user still has any unpaid items
+    const remainingUnpaid = await pool.query(
+      `SELECT COUNT(*) as count FROM borrowed_items 
+       WHERE user_id = $1 AND is_paid = FALSE`,
+      [userId]
+    );
+
+    if (parseInt(remainingUnpaid.rows[0].count) === 0) {
+      // No more unpaid items - check if checkout time has passed
+      const bookingCheck = await pool.query(
+        `
+        SELECT rb.*, r.room_number, r.facility,
+               CONCAT_WS(' ', u.first_name, u.last_name) as guest_name
+        FROM room_bookings rb
+        JOIN rooms r ON rb.room_id = r.id
+        JOIN users u ON rb.guest_id = u.id
+        WHERE rb.guest_id = $1 
+          AND rb.time_out IS NOT NULL 
+          AND rb.time_out <= NOW()
+        LIMIT 1
+        `,
+        [userId]
+      );
+
+      if (bookingCheck.rows.length > 0) {
+        const booking = bookingCheck.rows[0];
+        
+        // Move to history
+        await pool.query(
+          `
+          INSERT INTO booking_history (room_id, guest_id, time_in, time_out, checked_out_at, moved_from_booking)
+          VALUES ($1, $2, $3, $4, NOW(), $5)
+          `,
+          [booking.room_id, booking.guest_id, booking.time_in, booking.time_out, booking. id]
+        );
+
+        // Delete booking
+        await pool.query(`DELETE FROM room_bookings WHERE id = $1`, [booking.id]);
+
+        // Update user facility
+        await pool.query(`UPDATE users SET facility = NULL WHERE id = $1`, [userId]);
+
+        console.log(`✓ Auto-checked out ${booking.guest_name} from Room ${booking.room_number} after payment settlement`);
+
+        // Notify guest
+        const { createNotification } = require("../utils/notifications");
+        await createNotification(
+          userId,
+          "Your payment has been settled. You have been automatically checked out."
+        );
+
+        // Notify via socket
+        const { getIo } = require("../realtime");
+        const io = getIo();
+        if (io) {
+          io.to(`user:${userId}`).emit("booking:removed", {
+            message: "Payment settled. You have been checked out.",
+          });
+
+          io.to(`facility:${booking.facility. toLowerCase()}`).emit("booking:autoCheckout", {
+            room_id: booking.room_id,
+            room_number: booking.room_number,
+            guest_name: booking.guest_name,
+            reason: "payment_settled"
+          });
+        }
+
+        return true; // Checkout performed
+      }
+    }
+    
+    return false; // No checkout needed
+  } catch (err) {
+    console.error("Error in checkAndAutoCheckoutAfterPayment:", err.message);
+    return false;
+  }
+};
+
 router.post("/", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
@@ -626,9 +706,13 @@ router.put("/:id/mark-paid", authorization, async (req, res) => {
       [invoice_number.trim(), id]
     );
 
+    const userId = result.rows[0].user_id;
+    const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
+
     res.json({
       message: "Item marked as paid successfully",
       item: result.rows[0],
+      auto_checkout_performed: wasCheckedOut,
     });
   } catch (err) {
     console.error("Error marking item as paid:", err.message);
@@ -686,10 +770,13 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
         .json({ message: "No unpaid items found for this user." });
     }
 
+    const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
+
     res.json({
       message: `All borrowed items for user ID ${userId} marked as paid.`,
       updated_count: result.rowCount,
       invoice_number: invoice_number.trim(),
+      auto_checkout_performed: wasCheckedOut,
     });
   } catch (err) {
     console.error("Error marking all as paid:", err.message);

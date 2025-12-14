@@ -78,9 +78,9 @@ const ManageGuests = () => {
       const pendingItems = await res.json();
 
       const guestsWithPending = new Set(
-        pendingItems.map(item => item.user_id)
+        pendingItems.map((item) => item.user_id)
       );
-      
+
       setGuestsPendingPayments(guestsWithPending);
     } catch (err) {
       console.error("Error fetching pending payments:", err);
@@ -204,8 +204,7 @@ const ManageGuests = () => {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    const socket = io(`${API_URL}`, {
-      transports: ["websocket"],
+    const socket = io(API_URL, {
       auth: { token: localStorage.getItem("token") },
     });
 
@@ -218,9 +217,22 @@ const ManageGuests = () => {
     socket.on("booking:removed", refresh);
     socket.on("booking:timeoutUpdated", refresh);
     socket.on("booking:autoCheckout", refresh);
+    socket.on("booking:checkoutBlocked", refresh); // Add this line
     socket.on("room:added", refresh);
     socket.on("room:updated", refresh);
     socket.on("room:deleted", refresh);
+
+    // Add handler for checkout blocked notifications
+    socket.on("checkoutBlocked", (data) => {
+      console.log("Admin notified - checkout blocked:", data);
+      // Show notification toast or banner
+      if (data.guest_name && data.room_number) {
+        alert(
+          `⚠️ AUTO-CHECKOUT BLOCKED\n\n${data.message}\n\nGuest: ${data.guest_name}\nRoom: ${data.room_number}\nUnpaid:  ${data.unpaid_count} item(s) - ₱${data.total_amount}`
+        );
+      }
+      refresh();
+    });
 
     socket.on("disconnect", () => console.log("Socket disconnected"));
 
@@ -231,6 +243,11 @@ const ManageGuests = () => {
   }, []);
 
   const handleRemove = async (room) => {
+    console.log("=== CHECKOUT DEBUG START ===");
+    console.log("Room:", room);
+    console.log("Room ID:", room.id);
+    console.log("Guest:", room.booking?.guest_name);
+
     if (role === "superadmin") {
       alert(
         "Superadmins can only view rooms. Guest checkout is restricted to facility admins."
@@ -241,19 +258,56 @@ const ManageGuests = () => {
     if (!window.confirm(`Check out guest from ${room.room_number}?`)) return;
 
     try {
+      console.log(
+        "Sending checkout request to:",
+        `${API_URL}/rooms/${room.id}/remove`
+      );
+
       const res = await fetch(`${API_URL}/rooms/${room.id}/remove`, {
         method: "PUT",
         headers: { token: localStorage.token },
       });
 
+      console.log("Response status:", res.status);
+      console.log("Response ok:", res.ok);
+
+      const data = await res.json();
+      console.log("Response data:", data);
+
+      // Handle blocked checkout due to unpaid items
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        alert("Checkout failed: " + (j.error || j.message || res.status));
+        console.log("Checkout failed - checking if blocked...");
+        console.log("data.blocked:", data.blocked);
+        console.log("data.unpaid_count:", data.unpaid_count);
+
+        if (data.blocked && data.unpaid_count > 0) {
+          console.log("⚠️ CHECKOUT IS BLOCKED");
+          alert(
+            `⚠️ CHECKOUT BLOCKED - PENDING PAYMENT\n\n` +
+              `${data.message}\n\n` +
+              `Guest: ${room.booking.guest_name}\n` +
+              `Room: ${room.room_number}\n` +
+              `Unpaid Items: ${data.unpaid_count}\n` +
+              `Total Amount: ₱${data.total_amount}\n\n` +
+              `❗ Please go to "Pending Payments" to settle the payment before checkout.`
+          );
+
+          // Refresh the rooms to update the UI
+          await fetchRooms();
+          console.log("=== CHECKOUT DEBUG END (BLOCKED) ===");
+          return;
+        }
+
+        // Handle other errors
+        console.log("Other error:", data.error || data.message);
+        alert("Checkout failed: " + (data.error || data.message || res.status));
+        console.log("=== CHECKOUT DEBUG END (ERROR) ===");
         return;
       }
 
-      const data = await res.json();
+      console.log("✅ Checkout successful");
 
+      // Successful checkout - handle token update if needed
       const token = localStorage.getItem("token");
       if (token && data.token) {
         try {
@@ -280,7 +334,9 @@ const ManageGuests = () => {
 
       await fetchRooms();
       alert("Guest checked out successfully.");
+      console.log("=== CHECKOUT DEBUG END (SUCCESS) ===");
     } catch (err) {
+      console.error("=== CHECKOUT DEBUG ERROR ===");
       console.error("Remove error:", err);
       alert("Network error. Please check your connection.");
     }
@@ -517,6 +573,20 @@ const ManageGuests = () => {
                     <p className="text-red-600 text-xs sm:text-sm break-words mt-1">
                       Occupied by {room.booking.guest_name}
                     </p>
+                    {room.booking.time_out &&
+                      new Date(room.booking.time_out) <= new Date() && (
+                        <div className="mt-2 bg-orange-100 border-l-4 border-orange-500 p-2 rounded">
+                          <p className="text-orange-800 text-xs font-bold flex items-center justify-center gap-1">
+                            <span>⚠️</span>
+                            <span>Checkout time passed</span>
+                          </p>
+                          {guestsPendingPayments.has(room.booking.guest_id) && (
+                            <p className="text-orange-700 text-xs mt-1">
+                              Pending payment blocking checkout
+                            </p>
+                          )}
+                        </div>
+                      )}
                     <div className="mt-2 flex flex-col sm:flex-row justify-center gap-2">
                       <button
                         className="px-2 sm:px-3 py-1 bg-yellow-500 text-white rounded text-xs sm:text-sm"
@@ -537,8 +607,13 @@ const ManageGuests = () => {
                             <button
                               className="px-2 sm:px-3 py-1 bg-orange-600 text-white rounded text-xs sm:text-sm whitespace-nowrap"
                               onClick={() => {
-                                console.log('Navigating to pending payments for guest:', room.booking.guest_id);
-                                navigate(`/admin/pending-payments?guest=${room.booking.guest_id}`);
+                                console.log(
+                                  "Navigating to pending payments for guest:",
+                                  room.booking.guest_id
+                                );
+                                navigate(
+                                  `/admin/pending-payments?guest=${room.booking.guest_id}`
+                                );
                               }}
                             >
                               View Pending Payment(s)
