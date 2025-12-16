@@ -23,17 +23,31 @@ router.get("/", authorization, async (req, res) => {
           b. time_out, 
           u.id AS guest_id, 
           CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
-          (b.time_in <= NOW()) AS is_active
+          (b.time_in <= NOW()) AS is_active,
+          CASE 
+            WHEN b.time_out IS NOT NULL AND b.time_out <= NOW() THEN TRUE
+            ELSE FALSE
+          END AS is_overdue,
+          COALESCE(unpaid. unpaid_count, 0) AS unpaid_count,
+          COALESCE(unpaid.total_unpaid, 0) AS total_unpaid
         FROM rooms r
         LEFT JOIN LATERAL (
           SELECT * FROM room_bookings rb
           WHERE rb.room_id = r.id
-          AND (rb.time_out IS NULL OR rb.time_out > NOW())
           ORDER BY rb.time_in DESC
           LIMIT 1
         ) b ON true
         LEFT JOIN users u ON b.guest_id = u.id
-        WHERE r. facility IN ('RCC', 'Hotel Rafael')
+        LEFT JOIN LATERAL (
+          SELECT 
+            COUNT(*) as unpaid_count,
+            COALESCE(SUM(charge_amount), 0) as total_unpaid
+          FROM borrowed_items
+          WHERE user_id = b.guest_id 
+            AND is_paid = FALSE
+            AND delivery_status = 'delivered'
+        ) unpaid ON b.guest_id IS NOT NULL
+        WHERE r.facility IN ('RCC', 'Hotel Rafael')
         ORDER BY r.facility, r.room_number;
       `;
       params = [];
@@ -42,42 +56,59 @@ router.get("/", authorization, async (req, res) => {
         SELECT 
           r.id, 
           r.facility, 
-          r.room_number, 
+          r. room_number, 
           b.id AS booking_id, 
           b.time_in, 
           b.time_out, 
           u.id AS guest_id, 
           CONCAT(u.first_name, ' ', u.last_name) AS guest_name,
-          (b.time_in <= NOW()) AS is_active
+          (b.time_in <= NOW()) AS is_active,
+          CASE 
+            WHEN b. time_out IS NOT NULL AND b.time_out <= NOW() THEN TRUE
+            ELSE FALSE
+          END AS is_overdue,
+          COALESCE(unpaid.unpaid_count, 0) AS unpaid_count,
+          COALESCE(unpaid.total_unpaid, 0) AS total_unpaid
         FROM rooms r
         LEFT JOIN LATERAL (
           SELECT * FROM room_bookings rb
-          WHERE rb. room_id = r.id
-          AND (rb.time_out IS NULL OR rb.time_out > NOW())
+          WHERE rb.room_id = r. id
           ORDER BY rb.time_in DESC
           LIMIT 1
         ) b ON true
-        LEFT JOIN users u ON b.guest_id = u.id
+        LEFT JOIN users u ON b. guest_id = u.id
+        LEFT JOIN LATERAL (
+          SELECT 
+            COUNT(*) as unpaid_count,
+            COALESCE(SUM(charge_amount), 0) as total_unpaid
+          FROM borrowed_items
+          WHERE user_id = b.guest_id 
+            AND is_paid = FALSE
+            AND delivery_status = 'delivered'
+        ) unpaid ON b.guest_id IS NOT NULL
         WHERE r.facility = $1
-        ORDER BY r.room_number;
+        ORDER BY r. room_number;
       `;
       params = [facility];
     }
 
     const result = await pool.query(query, params);
 
-    const rooms = result.rows. map((room) => ({
+    const rooms = result.rows.map((room) => ({
       id: room.id,
       facility: room.facility,
       room_number: room.room_number,
       booking:  room.booking_id
-        ? {
+        ?  {
             booking_id: room.booking_id,
             guest_id: room.guest_id,
             guest_name: room.guest_name,
             time_in: room.time_in,
             time_out: room.time_out,
             is_active: room.is_active,
+            is_overdue:  room.is_overdue,
+            unpaid_count: parseInt(room.unpaid_count) || 0,
+            total_unpaid: parseFloat(room.total_unpaid) || 0,
           }
         : null,
     }));
