@@ -28,6 +28,7 @@ router.get("/", authorization, async (req, res) => {
         LEFT JOIN LATERAL (
           SELECT * FROM room_bookings rb
           WHERE rb.room_id = r.id
+          AND (rb.time_out IS NULL OR rb.time_out > NOW())
           ORDER BY rb.time_in DESC
           LIMIT 1
         ) b ON true
@@ -52,6 +53,7 @@ router.get("/", authorization, async (req, res) => {
         LEFT JOIN LATERAL (
           SELECT * FROM room_bookings rb
           WHERE rb. room_id = r.id
+          AND (rb.time_out IS NULL OR rb.time_out > NOW())
           ORDER BY rb.time_in DESC
           LIMIT 1
         ) b ON true

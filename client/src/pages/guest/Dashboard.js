@@ -182,8 +182,8 @@ const GuestDashboard = () => {
       profile.facility.toLowerCase().includes("hotel") ||
       profile.facility.toLowerCase().includes("rafael");
 
-    const startHour = isHotelRafael ? 0 : 0;
-    const endHour = isHotelRafael ? 24 : 24;
+    const startHour = 8;
+    const endHour = 20;
 
     const getServiceDuration = () => {
       const selected = serviceTypes.find((t) => t.name === serviceType);

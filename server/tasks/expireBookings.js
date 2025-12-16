@@ -137,19 +137,19 @@ const expireBookings = async () => {
             `,
             [booking.room_id, booking.guest_id, booking.time_in, booking.time_out, booking. id]
           );
-          console.log(`✓ Moved to booking_history`);
+          console.log(`Moved to booking_history`);
 
           await pool.query(
             `DELETE FROM room_bookings WHERE id = $1`,
             [booking.id]
           );
-          console.log(`✓ Deleted from room_bookings`);
+          console.log(`Deleted from room_bookings`);
 
           await pool.query(
             `UPDATE users SET facility = NULL WHERE id = $1`,
             [booking.guest_id]
           );
-          console.log(`✓ User facility cleared`);
+          console.log(`User facility cleared`);
 
           successfulCheckouts.push({
             guest_id: booking.guest_id,
@@ -168,17 +168,17 @@ const expireBookings = async () => {
             });
           }
           
-          console.log(`✓ Auto-checkout complete for ${booking.guest_name}\n`);
+          console.log(`Auto-checkout complete for ${booking.guest_name}\n`);
           
         } catch (checkoutErr) {
-          console.error(`✗ Checkout failed for ${booking.guest_name}: `, checkoutErr.message);
+          console.error(`Checkout failed for ${booking.guest_name}: `, checkoutErr.message);
           console.error(checkoutErr.stack);
         }
       }
     }
 
     if (successfulCheckouts.length > 0) {
-      console.log(`\n✅ Successfully auto-checked out ${successfulCheckouts.length} guest(s)`);
+      console.log(`\n Successfully auto-checked out ${successfulCheckouts.length} guest(s)`);
       
       try {
         getIo().emit("booking:autoCheckout", {
