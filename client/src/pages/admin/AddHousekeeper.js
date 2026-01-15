@@ -475,7 +475,7 @@ const AddHousekeeper = () => {
                         onClick={() => toggleStatus(hk.id)}
                         className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-500"
                       >
-                        Disable
+                        Set as Inactive
                       </button>
                     </div>
                   </td>
@@ -496,7 +496,7 @@ const AddHousekeeper = () => {
       </div>
 
       <h3 className="text-lg sm:text-xl font-poppins font-bold text-green-900 mb-3 sm:mb-4">
-        Disabled Housekeepers
+        Inactive Housekeepers
       </h3>
 
       <div className="block sm:hidden space-y-3">
@@ -531,7 +531,7 @@ const AddHousekeeper = () => {
           ))}
         {filteredHousekeepers.filter((hk) => !hk.is_active).length === 0 && (
           <p className="text-center py-4 text-gray-500 text-sm">
-            No disabled housekeepers.
+            No inactive housekeepers.
           </p>
         )}
       </div>
@@ -573,7 +573,7 @@ const AddHousekeeper = () => {
                       onClick={() => toggleStatus(hk.id)}
                       className="bg-green-700 text-white px-3 py-1 rounded-lg hover:bg-green-600"
                     >
-                      Enable
+                      Set as Active
                     </button>
                   </td>
                 </tr>

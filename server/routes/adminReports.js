@@ -6,8 +6,10 @@ router.get("/", authorization, async (req, res) => {
   try {
     const { facility: adminFacility, role } = req.user;
     const { days, housekeeper_id } = req.query;
-    const validDays = [7, 14, 30];
-    const range = validDays.includes(Number(days)) ? Number(days) : 7;
+    const validDays = [7, 14, 30, "all"];
+    const range = validDays.includes(days) || validDays.includes(Number(days)) 
+      ? (days === "all" ? "all" : Number(days)) 
+      : 7;
 
     if (role !== 'admin' && role !== 'superadmin') {
       return res.status(403).json({ error: "Unauthorized." });
@@ -32,6 +34,11 @@ router.get("/", authorization, async (req, res) => {
       paramIndex++;
     }
 
+    // Date filter - only add if not "all"
+    const dateFilter = range === "all" 
+      ? "" 
+      : `AND sh.assigned_at >= NOW() - INTERVAL '${range} days'`;
+
     const reportQuery = `
       SELECT 
         CASE 
@@ -52,7 +59,7 @@ router.get("/", authorization, async (req, res) => {
       LEFT JOIN rooms r ON sh.room_id = r.id
       LEFT JOIN service_types st ON sh.service_type_id = st.id
       WHERE sh.status = 'completed'
-        AND sh.assigned_at >= NOW() - INTERVAL '${range} days'
+        ${dateFilter}
         AND ${facilityFilter}
         ${housekeeperFilter}
       ORDER BY COALESCE(r.facility, hk.facility), sh.preferred_date DESC, sh.preferred_time DESC;
@@ -116,8 +123,10 @@ router.get("/borrowed-items", authorization, async (req, res) => {
   try {
     const { facility, role } = req.user;
     const { days, payment_status } = req.query;
-    const validDays = [7, 14, 30];
-    const range = validDays.includes(Number(days)) ? Number(days) : 7;
+    const validDays = [7, 14, 30, "all"];
+    const range = validDays.includes(days) || validDays.includes(Number(days)) 
+      ? (days === "all" ? "all" : Number(days)) 
+      : 7;
 
     if (role !== 'admin' && role !== 'superadmin') {
       return res.status(403).json({ error: "Unauthorized." });
@@ -129,6 +138,11 @@ router.get("/borrowed-items", authorization, async (req, res) => {
     } else if (payment_status === "unpaid") {
       paymentFilter = "AND bi.is_paid = false";
     }
+
+    // Date filter - only add if not "all"
+    const dateFilter = range === "all" 
+      ? "" 
+      : `AND bi.created_at >= NOW() - INTERVAL '${range} days'`;
 
     let query;
     let params;
@@ -147,9 +161,9 @@ router.get("/borrowed-items", authorization, async (req, res) => {
         FROM borrowed_items bi
         JOIN users u ON bi.user_id = u.id
         LEFT JOIN rooms r ON bi.room_id = r.id
-        WHERE bi.created_at >= NOW() - INTERVAL '${range} days'
-          AND (u.facility IN ('RCC', 'Hotel Rafael') OR r.facility IN ('RCC', 'Hotel Rafael'))
+        WHERE (u.facility IN ('RCC', 'Hotel Rafael') OR r.facility IN ('RCC', 'Hotel Rafael'))
           AND bi.delivery_status = 'delivered'
+          ${dateFilter}
           ${paymentFilter}
         ORDER BY COALESCE(u.facility, r.facility), bi.created_at DESC
       `;
@@ -167,9 +181,9 @@ router.get("/borrowed-items", authorization, async (req, res) => {
         FROM borrowed_items bi
         JOIN users u ON bi.user_id = u.id
         LEFT JOIN rooms r ON bi.room_id = r.id
-        WHERE bi.created_at >= NOW() - INTERVAL '${range} days'
-          AND (u.facility = $1 OR r.facility = $1)
+        WHERE (u.facility = $1 OR r.facility = $1)
           AND bi.delivery_status = 'delivered'
+          ${dateFilter}
           ${paymentFilter}
         ORDER BY bi.created_at DESC
       `;

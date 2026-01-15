@@ -51,11 +51,11 @@ const BorrowedItemsList = () => {
         );
         setTotal(totalAmount);
       } else {
-        setError(data.error || "Failed to fetch borrowed items");
+        setError(data.error || "Failed to fetch consumed items");
       }
     } catch (err) {
-      console.error("Error fetching borrowed items:", err);
-      setError("Server error while fetching borrowed items");
+      console.error("Error fetching consumed items:", err);
+      setError("Server error while fetching consumed items");
     }
   };
 
@@ -184,7 +184,7 @@ const BorrowedItemsList = () => {
     <div className="bg-white p-4 rounded-xl shadow-md w-full flex flex-col h-[400px]">
       <div id="print-content" style={{ display: "none" }}>
         <div className="receipt-header">
-          <div className="receipt-title">BORROWED ITEMS RECEIPT</div>
+          <div className="receipt-title">CONSUMED ITEMS RECEIPT</div>
           <div className="receipt-info">Date & Time: {formatDateTime()}</div>
         </div>
 
@@ -218,7 +218,7 @@ const BorrowedItemsList = () => {
 
       <div className="flex-shrink-0 border-b pb-2 mb-2">
         <h2 className="text-xl font-semibold text-green-800 text-center">
-          Borrowed Items
+          Consumed Items
         </h2>
       </div>
 
@@ -226,7 +226,7 @@ const BorrowedItemsList = () => {
         {error ? (
           <p className="text-red-500 text-center">{error}</p>
         ) : items.length === 0 ? (
-          <p className="text-gray-500 text-center">No borrowed items found.</p>
+          <p className="text-gray-500 text-center">No consumed items found.</p>
         ) : (
           items.map((item) => (
             <div
@@ -236,7 +236,7 @@ const BorrowedItemsList = () => {
               {(user?.role === "admin" || user?.role === "superadmin") && (
                 <div className="mb-2">
                   <p className="text-sm font-semibold text-gray-700">
-                    Borrower: {item.first_name} {item.last_name}
+                    Guest: {item.first_name} {item.last_name}
                   </p>
                   {user?.role === "superadmin" && item.facility && (
                     <p className="text-xs text-gray-500">

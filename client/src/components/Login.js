@@ -18,6 +18,7 @@ const Login = ({ setAuth, setUser }) => {
   const [showTerms, setShowTerms] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPopupPassword, setShowPopupPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotMessage, setForgotMessage] = useState("");
 
@@ -26,7 +27,7 @@ const Login = ({ setAuth, setUser }) => {
   const { email, password } = inputs;
 
   const onChange = (e) => {
-    setInputs({ ...inputs, [e.target.name]: e.target.value });
+    setInputs({ ...inputs, [e.target. name]: e.target.value });
   };
 
   const onPopupChange = (e) => {
@@ -63,7 +64,7 @@ const Login = ({ setAuth, setUser }) => {
   const handleLogin = async (e, loginRole, creds) => {
     e.preventDefault();
     try {
-      const body = { ...creds, role: loginRole };
+      const body = { ... creds, role: loginRole };
 
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -75,7 +76,7 @@ const Login = ({ setAuth, setUser }) => {
       if (parseRes.token) {
         localStorage.setItem("token", parseRes.token);
         localStorage.setItem("role", parseRes.role);
-        localStorage.setItem("first_login", parseRes.first_login);
+        localStorage. setItem("first_login", parseRes.first_login);
 
         setAuth(true);
         try {
@@ -87,7 +88,7 @@ const Login = ({ setAuth, setUser }) => {
           console.log("Fetched user data:", userData);
 
           setUser({
-            id: userData.id || parseRes.id,
+            id: userData. id || parseRes.id,
             role: parseRes.role,
             facility: userData.facility,
             email: userData.email || parseRes.email,
@@ -137,9 +138,10 @@ const Login = ({ setAuth, setUser }) => {
 
   const handleCancel = () => {
     setInputs({ email: "", password: "" });
-    setPopupInputs({ email: "", password: "" });
+    setPopupInputs({ email: "", password:  "" });
     setPopupRole(null);
     setShowModal(false);
+    setShowPopupPassword(false);
   };
 
   return (
@@ -170,7 +172,7 @@ const Login = ({ setAuth, setUser }) => {
           worry-free.
         </p>
 
-        <div className="flex flex-col lg:flex-row items-center gap-4 sm:gap-6 mb-8 sm:mb-12 w-full max-w-5xl">
+        <div className="flex flex-col lg:flex-row items-center gap-4 sm: gap-6 mb-8 sm:mb-12 w-full max-w-5xl">
           <img
             src="/images/HR_homepage.jpg"
             alt="Hotel Rafael"
@@ -184,7 +186,7 @@ const Login = ({ setAuth, setUser }) => {
               Formerly known as Hotel Nicole, Hotel Rafael is patterned after
               classic buildings in Vigan, Ilocos Norte. It offers a blend of
               traditional charm and modern amenities, providing guests with a
-              comfortable and memorable stay. Hotel Rafael has hosted various
+              comfortable and memorable stay.  Hotel Rafael has hosted various
               guests all over the world, making it a notable destination in
               Dasmariñas, Cavite both for accommodation and a learning
               environment for students.
@@ -196,7 +198,7 @@ const Login = ({ setAuth, setUser }) => {
           <img
             src="/images/RCC_homepage.jpg"
             alt="Retreat and Conference Center"
-            className="w-full lg:w-1/2 rounded-lg shadow-md"
+            className="w-full lg: w-1/2 rounded-lg shadow-md"
           />
           <div className="w-full lg:w-1/2">
             <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center lg:text-right">
@@ -207,7 +209,7 @@ const Login = ({ setAuth, setUser }) => {
               prayer, spiritual renewal, conferences and business meetings. It
               provides a serene and peaceful environment ideal for spiritual
               activities and reflection. The RCC also offers accommodation
-              facilities for overnight stays.
+              facilities for overnight stays. 
             </p>
           </div>
         </div>
@@ -228,7 +230,7 @@ const Login = ({ setAuth, setUser }) => {
                 value={email}
                 onChange={onChange}
                 required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm: text-base"
               />
 
               <div className="relative">
@@ -239,12 +241,12 @@ const Login = ({ setAuth, setUser }) => {
                   value={password}
                   onChange={onChange}
                   required
-                  className="border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base w-full"
+                  className="border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus: ring-2 focus:ring-green-700 text-sm sm:text-base w-full"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover: text-gray-700"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -259,7 +261,7 @@ const Login = ({ setAuth, setUser }) => {
             </div>
 
             <p className="mt-4 text-center text-gray-600 text-sm sm:text-base">
-              Don't have an account?{" "}
+              Don't have an account? {" "}
               <button
                 onClick={() => setShowTerms(true)}
                 className="text-green-700 font-poppins font-semibold hover:underline"
@@ -276,11 +278,11 @@ const Login = ({ setAuth, setUser }) => {
                 }}
                 className="text-blue-600 hover:underline"
               >
-                Forgot Password?
+                Forgot Password? 
               </button>
             </p>
 
-            <div className="mt-4 sm:mt-6 text-center flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
+            <div className="mt-4 sm:mt-6 text-center flex flex-col sm:flex-row justify-center gap-2 sm: gap-4">
               <button
                 onClick={() => {
                   setShowModal(false);
@@ -301,10 +303,10 @@ const Login = ({ setAuth, setUser }) => {
               </button>
             </div>
 
-            <div className="mt-4 sm:mt-6 text-center">
+            <div className="mt-4 sm: mt-6 text-center">
               <button
                 onClick={handleCancel}
-                className="bg-gray-400 text-white py-2 px-4 sm:px-6 rounded-full hover:bg-gray-500 transition shadow-md text-sm sm:text-base w-full sm:w-auto"
+                className="bg-gray-400 text-white py-2 px-4 sm:px-6 rounded-full hover:bg-gray-500 transition shadow-md text-sm sm: text-base w-full sm:w-auto"
               >
                 Close
               </button>
@@ -316,8 +318,8 @@ const Login = ({ setAuth, setUser }) => {
       {popupRole && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h3 className="text-lg sm:text-xl text-green-900 font-poppins font-bold mb-4 text-center">
-              {popupRole.charAt(0).toUpperCase() + popupRole.slice(1)} Login
+            <h3 className="text-lg sm: text-xl text-green-900 font-poppins font-bold mb-4 text-center">
+              {popupRole. charAt(0).toUpperCase() + popupRole.slice(1)} Login
             </h3>
             <div className="flex flex-col gap-3 sm:gap-4">
               <input
@@ -327,18 +329,29 @@ const Login = ({ setAuth, setUser }) => {
                 value={popupInputs.email}
                 onChange={onPopupChange}
                 required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
+                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus: ring-2 focus:ring-green-700 text-sm sm:text-base"
               />
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={popupInputs.password}
-                onChange={onPopupChange}
-                required
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-700 text-sm sm:text-base"
-              />
-              <div className="flex flex-col sm:flex-row justify-between gap-2 sm:gap-3">
+
+              <div className="relative">
+                <input
+                  type={showPopupPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Password"
+                  value={popupInputs.password}
+                  onChange={onPopupChange}
+                  required
+                  className="border border-gray-300 rounded px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus: ring-green-700 text-sm sm:text-base w-full"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPopupPassword(!showPopupPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPopupPassword ? <EyeOff size={20} /> :  <Eye size={20} />}
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between gap-2 sm: gap-3">
                 <button
                   onClick={(e) =>
                     handleLogin(e, popupRole, {
@@ -346,7 +359,7 @@ const Login = ({ setAuth, setUser }) => {
                       password: popupInputs.password,
                     })
                   }
-                  className="flex-1 bg-green-800 text-white py-2 px-4 rounded-full hover:bg-green-900 transition shadow-md text-sm sm:text-base"
+                  className="flex-1 bg-green-800 text-white py-2 px-4 rounded-full hover:bg-green-900 transition shadow-md text-sm sm: text-base"
                 >
                   Login
                 </button>
@@ -375,6 +388,7 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       )}
 
+      {/* Forgot Password Modal */}
       {showForgotPassword && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-md">
@@ -407,8 +421,8 @@ const Login = ({ setAuth, setUser }) => {
                 type="email"
                 placeholder="Enter your email"
                 value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                onChange={(e) => setForgotEmail(e. target.value)}
+                className="border border-gray-300 p-3 rounded-lg focus: outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                 required
               />
               <div className="flex gap-3">
@@ -435,6 +449,7 @@ const Login = ({ setAuth, setUser }) => {
         </div>
       )}
 
+      {/* Terms and Conditions Modal */}
       {showTerms && (
         <TermsAndConditionsModal
           isOpen={showTerms}

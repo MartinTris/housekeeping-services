@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { Printer } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -10,18 +11,21 @@ const FeedbackPage = () => {
   const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
+  const [userFacility, setUserFacility] = useState("");
   const [feedbackType, setFeedbackType] = useState(searchParams.get("type") || "service");
 
   const [guestFilter, setGuestFilter] = useState("");
   const [housekeeperFilter, setHousekeeperFilter] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [dateFilter, setDateFilter] = useState("all");
 
   const fetchUserRole = () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage. getItem("token");
       if (token) {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(payload.role);
+        setUserRole(payload. role);
+        setUserFacility(payload. facility || "");
       }
     } catch (err) {
       console.error("Error fetching user role:", err);
@@ -44,7 +48,7 @@ const FeedbackPage = () => {
       }
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching feedbacks:", err.message);
+      console.error("Error fetching feedbacks:", err. message);
       setLoading(false);
     }
   };
@@ -57,9 +61,18 @@ const FeedbackPage = () => {
     fetchFeedbacks();
   }, [feedbackType]);
 
-  // Apply filters and sorting
   useEffect(() => {
-    let filtered = [...feedbacks];
+    let filtered = [... feedbacks];
+
+    if (dateFilter === "7days") {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      filtered = filtered.filter(f => new Date(f.created_at) >= sevenDaysAgo);
+    } else if (dateFilter === "30days") {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      filtered = filtered.filter(f => new Date(f.created_at) >= thirtyDaysAgo);
+    }
 
     if (guestFilter) {
       filtered = filtered.filter(f => 
@@ -82,12 +95,132 @@ const FeedbackPage = () => {
     });
 
     setFilteredFeedbacks(filtered);
-  }, [guestFilter, housekeeperFilter, sortOrder, feedbacks, feedbackType]);
+  }, [guestFilter, housekeeperFilter, sortOrder, feedbacks, feedbackType, dateFilter]);
 
   const isSuperAdmin = userRole === "superadmin";
 
   const uniqueGuests = [...new Set(feedbacks.map(f => f.guest_name).filter(Boolean))];
-  const uniqueHousekeepers = [...new Set(feedbacks.map(f => f.housekeeper_name).filter(Boolean))];
+  const uniqueHousekeepers = [... new Set(feedbacks.map(f => f.housekeeper_name).filter(Boolean))];
+
+  const handlePrint = () => {
+    const dateRangeText = dateFilter === "all" ?  "All Time" : 
+                          dateFilter === "7days" ?  "Last 7 Days" :  
+                          "Last 30 Days";
+    
+    const reportTitle = feedbackType === "service" ? "Service Feedback Report" : "System Feedback Report";
+
+    let tableHeaders = '<tr>';
+    tableHeaders += '<th>Guest</th>';
+    
+    if (isSuperAdmin) {
+      tableHeaders += '<th>Facility</th>';
+    }
+    
+    if (feedbackType === "service") {
+      tableHeaders += '<th>Housekeeper</th>';
+      tableHeaders += '<th>Room</th>';
+      tableHeaders += '<th>Service Type</th>';
+    }
+    
+    tableHeaders += '<th>Rating</th>';
+    tableHeaders += '<th>Comment</th>';
+    tableHeaders += '<th>Date</th>';
+    tableHeaders += '</tr>';
+
+    let tableRows = '';
+    filteredFeedbacks.forEach(f => {
+      tableRows += '<tr>';
+      tableRows += `<td>${f.guest_name || "N/A"}</td>`;
+      
+      if (isSuperAdmin) {
+        tableRows += `<td>${f.facility || "Unknown"}</td>`;
+      }
+      
+      if (feedbackType === "service") {
+        tableRows += `<td>${f.housekeeper_name || "N/A"}</td>`;
+        tableRows += `<td>${f.room_number || "—"}</td>`;
+        tableRows += `<td>${f.service_type || "—"}</td>`;
+      }
+      
+      tableRows += `<td>${f.rating} ⭐</td>`;
+      tableRows += `<td>${f.comment || "No comment"}</td>`;
+      tableRows += `<td>${new Date(f.created_at).toLocaleDateString()}</td>`;
+      tableRows += '</tr>';
+    });
+
+    const printContent = `
+      <table>
+        <thead>
+          ${tableHeaders}
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+    `;
+
+    const printWindow = window.open("", "", "width=1000,height=800");
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${reportTitle}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              color: #333;
+            }
+            h1 {
+              color: #065f46;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 15px;
+            }
+            th, td {
+              border: 1px solid #ccc;
+              padding: 8px;
+              text-align: left;
+              font-size: 14px;
+            }
+            th {
+              background-color: #d1fae5;
+            }
+            tr: nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            .meta {
+              margin-bottom: 10px;
+              font-size: 14px;
+            }
+            .footer {
+              margin-top: 20px;
+              font-size: 12px;
+              color: gray;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${reportTitle}</h1>
+          <div class="meta">
+            ${! isSuperAdmin ?  `<p><strong>Facility:</strong> ${userFacility}</p>` : ''}
+            <p><strong>Date Range:</strong> ${dateRangeText}</p>
+            ${feedbackType === "service" && housekeeperFilter ?  `<p><strong>Housekeeper:</strong> ${housekeeperFilter}</p>` : ''}
+            ${guestFilter ? `<p><strong>Guest:</strong> ${guestFilter}</p>` : ''}
+            <p><strong>Total Feedback:</strong> ${filteredFeedbacks.length}</p>
+            <p><strong>Generated on: </strong> ${new Date().toLocaleString()}</p>
+          </div>
+          ${printContent}
+          <div class="footer">Housekeeping Management System — De La Salle University-Dasmariñas</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
 
   return (
     <div className="p-4 sm:p-6">
@@ -98,8 +231,8 @@ const FeedbackPage = () => {
         ← Back
       </button>
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Guest Feedback</h2>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
+        <h2 className="text-xl sm: text-2xl font-bold text-gray-800">Guest Feedback</h2>
         
         {isSuperAdmin && (
           <div className="flex gap-1 sm:gap-2 bg-gray-100 rounded-lg p-1">
@@ -128,18 +261,33 @@ const FeedbackPage = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm: grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+              Date Range
+            </label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">All Time</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="30days">Last 30 Days</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm: mb-2">
               Filter by Guest
             </label>
             <select
               value={guestFilter}
-              onChange={(e) => setGuestFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              onChange={(e) => setGuestFilter(e.target. value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus: outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="">All Guests</option>
-              {uniqueGuests.map((guest) => (
+              {uniqueGuests. map((guest) => (
                 <option key={guest} value={guest}>{guest}</option>
               ))}
             </select>
@@ -153,7 +301,7 @@ const FeedbackPage = () => {
               <select
                 value={housekeeperFilter}
                 onChange={(e) => setHousekeeperFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus: ring-2 focus:ring-green-500"
               >
                 <option value="">All Housekeepers</option>
                 {uniqueHousekeepers.map((housekeeper) => (
@@ -164,7 +312,7 @@ const FeedbackPage = () => {
           )}
 
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+            <label className="block text-xs sm: text-sm font-medium text-gray-700 mb-1 sm:mb-2">
               Sort by Rating
             </label>
             <select
@@ -182,7 +330,7 @@ const FeedbackPage = () => {
       {loading ? (
         <p className="text-gray-600 text-sm sm:text-base">Loading feedback...</p>
       ) : filteredFeedbacks.length === 0 ? (
-        <p className="text-gray-600 text-sm sm:text-base">No feedback found.</p>
+        <p className="text-gray-600 text-sm sm:text-base">No feedback found. </p>
       ) : (
         <>
           <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow-sm border border-gray-200">
@@ -225,7 +373,7 @@ const FeedbackPage = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-800">{f.room_number || "—"}</td>
                         <td className="px-4 py-3 text-sm text-gray-800 capitalize">
-                          {f.service_type || "—"}
+                          {f. service_type || "—"}
                         </td>
                       </>
                     )}
@@ -245,16 +393,14 @@ const FeedbackPage = () => {
             </table>
           </div>
 
-          {/* Mobile Card View */}
           <div className="md:hidden space-y-3">
             {filteredFeedbacks.map((f) => (
               <div key={f.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div className="space-y-3">
-                  {/* Header: Guest, Rating, Date */}
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-sm truncate">
-                        {f.guest_name || "N/A"}
+                        {f. guest_name || "N/A"}
                       </p>
                       <p className="text-xs text-gray-500">
                         {new Date(f.created_at).toLocaleDateString()}
@@ -270,7 +416,7 @@ const FeedbackPage = () => {
                     <div>
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         f.facility === "RCC" 
-                          ? "bg-blue-100 text-blue-800" 
+                          ?  "bg-blue-100 text-blue-800" 
                           : "bg-purple-100 text-purple-800"
                       }`}>
                         {f.facility || "Unknown"}
@@ -307,6 +453,16 @@ const FeedbackPage = () => {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <button
+            onClick={handlePrint}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2.5 rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 text-sm sm:text-base font-medium"
+          >
+            <Printer size={18} />
+            <span>Print Report</span>
+          </button>
           </div>
         </>
       )}

@@ -36,7 +36,7 @@ const BorrowItems = () => {
       closeTime = "5:00 PM";
     } else if (facility === "Hotel Rafael") {
       openMinutes = 8 * 60;
-      closeMinutes = 17 * 60;
+      closeMinutes = 19 * 60;
       openTime = "8:00 AM";
       closeTime = "5:00 PM";
     } else {
@@ -164,7 +164,7 @@ const BorrowItems = () => {
     e.preventDefault();
     const { isOpen } = checkOperatingHours(userFacility);
     if (!isOpen) {
-      toast.error("Borrowing is currently outside operating hours.");
+      toast.error("Buying is currently outside operating hours.");
       setShowModal(false);
       return;
     }
@@ -194,7 +194,7 @@ const BorrowItems = () => {
       setBorrowQty("");
       fetchItems();
     } catch (err) {
-      toast.error(err.message || "Error borrowing item.");
+      toast.error(err.message || "Error buying item.");
     }
   };
 
@@ -210,7 +210,7 @@ const BorrowItems = () => {
     return (
       <div className="p-6">
         <h2 className="text-green-900 text-2xl font-bold mb-4 font-poppins">
-          Available Items for Borrowing
+          Available Items
         </h2>
         <p>You are not assigned to any facility.</p>
       </div>
@@ -223,7 +223,7 @@ const BorrowItems = () => {
     return (
       <div className="p-6">
         <h2 className="text-green-900 text-2xl font-bold mb-4 font-poppins">
-          Available Items for Borrowing
+          Available Items
         </h2>
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
           <div className="flex items-start">
@@ -243,11 +243,11 @@ const BorrowItems = () => {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">
-                Borrowing is Currently Unavailable
+                Item Request is Currently Unavailable
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
                 <p>
-                  Item borrowing for <strong>{userFacility}</strong> is only
+                  Item request for <strong>{userFacility}</strong> is only
                   available between <strong>{openTime}</strong> and{" "}
                   <strong>{closeTime}</strong> (Philippine Time).
                 </p>
@@ -263,7 +263,7 @@ const BorrowItems = () => {
   return (
     <div className="p-6 relative min-h-screen">
       <h2 className="text-green-900 text-2xl font-bold mb-4 font-poppins">
-        Available Items for Borrowing
+        Available Items
       </h2>
 
       <div className="mb-4 text-sm text-gray-600">
@@ -276,7 +276,7 @@ const BorrowItems = () => {
 
       <div className="bg-green-50 border-l-4 border-green-400 p-3 sm:p-4 mb-4">
         <p className="italic text-green-700 text-sm sm:text-base">
-          Note: Please be patient as delivery of borrowed item(s) may take some
+          Note: Please be patient as delivery of item(s) may take some
           time. Our housekeepers may be handling multiple requests and will
           deliver your item as soon as they can.
         </p>
@@ -311,7 +311,7 @@ const BorrowItems = () => {
                       className="bg-green-900 text-white px-3 py-1 rounded hover:bg-green-700"
                       disabled={item.quantity <= 0}
                     >
-                      Borrow
+                      Buy
                     </button>
                   </td>
                 </tr>
@@ -325,7 +325,7 @@ const BorrowItems = () => {
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
             <h3 className="text-xl font-bold mb-4 text-green-900">
-              Borrow {selectedItem.name}
+              Buy {selectedItem.name}
             </h3>
             <form onSubmit={handleBorrow} className="flex flex-col gap-3">
               <input
@@ -352,7 +352,7 @@ const BorrowItems = () => {
                   type="submit"
                   className="px-4 sm:px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-full shadow hover:scale-105 hover:from-green-600 hover:to-green-700 transition duration-300 text-sm sm:text-base"
                 >
-                  Confirm Borrow
+                  Confirm
                 </button>
               </div>
             </form>

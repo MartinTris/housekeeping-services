@@ -63,7 +63,7 @@ const Menu = ({ setAuth, role }) => {
     { name: "Dashboard", path: "/guest", pageKey: "dashboard" },
     { name: "My Profile", path: "/guest/profile", pageKey: "profile" },
     { name: "My Requests", path: "/guest/my-requests", pageKey: "my_requests" },
-    { name: "Borrow Items", path: "/guest/borrow-items", pageKey: "borrow_items" },
+    { name: "Consumable Items", path: "/guest/borrow-items", pageKey: "borrow_items" },
     { name: "System Feedback", path: "/guest/system-feedback", pageKey: "system_feedback" },
   ];
 

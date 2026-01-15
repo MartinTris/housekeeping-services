@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -121,6 +121,11 @@ const Reports = () => {
     return type ? type.duration : 0;
   };
 
+  const getDateRangeLabel = () => {
+    if (days === "all") return "All Time";
+    return `Last ${days} day(s)`;
+  };
+
   useEffect(() => {
     fetchHousekeepers();
     fetchServiceTypes();
@@ -140,6 +145,117 @@ const Reports = () => {
     if (role !== "superadmin" || facilityFilter === "all") return true;
     return report.facility === facilityFilter;
   });
+
+  const handleDownloadCSV = () => {
+    if (!displayedReports.length) {
+      alert("No report data to download.");
+      return;
+    }
+
+    let csvContent = "";
+    let filename = "";
+
+    if (reportType === "housekeeping") {
+      // CSV Headers for Housekeeping
+      let headers = [];
+      if (role === "superadmin") {
+        headers = ["Facility", "Guest Name", "Service Type", "Housekeeper", "Room", "Date", "Start Time", "End Time", "Status"];
+      } else {
+        headers = ["Guest Name", "Service Type", "Housekeeper", "Room", "Date", "Start Time", "End Time", "Status"];
+      }
+
+      csvContent = headers.join(",") + "\n";
+
+      // CSV Rows
+      displayedReports.forEach((r) => {
+        const duration = getServiceDuration(r.service_type);
+        const endTime = calculateEndTime(r.time, duration);
+        
+        let row = [];
+        if (role === "superadmin") {
+          row = [
+            `"${r.facility || ""}"`,
+            `"${r.guest_name || "N/A"}"`,
+            `"${r.service_type || ""}"`,
+            `"${r.housekeeper_name || "Unassigned"}"`,
+            `"${r.room_number || "N/A"}"`,
+            `'${r.date || ""}"`,
+            `"${r.time || ""}"`,
+            `"${endTime || ""}"`,
+            `"${r.status || ""}"`
+          ];
+        } else {
+          row = [
+            `"${r.guest_name || "N/A"}"`,
+            `"${r.service_type || ""}"`,
+            `"${r.housekeeper_name || "Unassigned"}"`,
+            `"${r.room_number || "N/A"}"`,
+            `'${r.date || ""}"`,
+            `"${r.time || ""}"`,
+            `"${endTime || ""}"`,
+            `"${r.status || ""}"`
+          ];
+        }
+
+        csvContent += row.join(",") + "\n";
+      });
+
+      filename = `Housekeeping_Report_${getDateRangeLabel().replace(/ /g, "_")}_${new Date().toISOString().split("T")[0]}.csv`;
+    } else {
+      // CSV Headers for Borrowed Items
+      let headers = [];
+      if (role === "superadmin") {
+        headers = ["Facility", "Guest Name", "Room", "Item Name", "Quantity", "Amount (PHP)", "Date Borrowed", "Payment Status"];
+      } else {
+        headers = ["Guest Name", "Room", "Item Name", "Quantity", "Amount (PHP)", "Date Borrowed", "Payment Status"];
+      }
+
+      csvContent = headers.join(",") + "\n";
+
+      // CSV Rows
+      displayedReports.forEach((r) => {
+        let row = [];
+        if (role === "superadmin") {
+          row = [
+            `"${r.facility || ""}"`,
+            `"${r.guest_name || "N/A"}"`,
+            `"${r.room_number || "N/A"}"`,
+            `"${r.item_name || ""}"`,
+            `"${r.quantity || ""}"`,
+            `"${r.total_amount || ""}"`,
+            `'${r.borrowed_date || ""}"`,
+            `"${r.is_paid ? "Paid" : "Unpaid"}"`
+          ];
+        } else {
+          row = [
+            `"${r.guest_name || "N/A"}"`,
+            `"${r.room_number || "N/A"}"`,
+            `"${r.item_name || ""}"`,
+            `"${r.quantity || ""}"`,
+            `"${r.total_amount || ""}"`,
+            `'${r.borrowed_date || ""}"`,
+            `"${r.is_paid ? "Paid" : "Unpaid"}"`
+          ];
+        }
+
+        csvContent += row.join(",") + "\n";
+      });
+
+      filename = `Borrowed_Items_Report_${getDateRangeLabel().replace(/ /g, "_")}_${new Date().toISOString().split("T")[0]}.csv`;
+    }
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handlePrint = () => {
     if (!displayedReports.length) {
@@ -221,7 +337,7 @@ const Reports = () => {
           }</h1>
           <div class="meta">
             <p><strong>Facility:</strong> ${facility}</p>
-            <p><strong>Date Range:</strong> Last ${days} day(s)</p>
+            <p><strong>Date Range:</strong> ${getDateRangeLabel()}</p>
             ${
               reportType === "housekeeping" && selectedHousekeeper
                 ? `<p><strong>Housekeeper:</strong> ${
@@ -288,7 +404,7 @@ const Reports = () => {
             className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
           >
             <option value="housekeeping">Housekeeping</option>
-            <option value="borrowed">Borrowed Items</option>
+            <option value="borrowed">Consumed Items</option>
           </select>
         </div>
 
@@ -298,12 +414,13 @@ const Reports = () => {
           </label>
           <select
             value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            onChange={(e) => setDays(e.target.value)}
             className="border rounded px-3 py-1.5 sm:py-1 text-sm sm:text-base"
           >
             <option value="7">Last 7 Days</option>
             <option value="14">Last 14 Days</option>
             <option value="30">Last 30 Days</option>
+            <option value="all">All Time</option>
           </select>
         </div>
 
@@ -719,13 +836,22 @@ const Reports = () => {
           <p className="text-sm sm:text-base text-gray-600">
             Showing {displayedReports.length} of {reports.length} records
           </p>
-          <button
-            onClick={handlePrint}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2.5 rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 text-sm sm:text-base font-medium"
-          >
-            <Printer size={18} />
-            <span>Print Report</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+            <button
+              onClick={handleDownloadCSV}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 sm:px-6 py-2.5 rounded-full shadow-lg hover:scale-105 hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 text-sm sm:text-base font-medium"
+            >
+              <Download size={18} />
+              <span>Download CSV</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2.5 rounded-full shadow-lg hover:scale-105 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 text-sm sm:text-base font-medium"
+            >
+              <Printer size={18} />
+              <span>Print Report</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
