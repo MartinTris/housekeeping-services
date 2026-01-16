@@ -33,6 +33,7 @@ import Reports from "./pages/admin/Reports";
 import ServiceTypes from "./pages/admin/ServiceTypes";
 import AdminProfile from "./pages/admin/AdminProfile";
 import FeedbackPage from "./components/FeedbackPage";
+import PendingInvoices from './pages/admin/PendingInvoices';
 
 // Guest pages
 import GuestLayout from "./pages/guest/GuestLayout";
@@ -303,6 +304,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="pending-invoices" element={<PendingInvoices />} />
             <Route path="page-access" element={<PageAccessControl />} />
           </Route>
 

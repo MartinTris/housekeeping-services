@@ -198,7 +198,7 @@ const Login = ({ setAuth, setUser }) => {
           <img
             src="/images/RCC_homepage.jpg"
             alt="Retreat and Conference Center"
-            className="w-full lg: w-1/2 rounded-lg shadow-md"
+            className="w-full lg:w-1/2 rounded-lg shadow-md"
           />
           <div className="w-full lg:w-1/2">
             <h2 className="text-xl sm:text-2xl font-bold mb-2 text-center lg:text-right">

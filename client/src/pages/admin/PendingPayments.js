@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Printer, X } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const API_URL = process.env. REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -11,6 +11,7 @@ const PendingPayments = () => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -21,7 +22,7 @@ const PendingPayments = () => {
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        setUserRole(decoded. role);
+        setUserRole(decoded.role);
       } catch (err) {
         console.error("Error decoding token:", err);
       }
@@ -31,7 +32,7 @@ const PendingPayments = () => {
   const fetchPendingPayments = async () => {
     try {
       const response = await fetch(`${API_URL}/items/pending`, {
-        headers: { token: localStorage.getItem("token") },
+        headers: { token:  localStorage.getItem("token") },
       });
       const data = await response.json();
 
@@ -93,6 +94,66 @@ const PendingPayments = () => {
     closeInvoiceModal();
   };
 
+  const handleMarkAsPaidPendingInvoice = async (id) => {
+    if (!window.confirm("Mark this item as paid without invoice number?  The invoice number can be added later.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/items/${id}/mark-paid-pending-invoice`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            token: localStorage.getItem("token"),
+          },
+        }
+      );
+
+      if (response. ok) {
+        alert("Item marked as paid!  Invoice number can be added later.");
+        fetchPendingPayments();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to update status");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error while updating");
+    }
+  };
+
+  const handleMarkAllAsPaidPendingInvoice = async (userId) => {
+    if (!window.confirm("Mark all items as paid without invoice number? The invoice number can be added later.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/items/mark-all-paid-pending-invoice/${userId}`,
+        {
+          method: "PUT",
+          headers:  {
+            "Content-Type":  "application/json",
+            token: localStorage.getItem("token"),
+          },
+        }
+      );
+
+      if (response.ok) {
+        alert("All items marked as paid! Invoice numbers can be added later.");
+        fetchPendingPayments();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to mark all as paid");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error while marking all as paid");
+    }
+  };
+
   const handleMarkAllAsPaid = async (userId, invoice) => {
     try {
       const response = await fetch(
@@ -103,7 +164,7 @@ const PendingPayments = () => {
             "Content-Type": "application/json",
             token: localStorage.getItem("token"),
           },
-          body: JSON.stringify({ invoice_number: invoice }),
+          body:  JSON.stringify({ invoice_number: invoice }),
         }
       );
 
@@ -128,9 +189,9 @@ const PendingPayments = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            token:  localStorage.getItem("token"),
+            token: localStorage.getItem("token"),
           },
-          body: JSON. stringify({ invoice_number: invoice }),
+          body: JSON.stringify({ invoice_number: invoice }),
         }
       );
 
@@ -176,7 +237,7 @@ const PendingPayments = () => {
             }
             .receipt-title {
               font-size: 18px;
-              font-weight: bold;
+              font-weight:  bold;
               color: #166534;
               margin-bottom: 8px;
             }
@@ -188,19 +249,19 @@ const PendingPayments = () => {
             .borrower-info {
               margin:  15px 0;
               padding: 10px;
-              background-color: #f3f4f6;
+              background-color:  #f3f4f6;
               border-radius: 4px;
             }
             .borrower-label {
               font-weight: bold;
-              color:  #374151;
+              color: #374151;
               font-size: 11px;
             }
             table {
               width: 100%;
               border-collapse: collapse;
               margin: 15px 0;
-              font-size:  11px;
+              font-size: 11px;
             }
             th {
               background-color: #166534;
@@ -211,7 +272,7 @@ const PendingPayments = () => {
             }
             td {
               padding: 6px 8px;
-              border-bottom: 1px solid #e5e7eb;
+              border-bottom:  1px solid #e5e7eb;
             }
             .total-row {
               font-weight: bold;
@@ -220,14 +281,14 @@ const PendingPayments = () => {
             }
             .total-row td {
               padding: 10px 8px;
-              border-top:  2px solid #166534;
+              border-top: 2px solid #166534;
               border-bottom: 2px solid #166534;
             }
             .text-center {
               text-align: center;
             }
             .text-right {
-              text-align:  right;
+              text-align: right;
             }
             @media print {
               body {
@@ -245,7 +306,7 @@ const PendingPayments = () => {
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
-      printWindow. print();
+      printWindow.print();
       printWindow.close();
     }, 250);
   };
@@ -271,10 +332,10 @@ const PendingPayments = () => {
     return acc;
   }, {});
 
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(location. search);
   const highlightedGuestId = params.get('guest');
 
-  if (loading) return <p className="text-center mt-10">Loading... </p>;
+  if (loading) return <p className="text-center mt-10">Loading...</p>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
 
   return (
@@ -282,6 +343,18 @@ const PendingPayments = () => {
       <h2 className="text-xl sm:text-2xl font-semibold text-green-700 mb-4 text-center">
         Pending Payments
       </h2>
+
+      {/* Add button to view pending invoices */}
+      {userRole === "admin" && (
+        <div className="mb-4 text-center">
+          <button
+            onClick={() => navigate("/admin/pending-invoices")}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base"
+          >
+            View Items with Pending Invoices
+          </button>
+        </div>
+      )}
 
       {Object.keys(groupedByGuest).length === 0 ? (
         <p className="text-gray-600 text-center text-sm sm:text-base">No pending payments found.</p>
@@ -294,18 +367,11 @@ const PendingPayments = () => {
 
           const isHighlighted = highlightedGuestId === userId;
 
-          console.log('Checking highlight:', { 
-            highlightedGuestId, 
-            userId, 
-            isHighlighted,
-            guestName: guest 
-          });
-
           return (
             <div
               key={userId}
               id={`guest-section-${userId}`}
-              className={`mb-4 sm:mb-6 border rounded-lg p-3 sm: p-4 shadow-sm transition-all duration-300 ${
+              className={`mb-4 sm:mb-6 border rounded-lg p-3 sm:p-4 shadow-sm transition-all duration-300 ${
                 isHighlighted 
                   ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-300' 
                   : 'border-gray-300'
@@ -340,14 +406,14 @@ const PendingPayments = () => {
                         <tr key={item.id}>
                           <td>{item.item_name}</td>
                           <td className="text-center">{quantity}</td>
-                          <td className="text-right">₱{priceEach. toFixed(2)}</td>
+                          <td className="text-right">₱{priceEach.toFixed(2)}</td>
                           <td className="text-right">₱{totalCharge.toFixed(2)}</td>
                         </tr>
                       );
                     })}
                     <tr className="total-row">
-                      <td colSpan="3" className="text-right">TOTAL DUE:</td>
-                      <td className="text-right">₱{total. toFixed(2)}</td>
+                      <td colSpan="3" className="text-right">TOTAL DUE: </td>
+                      <td className="text-right">₱{total.toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -388,12 +454,21 @@ const PendingPayments = () => {
                     <span>Print</span>
                   </button>
                   {userRole === "admin" && (
-                    <button
-                      onClick={() => openInvoiceModal("all", null, userId)}
-                      className="px-3 py-2 bg-green-700 text-white text-sm rounded hover:bg-green-800 active:bg-green-900 whitespace-nowrap"
-                    >
-                      Mark All as Paid
-                    </button>
+                    <>
+                      <button
+                        onClick={() => openInvoiceModal("all", null, userId)}
+                        className="px-3 py-2 bg-green-700 text-white text-sm rounded hover:bg-green-800 active:bg-green-900 whitespace-nowrap"
+                      >
+                        Mark All as Paid
+                      </button>
+                      <button
+                        onClick={() => handleMarkAllAsPaidPendingInvoice(userId)}
+                        className="px-3 py-2 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700 active:bg-yellow-800 whitespace-nowrap"
+                        title="Mark as paid without invoice number"
+                      >
+                        Paid (Invoice TBD)
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -423,16 +498,25 @@ const PendingPayments = () => {
                             ₱{priceEach.toFixed(2)}
                           </td>
                           <td className="p-2 border text-right">
-                            ₱{totalCharge. toFixed(2)}
+                            ₱{totalCharge.toFixed(2)}
                           </td>
                           {userRole === "admin" && (
                             <td className="p-2 border text-center">
-                              <button
-                                onClick={() => openInvoiceModal("single", item.id)}
-                                className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
-                              >
-                                Mark as Paid
-                              </button>
+                              <div className="flex flex-col gap-1">
+                                <button
+                                  onClick={() => openInvoiceModal("single", item.id)}
+                                  className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+                                >
+                                  Mark as Paid
+                                </button>
+                                <button
+                                  onClick={() => handleMarkAsPaidPendingInvoice(item.id)}
+                                  className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs"
+                                  title="Mark as paid without invoice"
+                                >
+                                  Paid (Invoice TBD)
+                                </button>
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -446,7 +530,7 @@ const PendingPayments = () => {
                 {guestItems.map((item) => {
                   const quantity = Number(item.quantity || 0);
                   const totalCharge = Number(item.charge_amount || 0);
-                  const priceEach = quantity > 0 ? totalCharge / quantity : 0;
+                  const priceEach = quantity > 0 ? totalCharge / quantity :  0;
                   
                   return (
                     <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
@@ -468,17 +552,25 @@ const PendingPayments = () => {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500">Total</p>
-                            <p className="text-sm font-semibold text-green-700">₱{totalCharge.toFixed(2)}</p>
+                            <p className="text-sm font-semibold text-green-700">₱{totalCharge. toFixed(2)}</p>
                           </div>
                         </div>
 
                         {userRole === "admin" && (
-                          <button
-                            onClick={() => openInvoiceModal("single", item. id)}
-                            className="w-full mt-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 active:bg-green-800 text-sm font-medium"
-                          >
-                            Mark as Paid
-                          </button>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              onClick={() => openInvoiceModal("single", item.id)}
+                              className="w-full px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 active:bg-green-800 text-sm font-medium"
+                            >
+                              Mark as Paid
+                            </button>
+                            <button
+                              onClick={() => handleMarkAsPaidPendingInvoice(item.id)}
+                              className="w-full px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 active:bg-yellow-800 text-sm font-medium"
+                            >
+                              Paid (Invoice TBD)
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -487,7 +579,7 @@ const PendingPayments = () => {
               </div>
 
               <div className="text-right font-semibold text-green-800 text-sm sm:text-base">
-                Total Due: ₱{total.toFixed(2)}
+                Total Due: ₱{total. toFixed(2)}
               </div>
             </div>
           );
@@ -498,7 +590,7 @@ const PendingPayments = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg sm: text-xl font-semibold text-green-800">
+              <h3 className="text-lg sm:text-xl font-semibold text-green-800">
                 Enter Invoice Number
               </h3>
               <button
@@ -518,12 +610,29 @@ const PendingPayments = () => {
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target. value)}
                 placeholder="Enter invoice number"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus: outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                 autoFocus
               />
               <p className="text-xs text-gray-500 mt-1">
                 This invoice number will be recorded with the payment
               </p>
+              
+              {/* Add the small link button for marking as paid without invoice */}
+              <div className="mt-3 text-center">
+                <button
+                  onClick={() => {
+                    closeInvoiceModal();
+                    if (selectedAction. type === "single") {
+                      handleMarkAsPaidPendingInvoice(selectedAction.itemId);
+                    } else if (selectedAction.type === "all") {
+                      handleMarkAllAsPaidPendingInvoice(selectedAction.userId);
+                    }
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Mark as paid (invoice number to follow)
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">

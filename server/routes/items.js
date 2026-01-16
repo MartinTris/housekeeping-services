@@ -777,4 +777,299 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
   }
 });
 
+router.put("/:id/mark-paid-pending-invoice", authorization, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { role, id: admin_id } = req.user;
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Unauthorized access." });
+    }
+
+    const adminRes = await pool.query(
+      "SELECT facility FROM users WHERE id = $1",
+      [admin_id]
+    );
+    const adminFacility = adminRes.rows[0]?.facility;
+
+    const checkRes = await pool.query(
+      `SELECT b.*, u.facility 
+       FROM borrowed_items b 
+       JOIN users u ON b. user_id = u.id 
+       WHERE b.id = $1`,
+      [id]
+    );
+
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    if (checkRes.rows[0]. facility !== adminFacility) {
+      return res
+        .status(403)
+        .json({ error: "You can only manage items from your facility." });
+    }
+
+    const result = await pool.query(
+      `UPDATE borrowed_items 
+       SET is_paid = true, invoice_number = NULL, invoice_pending = true, paid_at = NOW() 
+       WHERE id = $1 
+       RETURNING *`,
+      [id]
+    );
+
+    const userId = result.rows[0].user_id;
+    const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
+
+    res.json({
+      message: "Item marked as paid (invoice pending)",
+      item: result. rows[0],
+      auto_checkout_performed: wasCheckedOut,
+    });
+  } catch (err) {
+    console.error("Error marking as paid (invoice pending):", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Add endpoint to mark all items as paid without invoice
+router.put("/mark-all-paid-pending-invoice/:userId", authorization, async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const { role, id: admin_id } = req.user;
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Unauthorized access." });
+    }
+
+    const adminRes = await pool.query(
+      "SELECT facility FROM users WHERE id = $1",
+      [admin_id]
+    );
+    const adminFacility = adminRes.rows[0]?.facility;
+
+    const userRes = await pool.query(
+      "SELECT facility FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (userRes.rows[0].facility !== adminFacility) {
+      return res
+        .status(403)
+        .json({ error: "You can only mark paid for users in your facility." });
+    }
+
+    const result = await pool.query(
+      `UPDATE borrowed_items
+       SET is_paid = true, invoice_number = NULL, invoice_pending = true, paid_at = NOW()
+       WHERE user_id = $1 AND is_paid = false
+       RETURNING *`,
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ message: "No unpaid items found for this user." });
+    }
+
+    const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
+
+    res.json({
+      message: `All borrowed items for user marked as paid (invoice pending).`,
+      updated_count: result.rowCount,
+      auto_checkout_performed: wasCheckedOut,
+    });
+  } catch (err) {
+    console.error("Error marking all as paid (invoice pending):", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Add endpoint to get items with pending invoices
+router.get("/pending-invoices", authorization, async (req, res) => {
+  try {
+    const { role, facility } = req.user;
+
+    if (role !== "admin" && role !== "superadmin") {
+      return res.status(403).json({ error: "Unauthorized access." });
+    }
+
+    let query;
+    let params;
+
+    if (role === "superadmin") {
+      query = `
+        SELECT 
+          b.id, 
+          b.user_id, 
+          b. item_name, 
+          b.quantity, 
+          b.charge_amount, 
+          b. created_at,
+          b.paid_at,
+          b.invoice_pending,
+          CONCAT(u.first_name, ' ', u.last_name) as borrower_name,
+          u.facility,
+          r.room_number
+        FROM borrowed_items b
+        JOIN users u ON b.user_id = u.id
+        LEFT JOIN rooms r ON b.room_id = r.id
+        WHERE b.is_paid = true AND b.invoice_pending = true
+        ORDER BY b.paid_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT 
+          b.id, 
+          b. user_id, 
+          b.item_name, 
+          b.quantity, 
+          b.charge_amount, 
+          b.created_at,
+          b.paid_at,
+          b.invoice_pending,
+          CONCAT(u.first_name, ' ', u.last_name) as borrower_name,
+          u.facility,
+          r.room_number
+        FROM borrowed_items b
+        JOIN users u ON b.user_id = u.id
+        LEFT JOIN rooms r ON b.room_id = r.id
+        WHERE b.is_paid = true AND b.invoice_pending = true AND u.facility = $1
+        ORDER BY b.paid_at DESC
+      `;
+      params = [facility];
+    }
+
+    const result = await pool.query(query, params);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching pending invoices:", err.message);
+    res.status(500).json({ error: "Failed to fetch pending invoices" });
+  }
+});
+
+// Add endpoint to update invoice number for pending items
+router.put("/update-invoice/:id", authorization, async (req, res) => {
+  const { id } = req.params;
+  const { invoice_number } = req.body;
+
+  try {
+    const { role, id:  admin_id } = req.user;
+    if (role !== "admin") {
+      return res. status(403).json({ error: "Unauthorized access." });
+    }
+
+    if (! invoice_number || ! invoice_number.trim()) {
+      return res.status(400).json({ error: "Invoice number is required." });
+    }
+
+    const adminRes = await pool.query(
+      "SELECT facility FROM users WHERE id = $1",
+      [admin_id]
+    );
+    const adminFacility = adminRes.rows[0]?.facility;
+
+    const checkRes = await pool.query(
+      `SELECT b.*, u.facility 
+       FROM borrowed_items b 
+       JOIN users u ON b.user_id = u.id 
+       WHERE b.id = $1`,
+      [id]
+    );
+
+    if (checkRes.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    if (checkRes.rows[0]. facility !== adminFacility) {
+      return res
+        .status(403)
+        .json({ error: "You can only manage items from your facility." });
+    }
+
+    const result = await pool.query(
+      `UPDATE borrowed_items 
+       SET invoice_number = $1, invoice_pending = false 
+       WHERE id = $2 
+       RETURNING *`,
+      [invoice_number. trim(), id]
+    );
+
+    res.json({
+      message: "Invoice number updated successfully",
+      item: result.rows[0],
+    });
+  } catch (err) {
+    console.error("Error updating invoice number:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.put("/update-all-invoices/:userId", authorization, async (req, res) => {
+  const { userId } = req.params;
+  const { invoice_number } = req.body;
+
+  try {
+    const { role, id: admin_id } = req.user;
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Unauthorized access." });
+    }
+
+    if (!invoice_number || ! invoice_number.trim()) {
+      return res.status(400).json({ error: "Invoice number is required." });
+    }
+
+    const adminRes = await pool.query(
+      "SELECT facility FROM users WHERE id = $1",
+      [admin_id]
+    );
+    const adminFacility = adminRes.rows[0]?.facility;
+
+    const userRes = await pool.query(
+      "SELECT facility FROM users WHERE id = $1",
+      [userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (userRes.rows[0]. facility !== adminFacility) {
+      return res
+        .status(403)
+        .json({ error: "You can only manage items from your facility." });
+    }
+
+    const result = await pool.query(
+      `UPDATE borrowed_items 
+       SET invoice_number = $1, invoice_pending = false 
+       WHERE user_id = $2 AND invoice_pending = true
+       RETURNING *`,
+      [invoice_number. trim(), userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ message: "No items with pending invoices found for this user." });
+    }
+
+    res.json({
+      message: "All invoice numbers updated successfully",
+      updated_count: result. rowCount,
+      items: result.rows,
+    });
+  } catch (err) {
+    console.error("Error updating all invoice numbers:", err. message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;
