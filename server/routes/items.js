@@ -30,20 +30,31 @@ const checkAndAutoCheckoutAfterPayment = async (userId) => {
 
       if (bookingCheck.rows.length > 0) {
         const booking = bookingCheck.rows[0];
-        
-        // Move to history
+
         await pool.query(
           `
           INSERT INTO booking_history (room_id, guest_id, time_in, time_out, checked_out_at, moved_from_booking)
           VALUES ($1, $2, $3, $4, NOW(), $5)
           `,
-          [booking.room_id, booking.guest_id, booking.time_in, booking.time_out, booking. id]
+          [
+            booking.room_id,
+            booking.guest_id,
+            booking.time_in,
+            booking.time_out,
+            booking.id,
+          ]
         );
 
-        await pool.query(`DELETE FROM room_bookings WHERE id = $1`, [booking.id]);
-        await pool.query(`UPDATE users SET facility = NULL WHERE id = $1`, [userId]);
+        await pool.query(`DELETE FROM room_bookings WHERE id = $1`, [
+          booking.id,
+        ]);
+        await pool.query(`UPDATE users SET facility = NULL WHERE id = $1`, [
+          userId,
+        ]);
 
-        console.log(`✓ Auto-checked out ${booking.guest_name} from Room ${booking.room_number} after payment settlement`);
+        console.log(
+          `✓ Auto-checked out ${booking.guest_name} from Room ${booking.room_number} after payment settlement`
+        );
 
         const { createNotification } = require("../utils/notifications");
         await createNotification(
@@ -54,22 +65,25 @@ const checkAndAutoCheckoutAfterPayment = async (userId) => {
         const { getIo } = require("../realtime");
         const io = getIo();
         if (io) {
-          io.to(`user:${userId}`).emit("booking:removed", {
+          io.to(`user: ${userId}`).emit("booking: removed", {
             message: "Payment settled. You have been checked out.",
           });
 
-          io.to(`facility:${booking.facility. toLowerCase()}`).emit("booking:autoCheckout", {
-            room_id: booking.room_id,
-            room_number: booking.room_number,
-            guest_name: booking.guest_name,
-            reason: "payment_settled"
-          });
+          io.to(`facility:${booking.facility.toLowerCase()}`).emit(
+            "booking:autoCheckout",
+            {
+              room_id: booking.room_id,
+              room_number: booking.room_number,
+              guest_name: booking.guest_name,
+              reason: "payment_settled",
+            }
+          );
         }
 
         return true;
       }
     }
-    
+
     return false;
   } catch (err) {
     console.error("Error in checkAndAutoCheckoutAfterPayment:", err.message);
@@ -307,14 +321,17 @@ router.post("/borrow", authorization, async (req, res) => {
         AND u.is_active = TRUE
         AND u.facility = $1
         AND NOT ($2 = ANY(s.day_offs))
-        AND $3::time BETWEEN s.shift_time_in AND s.shift_time_out
+        AND $3:: time BETWEEN s.shift_time_in AND s.shift_time_out
       `,
       [facility, current_day_name, manila_time]
     );
 
     console.log("=== AVAILABLE HOUSEKEEPERS ===");
     console.log("Available housekeepers count:", availableHk.rows.length);
-    console.log("Available housekeepers:", availableHk.rows.map(h => ({ id: h.id, name: h.name })));
+    console.log(
+      "Available housekeepers:",
+      availableHk.rows.map((h) => ({ id: h.id, name: h.name }))
+    );
 
     let assignedHousekeeperId;
     let assignedHousekeeperName;
@@ -333,26 +350,29 @@ router.post("/borrow", authorization, async (req, res) => {
         WHERE status IN ('approved', 'in_progress')
           AND archived = FALSE
           AND assigned_to IS NOT NULL
-          AND (preferred_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = $1
+          AND (preferred_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila'):: date = $1
       `,
         [manila_date]
       );
 
       console.log("Busy housekeepers (housekeeping tasks):", busyHk.rows);
 
-      const busyDeliveries = await pool.query(`
+      const busyDeliveries = await pool.query(
+        `
         SELECT DISTINCT housekeeper_id
         FROM borrowed_items
         WHERE housekeeper_id IS NOT NULL
           AND delivery_status IN ('pending_delivery', 'in_progress')
           AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = $1
-      `, [manila_date]);
+      `,
+        [manila_date]
+      );
 
       console.log("Busy housekeepers (deliveries):", busyDeliveries.rows);
 
       const busyIds = [
         ...busyHk.rows.map((r) => String(r.assigned_to)),
-        ...busyDeliveries.rows.map((r) => String(r.housekeeper_id))
+        ...busyDeliveries.rows.map((r) => String(r.housekeeper_id)),
       ];
       const uniqueBusyIds = [...new Set(busyIds)];
       console.log("Combined busy IDs:", uniqueBusyIds);
@@ -362,23 +382,32 @@ router.post("/borrow", authorization, async (req, res) => {
       );
 
       console.log("Free housekeepers after filtering:", freeHk.length);
-      console.log("Free housekeepers:", freeHk.map((h) => ({ id: h.id, name: h.name })));
+      console.log(
+        "Free housekeepers:",
+        freeHk.map((h) => ({ id: h.id, name: h.name }))
+      );
 
       const candidates = freeHk.length > 0 ? freeHk : availableHk.rows;
-      console.log("Final candidates:", candidates.map((c) => ({ id: c.id, name: c.name })));
+      console.log(
+        "Final candidates:",
+        candidates.map((c) => ({ id: c.id, name: c.name }))
+      );
       console.log("=== COUNTING DELIVERIES FOR LOAD BALANCING ===");
 
-      const allDeliveries = await pool.query(`
-        SELECT 
-          id,
-          housekeeper_id, 
-          delivery_status,
-          (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date as manila_created_date
-        FROM borrowed_items
-        WHERE housekeeper_id IS NOT NULL
-          AND delivery_status IN ('pending_delivery', 'in_progress', 'delivered')
-          AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = $1
-      `, [manila_date]);
+      const allDeliveries = await pool.query(
+        `
+  SELECT 
+    id,
+    housekeeper_id, 
+    delivery_status,
+    created_at
+  FROM borrowed_items
+  WHERE housekeeper_id IS NOT NULL
+    AND delivery_status IN ('pending_delivery', 'in_progress', 'delivered')
+    AND created_at:: date = CURRENT_DATE
+`,
+        []
+      );
 
       console.log("All deliveries today:", allDeliveries.rows);
 
@@ -394,7 +423,12 @@ router.post("/borrow", authorization, async (req, res) => {
       candidates.sort((a, b) => {
         const countA = deliveryCounts[a.id] || 0;
         const countB = deliveryCounts[b.id] || 0;
-        return countA - countB;
+
+        if (countA !== countB) {
+          return countA - countB;
+        }
+
+        return a.id - b.id;
       });
 
       const minCount = deliveryCounts[candidates[0].id] || 0;
@@ -403,10 +437,16 @@ router.post("/borrow", authorization, async (req, res) => {
         (hk) => (deliveryCounts[hk.id] || 0) === minCount
       );
 
-      console.log("Least busy housekeepers (count:", minCount, "):", leastBusyHousekeepers.map(h => h.name));
+      console.log(
+        "Least busy housekeepers (count:",
+        minCount,
+        "):",
+        leastBusyHousekeepers.map((h) => h.name)
+      );
 
-      const randomIndex = Math.floor(Math.random() * leastBusyHousekeepers.length);
-      const selectedHk = leastBusyHousekeepers[randomIndex];
+      const totalDeliveriesToday = allDeliveries.rows.length;
+      const selectedIndex = totalDeliveriesToday % leastBusyHousekeepers.length;
+      const selectedHk = leastBusyHousekeepers[selectedIndex];
 
       assignedHousekeeperId = selectedHk.id;
       assignedHousekeeperName = selectedHk.name;
@@ -414,7 +454,16 @@ router.post("/borrow", authorization, async (req, res) => {
       console.log("=== SELECTED HOUSEKEEPER ===");
       console.log("ID:", assignedHousekeeperId);
       console.log("Name:", assignedHousekeeperName);
-      console.log("Current delivery count:", deliveryCounts[assignedHousekeeperId] || 0);
+      console.log(
+        "Current delivery count:",
+        deliveryCounts[assignedHousekeeperId] || 0
+      );
+      console.log(
+        "Selection index:",
+        selectedIndex,
+        "out of",
+        leastBusyHousekeepers.length
+      );
     }
 
     await pool.query(
@@ -458,7 +507,7 @@ router.post("/borrow", authorization, async (req, res) => {
          VALUES ($1, $2, NOW())`,
         [
           assignedHousekeeperId,
-          `New delivery task: Deliver ${quantity} ${item.name}(s) to ${guestName} in Room ${room_number}.`,
+          `New delivery task:  Deliver ${quantity} ${item.name}(s) to ${guestName} in Room ${room_number}. `,
         ]
       );
 
@@ -492,7 +541,6 @@ router.post("/borrow", authorization, async (req, res) => {
         }
       }
 
-      // Notify guest
       await pool.query(
         `INSERT INTO notifications (user_id, message, created_at)
          VALUES ($1, $2, NOW())`,
@@ -503,7 +551,7 @@ router.post("/borrow", authorization, async (req, res) => {
       );
 
       res.json({
-        message: `Item borrowed successfully! ${assignedHousekeeperName} will deliver it to your room.`,
+        message: `Item borrowed successfully!  ${assignedHousekeeperName} will deliver it to your room. `,
         borrowed: borrowed.rows[0],
         assigned_housekeeper: assignedHousekeeperName,
       });
@@ -519,7 +567,7 @@ router.post("/borrow", authorization, async (req, res) => {
 
       res.json({
         message:
-          "Item borrowed successfully! Delivery is pending housekeeper assignment.",
+          "Item borrowed successfully!  Delivery is pending housekeeper assignment.",
         borrowed: borrowed.rows[0],
       });
     }
@@ -766,7 +814,7 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
     const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
 
     res.json({
-      message: `All borrowed items for user ID ${userId} marked as paid.`,
+      message: `All borrowed items for user ID ${userId} marked as paid. `,
       updated_count: result.rowCount,
       invoice_number: invoice_number.trim(),
       auto_checkout_performed: wasCheckedOut,
@@ -777,120 +825,133 @@ router.put("/mark-all-paid/:userId", authorization, async (req, res) => {
   }
 });
 
-router.put("/:id/mark-paid-pending-invoice", authorization, async (req, res) => {
-  const { id } = req.params;
+router.put(
+  "/:id/mark-paid-pending-invoice",
+  authorization,
+  async (req, res) => {
+    const { id } = req.params;
 
-  try {
-    const { role, id: admin_id } = req.user;
-    if (role !== "admin") {
-      return res.status(403).json({ error: "Unauthorized access." });
-    }
+    try {
+      const { role, id: admin_id } = req.user;
+      if (role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized access." });
+      }
 
-    const adminRes = await pool.query(
-      "SELECT facility FROM users WHERE id = $1",
-      [admin_id]
-    );
-    const adminFacility = adminRes.rows[0]?.facility;
+      const adminRes = await pool.query(
+        "SELECT facility FROM users WHERE id = $1",
+        [admin_id]
+      );
+      const adminFacility = adminRes.rows[0]?.facility;
 
-    const checkRes = await pool.query(
-      `SELECT b.*, u.facility 
+      const checkRes = await pool.query(
+        `SELECT b.*, u.facility 
        FROM borrowed_items b 
-       JOIN users u ON b. user_id = u.id 
+       JOIN users u ON b.user_id = u.id 
        WHERE b.id = $1`,
-      [id]
-    );
+        [id]
+      );
 
-    if (checkRes.rows.length === 0) {
-      return res.status(404).json({ error: "Item not found" });
-    }
+      if (checkRes.rows.length === 0) {
+        return res.status(404).json({ error: "Item not found" });
+      }
 
-    if (checkRes.rows[0]. facility !== adminFacility) {
-      return res
-        .status(403)
-        .json({ error: "You can only manage items from your facility." });
-    }
+      if (checkRes.rows[0].facility !== adminFacility) {
+        return res
+          .status(403)
+          .json({ error: "You can only manage items from your facility." });
+      }
 
-    const result = await pool.query(
-      `UPDATE borrowed_items 
+      const result = await pool.query(
+        `UPDATE borrowed_items 
        SET is_paid = true, invoice_number = NULL, invoice_pending = true, paid_at = NOW() 
        WHERE id = $1 
        RETURNING *`,
-      [id]
-    );
+        [id]
+      );
 
-    const userId = result.rows[0].user_id;
-    const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
+      const userId = result.rows[0].user_id;
+      const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
 
-    res.json({
-      message: "Item marked as paid (invoice pending)",
-      item: result. rows[0],
-      auto_checkout_performed: wasCheckedOut,
-    });
-  } catch (err) {
-    console.error("Error marking as paid (invoice pending):", err.message);
-    res.status(500).json({ error: "Server error" });
+      res.json({
+        message: "Item marked as paid (invoice pending)",
+        item: result.rows[0],
+        auto_checkout_performed: wasCheckedOut,
+      });
+    } catch (err) {
+      console.error("Error marking as paid (invoice pending):", err.message);
+      res.status(500).json({ error: "Server error" });
+    }
   }
-});
+);
 
-// Add endpoint to mark all items as paid without invoice
-router.put("/mark-all-paid-pending-invoice/:userId", authorization, async (req, res) => {
-  const { userId } = req.params;
+// Mark all items as paid without invoice
+router.put(
+  "/mark-all-paid-pending-invoice/:userId",
+  authorization,
+  async (req, res) => {
+    const { userId } = req.params;
 
-  try {
-    const { role, id: admin_id } = req.user;
-    if (role !== "admin") {
-      return res.status(403).json({ error: "Unauthorized access." });
-    }
+    try {
+      const { role, id: admin_id } = req.user;
+      if (role !== "admin") {
+        return res.status(403).json({ error: "Unauthorized access." });
+      }
 
-    const adminRes = await pool.query(
-      "SELECT facility FROM users WHERE id = $1",
-      [admin_id]
-    );
-    const adminFacility = adminRes.rows[0]?.facility;
+      const adminRes = await pool.query(
+        "SELECT facility FROM users WHERE id = $1",
+        [admin_id]
+      );
+      const adminFacility = adminRes.rows[0]?.facility;
 
-    const userRes = await pool.query(
-      "SELECT facility FROM users WHERE id = $1",
-      [userId]
-    );
+      const userRes = await pool.query(
+        "SELECT facility FROM users WHERE id = $1",
+        [userId]
+      );
 
-    if (userRes.rows.length === 0) {
-      return res.status(404).json({ message: "User not found." });
-    }
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ message: "User not found." });
+      }
 
-    if (userRes.rows[0].facility !== adminFacility) {
-      return res
-        .status(403)
-        .json({ error: "You can only mark paid for users in your facility." });
-    }
+      if (userRes.rows[0].facility !== adminFacility) {
+        return res
+          .status(403)
+          .json({
+            error: "You can only mark paid for users in your facility.",
+          });
+      }
 
-    const result = await pool.query(
-      `UPDATE borrowed_items
+      const result = await pool.query(
+        `UPDATE borrowed_items
        SET is_paid = true, invoice_number = NULL, invoice_pending = true, paid_at = NOW()
        WHERE user_id = $1 AND is_paid = false
        RETURNING *`,
-      [userId]
-    );
+        [userId]
+      );
 
-    if (result.rowCount === 0) {
-      return res
-        .status(404)
-        .json({ message: "No unpaid items found for this user." });
+      if (result.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ message: "No unpaid items found for this user." });
+      }
+
+      const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
+
+      res.json({
+        message: `All borrowed items for user marked as paid (invoice pending).`,
+        updated_count: result.rowCount,
+        auto_checkout_performed: wasCheckedOut,
+      });
+    } catch (err) {
+      console.error(
+        "Error marking all as paid (invoice pending):",
+        err.message
+      );
+      res.status(500).json({ error: "Server error" });
     }
-
-    const wasCheckedOut = await checkAndAutoCheckoutAfterPayment(userId);
-
-    res.json({
-      message: `All borrowed items for user marked as paid (invoice pending).`,
-      updated_count: result.rowCount,
-      auto_checkout_performed: wasCheckedOut,
-    });
-  } catch (err) {
-    console.error("Error marking all as paid (invoice pending):", err.message);
-    res.status(500).json({ error: "Server error" });
   }
-});
+);
 
-// Add endpoint to get items with pending invoices
+// Mark all items as paid without invoice
 router.get("/pending-invoices", authorization, async (req, res) => {
   try {
     const { role, facility } = req.user;
@@ -907,10 +968,10 @@ router.get("/pending-invoices", authorization, async (req, res) => {
         SELECT 
           b.id, 
           b.user_id, 
-          b. item_name, 
+          b.item_name, 
           b.quantity, 
           b.charge_amount, 
-          b. created_at,
+          b.created_at,
           b.paid_at,
           b.invoice_pending,
           CONCAT(u.first_name, ' ', u.last_name) as borrower_name,
@@ -927,7 +988,7 @@ router.get("/pending-invoices", authorization, async (req, res) => {
       query = `
         SELECT 
           b.id, 
-          b. user_id, 
+          b.user_id, 
           b.item_name, 
           b.quantity, 
           b.charge_amount, 
@@ -955,18 +1016,18 @@ router.get("/pending-invoices", authorization, async (req, res) => {
   }
 });
 
-// Add endpoint to update invoice number for pending items
+// Mark all items as paid without invoice
 router.put("/update-invoice/:id", authorization, async (req, res) => {
   const { id } = req.params;
   const { invoice_number } = req.body;
 
   try {
-    const { role, id:  admin_id } = req.user;
+    const { role, id: admin_id } = req.user;
     if (role !== "admin") {
-      return res. status(403).json({ error: "Unauthorized access." });
+      return res.status(403).json({ error: "Unauthorized access." });
     }
 
-    if (! invoice_number || ! invoice_number.trim()) {
+    if (!invoice_number || !invoice_number.trim()) {
       return res.status(400).json({ error: "Invoice number is required." });
     }
 
@@ -988,7 +1049,7 @@ router.put("/update-invoice/:id", authorization, async (req, res) => {
       return res.status(404).json({ error: "Item not found" });
     }
 
-    if (checkRes.rows[0]. facility !== adminFacility) {
+    if (checkRes.rows[0].facility !== adminFacility) {
       return res
         .status(403)
         .json({ error: "You can only manage items from your facility." });
@@ -999,7 +1060,7 @@ router.put("/update-invoice/:id", authorization, async (req, res) => {
        SET invoice_number = $1, invoice_pending = false 
        WHERE id = $2 
        RETURNING *`,
-      [invoice_number. trim(), id]
+      [invoice_number.trim(), id]
     );
 
     res.json({
@@ -1022,7 +1083,7 @@ router.put("/update-all-invoices/:userId", authorization, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized access." });
     }
 
-    if (!invoice_number || ! invoice_number.trim()) {
+    if (!invoice_number || !invoice_number.trim()) {
       return res.status(400).json({ error: "Invoice number is required." });
     }
 
@@ -1041,7 +1102,7 @@ router.put("/update-all-invoices/:userId", authorization, async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    if (userRes.rows[0]. facility !== adminFacility) {
+    if (userRes.rows[0].facility !== adminFacility) {
       return res
         .status(403)
         .json({ error: "You can only manage items from your facility." });
@@ -1052,22 +1113,24 @@ router.put("/update-all-invoices/:userId", authorization, async (req, res) => {
        SET invoice_number = $1, invoice_pending = false 
        WHERE user_id = $2 AND invoice_pending = true
        RETURNING *`,
-      [invoice_number. trim(), userId]
+      [invoice_number.trim(), userId]
     );
 
     if (result.rowCount === 0) {
       return res
         .status(404)
-        .json({ message: "No items with pending invoices found for this user." });
+        .json({
+          message: "No items with pending invoices found for this user.",
+        });
     }
 
     res.json({
       message: "All invoice numbers updated successfully",
-      updated_count: result. rowCount,
+      updated_count: result.rowCount,
       items: result.rows,
     });
   } catch (err) {
-    console.error("Error updating all invoice numbers:", err. message);
+    console.error("Error updating all invoice numbers:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

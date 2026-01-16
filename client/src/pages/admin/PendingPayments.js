@@ -3,7 +3,7 @@ import { Printer, X } from "lucide-react";
 import { jwtDecode } from "jwt-decode";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const API_URL = process.env. REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const PendingPayments = () => {
   const [items, setItems] = useState([]);
@@ -54,7 +54,7 @@ const PendingPayments = () => {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(location. search);
+    const params = new URLSearchParams(location.search);
     const guestId = params.get('guest');
     
     if (guestId && items.length > 0) {
@@ -85,8 +85,8 @@ const PendingPayments = () => {
       return;
     }
 
-    if (selectedAction. type === "single") {
-      await handleMarkAsPaid(selectedAction.itemId, invoiceNumber. trim());
+    if (selectedAction.type === "single") {
+      await handleMarkAsPaid(selectedAction.itemId, invoiceNumber.trim());
     } else if (selectedAction.type === "all") {
       await handleMarkAllAsPaid(selectedAction.userId, invoiceNumber.trim());
     }
@@ -111,7 +111,7 @@ const PendingPayments = () => {
         }
       );
 
-      if (response. ok) {
+      if (response.ok) {
         alert("Item marked as paid!  Invoice number can be added later.");
         fetchPendingPayments();
       } else {
@@ -168,7 +168,7 @@ const PendingPayments = () => {
         }
       );
 
-      if (response. ok) {
+      if (response.ok) {
         alert("All items marked as paid!");
         fetchPendingPayments();
       } else {
@@ -229,7 +229,7 @@ const PendingPayments = () => {
               margin: 0;
               font-size: 12px;
             }
-            . receipt-header {
+            .receipt-header {
               text-align: center;
               margin-bottom: 20px;
               border-bottom: 2px solid #166534;
@@ -241,7 +241,7 @@ const PendingPayments = () => {
               color: #166534;
               margin-bottom: 8px;
             }
-            . receipt-info {
+            .receipt-info {
               font-size: 11px;
               color: #4b5563;
               margin:  3px 0;
@@ -332,7 +332,7 @@ const PendingPayments = () => {
     return acc;
   }, {});
 
-  const params = new URLSearchParams(location. search);
+  const params = new URLSearchParams(location.search);
   const highlightedGuestId = params.get('guest');
 
   if (loading) return <p className="text-center mt-10">Loading...</p>;
@@ -344,7 +344,6 @@ const PendingPayments = () => {
         Pending Payments
       </h2>
 
-      {/* Add button to view pending invoices */}
       {userRole === "admin" && (
         <div className="mb-4 text-center">
           <button
@@ -548,11 +547,11 @@ const PendingPayments = () => {
                         <div className="flex justify-between items-center pt-2 border-t">
                           <div>
                             <p className="text-xs text-gray-500">Price Each</p>
-                            <p className="text-sm font-medium">₱{priceEach. toFixed(2)}</p>
+                            <p className="text-sm font-medium">₱{priceEach.toFixed(2)}</p>
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-gray-500">Total</p>
-                            <p className="text-sm font-semibold text-green-700">₱{totalCharge. toFixed(2)}</p>
+                            <p className="text-sm font-semibold text-green-700">₱{totalCharge.toFixed(2)}</p>
                           </div>
                         </div>
 
@@ -579,7 +578,7 @@ const PendingPayments = () => {
               </div>
 
               <div className="text-right font-semibold text-green-800 text-sm sm:text-base">
-                Total Due: ₱{total. toFixed(2)}
+                Total Due: ₱{total.toFixed(2)}
               </div>
             </div>
           );
@@ -608,7 +607,7 @@ const PendingPayments = () => {
               <input
                 type="text"
                 value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target. value)}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
                 placeholder="Enter invoice number"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base"
                 autoFocus
@@ -616,13 +615,12 @@ const PendingPayments = () => {
               <p className="text-xs text-gray-500 mt-1">
                 This invoice number will be recorded with the payment
               </p>
-              
-              {/* Add the small link button for marking as paid without invoice */}
+
               <div className="mt-3 text-center">
                 <button
                   onClick={() => {
                     closeInvoiceModal();
-                    if (selectedAction. type === "single") {
+                    if (selectedAction.type === "single") {
                       handleMarkAsPaidPendingInvoice(selectedAction.itemId);
                     } else if (selectedAction.type === "all") {
                       handleMarkAllAsPaidPendingInvoice(selectedAction.userId);
