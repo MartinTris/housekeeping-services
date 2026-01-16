@@ -101,27 +101,6 @@ const ManageAdmins = () => {
     }
   };
 
-  const toggleStatus = async (id) => {
-    try {
-      const res = await fetch(
-        `${API_URL}/admins/${id}/toggle-status`,
-        {
-          method: "PUT",
-          headers: { token: localStorage.getItem("token") },
-        }
-      );
-      const data = await res.json();
-
-      setAdmins((prev) =>
-        prev.map((admin) =>
-          admin.id === id ? { ...admin, is_active: data.is_active } : admin
-        )
-      );
-    } catch (err) {
-      console.error(err.message);
-    }
-  };
-
   const filteredAdmins = admins.filter((admin) => {
     if (facilityFilter === "all") return true;
     return admin.facility === facilityFilter;
