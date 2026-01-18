@@ -226,7 +226,7 @@ router.post("/borrow", authorization, async (req, res) => {
     const { item_id, quantity } = req.body;
 
     if (role !== "guest") {
-      return res.status(403).json({ error: "Only guests can borrow items." });
+      return res.status(403).json({ error: "Only guests can buy items." });
     }
 
     const userRes = await pool.query(
@@ -492,7 +492,7 @@ router.post("/borrow", authorization, async (req, res) => {
        SELECT id, $1, NOW() FROM users
        WHERE role = 'admin' AND facility = $2`,
       [
-        `${guestName} borrowed ${quantity} ${item.name}(s) from ${facility}. ${
+        `${guestName} bought ${quantity} ${item.name}(s) from ${facility}. ${
           assignedHousekeeperName
             ? `Assigned to ${assignedHousekeeperName} for delivery.`
             : "Pending housekeeper assignment for delivery."
@@ -546,12 +546,12 @@ router.post("/borrow", authorization, async (req, res) => {
          VALUES ($1, $2, NOW())`,
         [
           user_id,
-          `Your borrowed item(s) will be delivered by ${assignedHousekeeperName}. You will be billed after delivery confirmation.`,
+          `Your bought item(s) will be delivered by ${assignedHousekeeperName}. You will be billed after delivery confirmation.`,
         ]
       );
 
       res.json({
-        message: `Item borrowed successfully!  ${assignedHousekeeperName} will deliver it to your room. `,
+        message: `Item bought successfully!  ${assignedHousekeeperName} will deliver it to your room. `,
         borrowed: borrowed.rows[0],
         assigned_housekeeper: assignedHousekeeperName,
       });
@@ -561,18 +561,18 @@ router.post("/borrow", authorization, async (req, res) => {
          VALUES ($1, $2, NOW())`,
         [
           user_id,
-          `Your borrowed item is pending delivery. You will be notified when a housekeeper is assigned.`,
+          `Your bought item is pending delivery. You will be notified when a housekeeper is assigned.`,
         ]
       );
 
       res.json({
         message:
-          "Item borrowed successfully!  Delivery is pending housekeeper assignment.",
+          "Item bought successfully!  Delivery is pending housekeeper assignment.",
         borrowed: borrowed.rows[0],
       });
     }
   } catch (err) {
-    console.error("Borrow error:", err);
+    console.error("Buy error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
