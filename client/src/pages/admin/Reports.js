@@ -18,10 +18,24 @@ const Reports = () => {
   const printRef = useRef(null);
   const [facilityFilter, setFacilityFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [adminName, setAdminName] = useState("");
 
+const fetchAdminName = async () => {
+  try {
+    const response = await fetch(`${API_URL}/dashboard/`, {
+      method: "GET",
+      headers: { token: localStorage.token },
+    });
+    const parseRes = await response.json();
+    setAdminName(parseRes.name);
+  } catch (err) {
+    console.error(err.message);
+  }
+};
   useEffect(() => {
     const userRole = localStorage.getItem("role");
     setRole(userRole);
+    fetchAdminName();
   }, []);
 
   const fetchHousekeepers = async () => {
@@ -275,7 +289,7 @@ const Reports = () => {
       <html>
         <head>
           <title>${
-            reportType === "housekeeping" ? "Housekeeping" : "Borrowed Items"
+            reportType === "housekeeping" ? "Housekeeping" : "Bought Items"
           } Report</title>
           <style>
             body {
@@ -327,14 +341,21 @@ const Reports = () => {
               background-color: #fef3c7;
               color: #92400e;
             }
+            .prepared-by {
+              margin-top: 30px;
+              text-align: right;
+              font-size: 12px;
+              color: #065f46;
+              font-weight: 600;
+            }
           </style>
         </head>
         <body>
-          <h1>${
+          <h1><center>${
             reportType === "housekeeping"
-              ? "Housekeeping Report"
-              : "Borrowed Items Report"
-          }</h1>
+              ? "Completed Housekeeping Tasks"
+              : "Bought Items List"
+          }</h1></center>
           <div class="meta">
             <p><strong>Facility:</strong> ${facility}</p>
             <p><strong>Date Range:</strong> ${getDateRangeLabel()}</p>
@@ -366,6 +387,7 @@ const Reports = () => {
             <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
           </div>
           ${printContent}
+          <div class="prepared-by">Prepared by: ${adminName}</div>
           <div class="footer">Housekeeping Management System — De La Salle University-Dasmariñas</div>
         </body>
       </html>
@@ -380,7 +402,7 @@ const Reports = () => {
       <h1 className="text-xl sm:text-2xl font-bold mb-2 text-green-900 font-poppins">
         {reportType === "housekeeping"
           ? "Housekeeping Reports"
-          : "Borrowed Items Reports"}
+          : "Bought Items Reports"}
       </h1>
 
       {facility && (
@@ -557,9 +579,9 @@ const Reports = () => {
                               </p>
                             </div>
                             <div>
-                              <span className="text-xs text-gray-500 uppercase">
+                              {/* <span className="text-xs text-gray-500 uppercase">
                                 Status
-                              </span>
+                              </span> */}
                               <p className="text-sm capitalize">{r.status}</p>
                             </div>
                           </div>
@@ -618,7 +640,7 @@ const Reports = () => {
                         <th className="p-3 text-left border-b">Room</th>
                         <th className="p-3 text-left border-b">Date</th>
                         <th className="p-3 text-left border-b">Time</th>
-                        <th className="p-3 text-left border-b">Status</th>
+                        {/* <th className="p-3 text-left border-b">Status</th> */}
                       </tr>
                     </thead>
                     <tbody>
@@ -657,9 +679,9 @@ const Reports = () => {
                             <td className="p-3 border-b">
                               {r.time} - {endTime}
                             </td>
-                            <td className="p-3 border-b capitalize">
+                            {/* <td className="p-3 border-b capitalize">
                               {r.status}
-                            </td>
+                            </td> */}
                           </tr>
                         );
                       })}

@@ -158,7 +158,7 @@ const TaskHistory = () => {
           </style>
         </head>
         <body>
-          <h1>Task History Report</h1>
+          <h1><center>Task History Report</h1></center>
           <div class="meta">
             <p><strong>Date Range:</strong> ${getDateRangeText()}</p>
             ${
