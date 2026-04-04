@@ -29,7 +29,7 @@ const AdminFeedbackWidget = () => {
         : `${API_URL}/feedback/admin`;
         
       const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
       const data = await res.json();
       if (res.ok) {

@@ -7,25 +7,13 @@ require('dotenv').config();
 const app = express();
 
 // middleware
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['https://dlsudhousekeeping.vercel.app'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'token'],
-  optionsSuccessStatus: 200
-}));
-
+app.use(cors());
 app.use(express.json());
 
 // for socket.io
 const server = http.createServer(app);
 const realtime = require("./realtime");
-const io = realtime.init(server, { 
-  cors: {
-    origin: process.env.ALLOWED_ORIGINS?.split(','),
-    credentials: true
-  }
-});
+const io = realtime.init(server, { corsOrigin: "http://localhost:3000" });
 
 app.use((req, res, next) => {
   req.io = io;
@@ -52,6 +40,6 @@ app.use("/permissions", require("./routes/permissions"));
 
 require("./tasks/expireBookings");
 
-server.listen(5000, () => {
-  console.log("Server is running on port 5000");
+server.listen(3000, () => {
+  console.log("Server is running on port 3000");
 });

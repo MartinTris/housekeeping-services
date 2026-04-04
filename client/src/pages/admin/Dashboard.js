@@ -74,7 +74,7 @@ const AdminDashboard = () => {
     try {
       const response = await fetch(`${API_URL}/dashboard/`, {
         method: "GET",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (response.status === 401 || response.status === 403) {
@@ -95,7 +95,7 @@ const AdminDashboard = () => {
   async function getHousekeeperCount() {
     try {
       const res = await fetch(`${API_URL}/housekeepers`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -127,7 +127,7 @@ const AdminDashboard = () => {
   async function getTotalGuests() {
     try {
       const res = await fetch(`${API_URL}/rooms`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -166,7 +166,7 @@ const AdminDashboard = () => {
   async function fetchTotalRequests() {
     try {
       const res = await fetch(`${API_URL}/housekeeping-requests/admin/total`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -199,7 +199,7 @@ const AdminDashboard = () => {
   async function getAverageRating() {
     try {
       const res = await fetch(`${API_URL}/feedback/admin`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -250,7 +250,7 @@ const AdminDashboard = () => {
 
       try {
         const res = await fetch(`${API_URL}/feedback/admin`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          headers: { token: localStorage.token },
         });
 
         if (res.status === 401 || res.status === 403) {
@@ -318,7 +318,7 @@ const AdminDashboard = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        token: localStorage.token,
       },
       body: JSON.stringify({
         title,
@@ -380,7 +380,7 @@ const AdminDashboard = () => {
   async function fetchMyAnnouncements() {
     try {
       const res = await fetch(`${API_URL}/announcements/admin`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -408,7 +408,7 @@ const AdminDashboard = () => {
     try {
       const res = await fetch(`${API_URL}/announcements/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { token: localStorage.token },
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -432,7 +432,7 @@ const AdminDashboard = () => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        token: localStorage.token,
       },
       body: JSON.stringify({ title: editTitle, message: editMessage }),
     })
