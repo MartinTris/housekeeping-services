@@ -32,5 +32,4 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-
 module.exports = pool;
